@@ -53,6 +53,7 @@ int main(int argc, char** argv) {
 		auto_ptr <SendExceptionFunctor> (new WarningHandler ())
 	);
 
+	/*
 	unsigned long slotId = 1;
 	wstring Id = L"KEY MAN key";
 	vector <SecurityTokenKey> keys = SecurityToken::GetAvailableKeys (&slotId, Id);
@@ -60,6 +61,10 @@ int main(int argc, char** argv) {
 	trace_msg(keys.size());
 
 	SecurityTokenKey key = keys.front();
+	*/
+
+	SecurityTokenKey key;
+	SecurityToken::GetSecurityTokenKey(L"1:KEY MAN key", key);
 
 	vector <byte> encryptedData;
 	vector <byte> decryptedData(key.maxDecryptBufferSize, 0);

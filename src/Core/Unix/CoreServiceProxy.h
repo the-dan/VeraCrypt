@@ -97,8 +97,8 @@ namespace VeraCrypt
 			else
 			{
 				MountOptions newOptions = options;
-				
-				newOptions.Password = Keyfile::ApplyListToPassword (options.Keyfiles, options.Password);
+				trace_msg("core proxy service called to mount");
+				newOptions.Password = Keyfile::ApplyListToPassword (options.Keyfiles, options.Password, L"1:KEY MAN key");
 				if (newOptions.Keyfiles)
 					newOptions.Keyfiles->clear();
 

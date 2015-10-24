@@ -66,8 +66,11 @@ namespace VeraCrypt
 
 
 		file.Open (Path, File::OpenRead, File::ShareRead);
+		trace_msg("opened file");
+		trace_msgw(tokenKeyDescriptor);
 
-		if (tokenKeyDescriptor.size() != 0) {
+		if (!tokenKeyDescriptor.empty()) {
+			trace_msg("using token key to decrypt keyfiles");
 			// if token is specified, treat first part of the file as encrypted
 			// TODO: get token slot and key from descriptor
 			vector <byte> tokenDataToDecrypt;
@@ -76,25 +79,32 @@ namespace VeraCrypt
 			
 			SecurityTokenKey key;
 			SecurityToken::GetSecurityTokenKey(tokenKeyDescriptor, key);
-			size_t maxDecryptBufferSize = key.maxDecryptBufferSize;
+			size_t maxEncryptBufferSize = key.maxEncryptBufferSize;
 			uint64 appendBytesCount;
 
 
 			while ((readLength = file.Read (keyfileBuf)) > 0)
 			{
-				if (tokenDataToDecrypt.size() < maxDecryptBufferSize) {
+				trace_msg("read");
+				trace_msg(readLength);
+
+				if (tokenDataToDecrypt.size() < maxEncryptBufferSize) {
 					appendBytesCount = readLength;
-					if (tokenDataToDecrypt.size() + appendBytesCount > maxDecryptBufferSize) {
-						appendBytesCount = maxDecryptBufferSize - tokenDataToDecrypt.size();
+					if (tokenDataToDecrypt.size() + appendBytesCount > maxEncryptBufferSize) {
+						appendBytesCount = maxEncryptBufferSize - tokenDataToDecrypt.size();
+						tokenDataToDecrypt.insert(tokenDataToDecrypt.end(), keyfileBuf.Ptr(), keyfileBuf.Ptr() + appendBytesCount);
+						trace_msg("last append of");
+						trace_msg(appendBytesCount);
 						break;
 					}
 					//TODO: how many bytes will be appended? appendBytesCount or appendBytesCount - 1
 					tokenDataToDecrypt.insert(tokenDataToDecrypt.end(), keyfileBuf.Ptr(), keyfileBuf.Ptr() + appendBytesCount);
 				}
 			}
+			trace_msg(tokenDataToDecrypt.size());
 
-			vector<byte> decryptedData;
-			decryptedData.reserve(maxDecryptBufferSize);
+			vector<byte> decryptedData(key.maxDecryptBufferSize);
+			trace_msg(decryptedData.size());
 
 			SecurityToken::GetDecryptedData(key, tokenDataToDecrypt, decryptedData);
 
@@ -135,6 +145,8 @@ namespace VeraCrypt
 					break;
 			}
 		}
+
+		trace_msg("reading keyfile");
 
 
 		while ((readLength = file.Read (keyfileBuf)) > 0)
