@@ -1,5 +1,7 @@
 
 #include <Common/SecurityToken.h>
+#include <Platform/File.h>
+#include <Platform/FilesystemPath.h>
 
 using namespace VeraCrypt;
 
@@ -53,15 +55,47 @@ int main(int argc, char** argv) {
 
 	unsigned long slotId = 1;
 	wstring Id = L"KEY MAN key";
-	vector <SecurityTokenKeyfile> keys = SecurityToken::GetAvailableKeys (&slotId, Id);
+	vector <SecurityTokenKey> keys = SecurityToken::GetAvailableKeys (&slotId, Id);
 
 	trace_msg(keys.size());
 
-	SecurityTokenKeyfile key = keys.front();
+	SecurityTokenKey key = keys.front();
 
-	vector <byte> keyfileData;
+	vector <byte> encryptedData;
+	vector <byte> decryptedData(key.maxDecryptBufferSize, 0);
+	encryptedData.reserve(key.maxEncryptBufferSize);
+
+	File file;
+	uint64 totalLength = 0;
+	uint64 readLength;
+
+
+	FilesystemPath Path("/Users/dan/projects/bluekey/pkcs11-attempt/openssl-encrypted-text.blob");
+	SecureBuffer keyfileBuf (File::GetOptimalReadSize());
+	trace_msg("opening file");
+	file.Open (Path, File::OpenRead, File::ShareRead);
+	trace_msg("opened");
+
+	
+
+
+	while ((readLength = file.Read (keyfileBuf)) > 0)
+	{
+		byte *data = keyfileBuf.Ptr();
+		encryptedData.insert(encryptedData.end(), data, data + readLength);
+
+		string log_data(data, data+readLength);
+		trace_msg(log_data);
+	}
+
+
+	trace_msg("decrypting");
+	trace_msg(encryptedData.size());
+	// trace_msg(readLength);
+
+
 	try {
-		SecurityToken::GetKeyfileData(key, keyfileData);
+		SecurityToken::GetDecryptedData(key, encryptedData, decryptedData);
 	} catch (Exception &ex) {
 		if (dynamic_cast <const Pkcs11Exception *> (&ex))
 		{
@@ -71,5 +105,11 @@ int main(int argc, char** argv) {
 			trace_msg(errorString);
 		}
 	}
+	trace_msg("decrypted result");
+	trace_msg(decryptedData.size());
+
+	string s(decryptedData.data(), decryptedData.data() + decryptedData.size());
+	trace_msg(s);
+
 
 }

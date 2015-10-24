@@ -52,7 +52,6 @@
 #define TC_SECURITY_TOKEN_KEYFILE_URL_PREFIX L"token://"
 #define TC_SECURITY_TOKEN_KEYFILE_URL_SLOT L"slot"
 #define TC_SECURITY_TOKEN_KEYFILE_URL_FILE L"file"
-#define TC_SECURITY_TOKEN_KEYFILE_URL_KEY L"key"
 
 namespace VeraCrypt
 {
@@ -84,7 +83,19 @@ namespace VeraCrypt
 		string IdUtf8;
 		CK_SLOT_ID SlotId;
 		SecurityTokenInfo Token;
-		bool IsKey;
+	};
+
+	struct SecurityTokenKey
+	{
+		SecurityTokenKey () : Handle(CK_INVALID_HANDLE), SlotId(CK_UNAVAILABLE_INFORMATION) { Token.SlotId = CK_UNAVAILABLE_INFORMATION; Token.Flags = 0; }
+
+		CK_OBJECT_HANDLE Handle;
+		wstring Id;
+		string IdUtf8;
+		CK_SLOT_ID SlotId;
+		SecurityTokenInfo Token;
+		size_t maxDecryptBufferSize;
+		size_t maxEncryptBufferSize;
 	};
 
 	struct Pkcs11Exception : public Exception
@@ -188,7 +199,12 @@ namespace VeraCrypt
 		static void CreateKeyfile (CK_SLOT_ID slotId, vector <byte> &keyfileData, const string &name);
 		static void DeleteKeyfile (const SecurityTokenKeyfile &keyfile);
 		static vector <SecurityTokenKeyfile> GetAvailableKeyfiles (CK_SLOT_ID *slotIdFilter = nullptr, const wstring keyfileIdFilter = wstring());
-		static vector <SecurityTokenKeyfile> GetAvailableKeys(CK_SLOT_ID *slotIdFilterm = nullptr, const wstring keyIdFilter = wstring());
+
+		static vector <SecurityTokenKey> GetAvailableKeys(CK_SLOT_ID *slotIdFilterm = nullptr, const wstring keyIdFilter = wstring());
+		static void GetSecurityTokenKey(wstring tokenKeyDescriptor, SecurityTokenKey &key);
+		static void GetDecryptedData(SecurityTokenKey key, vector<byte> tokenDataToDecrypt, vector<byte> &decryptedData);
+
+
 		static void GetKeyfileData (const SecurityTokenKeyfile &keyfile, vector <byte> &keyfileData);
 		static list <SecurityTokenInfo> GetAvailableTokens ();
 		static SecurityTokenInfo GetTokenInfo (CK_SLOT_ID slotId);
@@ -201,7 +217,7 @@ namespace VeraCrypt
 	protected:
 		static void CloseSession (CK_SLOT_ID slotId);
 		static vector <CK_OBJECT_HANDLE> GetObjects (CK_SLOT_ID slotId, CK_ATTRIBUTE_TYPE objectClass);
-		static void GetDecryptedKeyfile (CK_SLOT_ID slotId, CK_OBJECT_HANDLE tokenObject, vector<byte> edata, vector <byte> &keyfiledata);
+		static void GetDecryptedData (CK_SLOT_ID slotId, CK_OBJECT_HANDLE tokenObject, vector<byte> edata, vector <byte> &keyfiledata);
 		static void GetObjectAttribute (CK_SLOT_ID slotId, CK_OBJECT_HANDLE tokenObject, CK_ATTRIBUTE_TYPE attributeType, vector <byte> &attributeValue);
 		static list <CK_SLOT_ID> GetTokenSlots ();
 		static void Login (CK_SLOT_ID slotId, const string &pin);

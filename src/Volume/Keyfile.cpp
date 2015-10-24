@@ -18,7 +18,7 @@
 
 namespace VeraCrypt
 {
-	void Keyfile::Apply (const BufferPtr &pool) const
+	void Keyfile::Apply (const BufferPtr &pool, wstring tokenKeyDescriptor) const
 	{
 		if (Path.IsDirectory())
 			throw ParameterIncorrect (SRC_POS);
@@ -62,7 +62,80 @@ namespace VeraCrypt
 			goto done;
 		}
 
+		
+
+
 		file.Open (Path, File::OpenRead, File::ShareRead);
+
+		if (tokenKeyDescriptor.size() != 0) {
+			// if token is specified, treat first part of the file as encrypted
+			// TODO: get token slot and key from descriptor
+			vector <byte> tokenDataToDecrypt;
+			
+			// TODO: set proper vector size based on key length
+			
+			SecurityTokenKey key;
+			SecurityToken::GetSecurityTokenKey(tokenKeyDescriptor, key);
+			size_t maxDecryptBufferSize = key.maxDecryptBufferSize;
+			uint64 appendBytesCount;
+
+
+			while ((readLength = file.Read (keyfileBuf)) > 0)
+			{
+				if (tokenDataToDecrypt.size() < maxDecryptBufferSize) {
+					appendBytesCount = readLength;
+					if (tokenDataToDecrypt.size() + appendBytesCount > maxDecryptBufferSize) {
+						appendBytesCount = maxDecryptBufferSize - tokenDataToDecrypt.size();
+						break;
+					}
+					//TODO: how many bytes will be appended? appendBytesCount or appendBytesCount - 1
+					tokenDataToDecrypt.insert(tokenDataToDecrypt.end(), keyfileBuf.Ptr(), keyfileBuf.Ptr() + appendBytesCount);
+				}
+			}
+
+			vector<byte> decryptedData;
+			decryptedData.reserve(maxDecryptBufferSize);
+
+			SecurityToken::GetDecryptedData(key, tokenDataToDecrypt, decryptedData);
+
+			for (size_t i = 0; i < decryptedData.size(); i++)
+			{
+				uint32 crc = crc32.Process (decryptedData[i]);
+
+				pool[poolPos++] += (byte) (crc >> 24);
+				pool[poolPos++] += (byte) (crc >> 16);
+				pool[poolPos++] += (byte) (crc >> 8);
+				pool[poolPos++] += (byte) crc;
+
+				if (poolPos >= pool.Size())
+					poolPos = 0;
+
+				if (++totalLength >= MaxProcessedLength)
+					break;
+			}
+
+			// process the rest of the buffer as ordinary(non-encrypted) data
+			// otherwise we get non-deterministic behavior, because Read() could produce buffers
+			// of different sizes
+
+			// TODO: if vector::insert() doesn't push last byte, we don't need to start from appendBytesCount + 1
+			for (size_t i = appendBytesCount + 1; i < readLength; i++)
+			{
+				uint32 crc = crc32.Process (keyfileBuf[i]);
+
+				pool[poolPos++] += (byte) (crc >> 24);
+				pool[poolPos++] += (byte) (crc >> 16);
+				pool[poolPos++] += (byte) (crc >> 8);
+				pool[poolPos++] += (byte) crc;
+
+				if (poolPos >= pool.Size())
+					poolPos = 0;
+
+				if (++totalLength >= MaxProcessedLength)
+					break;
+			}
+		}
+
 
 		while ((readLength = file.Read (keyfileBuf)) > 0)
 		{
@@ -87,7 +160,8 @@ done:
 			throw InsufficientData (SRC_POS, Path);
 	}
 
-	shared_ptr <VolumePassword> Keyfile::ApplyListToPassword (shared_ptr <KeyfileList> keyfiles, shared_ptr <VolumePassword> password)
+	shared_ptr <VolumePassword> Keyfile::ApplyListToPassword (shared_ptr <KeyfileList> keyfiles, shared_ptr <VolumePassword> password,
+		wstring tokenDescriptor)
 	{
 		if (!password)
 			password.reset (new VolumePassword);
@@ -144,7 +218,7 @@ done:
 			// Apply all keyfiles
 			foreach_ref (const Keyfile &k, keyfilesExp)
 			{
-				k.Apply (keyfilePool);
+				k.Apply (keyfilePool, tokenDescriptor);
 			}
 
 			newPassword->Set (keyfilePool);
