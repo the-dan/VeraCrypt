@@ -70,6 +70,7 @@ namespace VeraCrypt
 
 	void Volume::Open (const VolumePath &volumePath, bool preserveTimestamps, shared_ptr <VolumePassword> password, int pim, shared_ptr <Pkcs5Kdf> kdf, bool truecryptMode, shared_ptr <KeyfileList> keyfiles, VolumeProtection::Enum protection, shared_ptr <VolumePassword> protectionPassword, int protectionPim, shared_ptr <Pkcs5Kdf> protectionKdf, shared_ptr <KeyfileList> protectionKeyfiles, bool sharedAccessAllowed, VolumeType::Enum volumeType, bool useBackupHeaders, bool partitionInSystemEncryptionScope)
 	{
+		// TODO: what is a keyfile? Do we get different types of Keyfiles here, SecurityTokenKeyfile one of them?
 		make_shared_auto (File, file);
 
 		File::FileOpenFlags flags = (preserveTimestamps ? File::PreserveTimestamps : File::FlagsNone);
@@ -118,6 +119,7 @@ namespace VeraCrypt
 		try
 		{
 			VolumeHostSize = VolumeFile->Length();
+			// NOTE: here we derive master key from password and keyfiles
 			shared_ptr <VolumePassword> passwordKey = Keyfile::ApplyListToPassword (keyfiles, password);
 
 			bool skipLayoutV1Normal = false;

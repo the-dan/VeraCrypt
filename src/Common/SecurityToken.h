@@ -52,6 +52,7 @@
 #define TC_SECURITY_TOKEN_KEYFILE_URL_PREFIX L"token://"
 #define TC_SECURITY_TOKEN_KEYFILE_URL_SLOT L"slot"
 #define TC_SECURITY_TOKEN_KEYFILE_URL_FILE L"file"
+#define TC_SECURITY_TOKEN_KEYFILE_URL_KEY L"key"
 
 namespace VeraCrypt
 {
@@ -83,6 +84,7 @@ namespace VeraCrypt
 		string IdUtf8;
 		CK_SLOT_ID SlotId;
 		SecurityTokenInfo Token;
+		bool IsKey;
 	};
 
 	struct Pkcs11Exception : public Exception
@@ -186,6 +188,7 @@ namespace VeraCrypt
 		static void CreateKeyfile (CK_SLOT_ID slotId, vector <byte> &keyfileData, const string &name);
 		static void DeleteKeyfile (const SecurityTokenKeyfile &keyfile);
 		static vector <SecurityTokenKeyfile> GetAvailableKeyfiles (CK_SLOT_ID *slotIdFilter = nullptr, const wstring keyfileIdFilter = wstring());
+		static vector <SecurityTokenKeyfile> GetAvailableKeys(CK_SLOT_ID *slotIdFilterm = nullptr, const wstring keyIdFilter = wstring());
 		static void GetKeyfileData (const SecurityTokenKeyfile &keyfile, vector <byte> &keyfileData);
 		static list <SecurityTokenInfo> GetAvailableTokens ();
 		static SecurityTokenInfo GetTokenInfo (CK_SLOT_ID slotId);
@@ -198,6 +201,7 @@ namespace VeraCrypt
 	protected:
 		static void CloseSession (CK_SLOT_ID slotId);
 		static vector <CK_OBJECT_HANDLE> GetObjects (CK_SLOT_ID slotId, CK_ATTRIBUTE_TYPE objectClass);
+		static void GetDecryptedKeyfile (CK_SLOT_ID slotId, CK_OBJECT_HANDLE tokenObject, vector<byte> edata, vector <byte> &keyfiledata);
 		static void GetObjectAttribute (CK_SLOT_ID slotId, CK_OBJECT_HANDLE tokenObject, CK_ATTRIBUTE_TYPE attributeType, vector <byte> &attributeValue);
 		static list <CK_SLOT_ID> GetTokenSlots ();
 		static void Login (CK_SLOT_ID slotId, const string &pin);
@@ -215,6 +219,16 @@ namespace VeraCrypt
 #endif
 		static map <CK_SLOT_ID, Pkcs11Session> Sessions;
 		static auto_ptr <SendExceptionFunctor> WarningCallback;
+
+	
+		static CK_RV PKCS11Decrypt(
+			CK_SESSION_HANDLE hSession,
+			vector<unsigned char> inEncryptedData,
+			vector<unsigned char> &outData
+		);
+		static unsigned char * Vector2Buffer(vector<unsigned char> &Buf, CK_ULONG &Len);
+		static void Buffer2Vector(unsigned char* pBuf, CK_ULONG Len, vector<unsigned char> &Buf, bool bAllocIfNull);
+
 	};
 }
 

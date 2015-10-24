@@ -22,6 +22,10 @@
 #	include "Language.h"
 #endif
 
+ #include <Platform/File.h>
+ #include <Platform/FilesystemPath.h>
+ #include <Volume/Crc32.h>
+
 #ifdef TC_UNIX
 #	include <dlfcn.h>
 #endif
@@ -46,18 +50,41 @@ namespace VeraCrypt
 
 		SlotId = slotId;
 
-		size_t keyIdPos = pathStr.find (L"/" TC_SECURITY_TOKEN_KEYFILE_URL_FILE L"/");
-		if (keyIdPos == string::npos)
+		size_t fileIdPos = pathStr.find (L"/" TC_SECURITY_TOKEN_KEYFILE_URL_FILE L"/");
+		size_t keyIdPos = pathStr.find(L"/" TC_SECURITY_TOKEN_KEYFILE_URL_KEY L"/");
+		if (keyIdPos == string::npos && keyIdPos == string::npos)
 			throw InvalidSecurityTokenKeyfilePath();
 
-		Id = pathStr.substr (keyIdPos + wstring (L"/" TC_SECURITY_TOKEN_KEYFILE_URL_FILE L"/").size());
+		if (fileIdPos == string::npos) {
+			Id = pathStr.substr (keyIdPos + wstring (L"/" TC_SECURITY_TOKEN_KEYFILE_URL_KEY L"/").size());
 
-		vector <SecurityTokenKeyfile> keyfiles = SecurityToken::GetAvailableKeyfiles (&SlotId, Id);
+			vector <SecurityTokenKeyfile> keys = SecurityToken::GetAvailableKeys (&SlotId, Id);
 
-		if (keyfiles.empty())
-			throw SecurityTokenKeyfileNotFound();
+			if (keys.empty())
+				throw SecurityTokenKeyfileNotFound();
+			
 
-		*this = keyfiles.front();
+			// TODO: parse forward, we need to get keyfile name. This keyfile have
+			// to be decrypted using key parsed above
+			// TODO: or may be we just apply decyption to input data (e.g. password/previous keyfiles data)
+			// NOTE: we can't apply encryption here, hardware tokens with RSA don't have encryption keys inside
+
+			// XXX: what does it do?
+			*this = keys.front();
+		} else {
+
+			Id = pathStr.substr (fileIdPos + wstring (L"/" TC_SECURITY_TOKEN_KEYFILE_URL_FILE L"/").size());
+
+			vector <SecurityTokenKeyfile> keyfiles = SecurityToken::GetAvailableKeyfiles (&SlotId, Id);
+
+			if (keyfiles.empty())
+				throw SecurityTokenKeyfileNotFound();
+
+			// XXX: what does it do?
+			*this = keyfiles.front();
+		}
+
+		
 	}
 
 	SecurityTokenKeyfile::operator SecurityTokenKeyfilePath () const
@@ -178,6 +205,93 @@ namespace VeraCrypt
 		CK_RV status = Pkcs11Functions->C_DestroyObject (Sessions[keyfile.SlotId].Handle, keyfile.Handle);
 		if (status != CKR_OK)
 			throw Pkcs11Exception (status);
+	}
+
+	vector <SecurityTokenKeyfile> SecurityToken::GetAvailableKeys(CK_SLOT_ID *slotIdFilter, const wstring keyIdFilter)
+	{
+		bool unrecognizedTokenPresent = false;
+		vector <SecurityTokenKeyfile> keys;
+
+		foreach (const CK_SLOT_ID &slotId, GetTokenSlots())
+		{
+			trace_msg("got next slot");
+			SecurityTokenInfo token;
+
+			if (slotIdFilter && *slotIdFilter != slotId)
+				continue;
+
+			try
+			{
+				trace_msg("logging in");
+				LoginUserIfRequired (slotId);
+				trace_msg("getting token info for slot");
+				token = GetTokenInfo (slotId);
+			}
+			catch (UserAbort &)
+			{
+				continue;
+			}
+			catch (Pkcs11Exception &e)
+			{
+				if (e.GetErrorCode() == CKR_TOKEN_NOT_RECOGNIZED)
+				{
+					unrecognizedTokenPresent = true;
+					continue;
+				}
+
+				throw;
+			}
+
+			trace_msg("getting private keys");
+			foreach (const CK_OBJECT_HANDLE &dataHandle, GetObjects (slotId, CKO_PRIVATE_KEY))
+			{
+				SecurityTokenKeyfile key;
+				key.Handle = dataHandle;
+				key.SlotId = slotId;
+				key.Token = token;
+				key.IsKey = true;
+
+				trace_msg("got private key");
+
+
+				vector <byte> privateAttrib;
+				GetObjectAttribute (slotId, dataHandle, CKA_PRIVATE, privateAttrib);
+
+				if (privateAttrib.size() == sizeof (CK_BBOOL) && *(CK_BBOOL *) &privateAttrib.front() != CK_TRUE)
+					continue;
+
+				// TODO: check if CKA_DECRYPT is present
+				// TODO: check if it is RSA
+
+				vector <byte> label;
+				GetObjectAttribute (slotId, dataHandle, CKA_LABEL, label);
+				label.push_back (0);
+
+				key.IdUtf8 = (char *) &label.front();
+
+#if defined (TC_WINDOWS) && !defined (TC_PROTOTYPE)
+				key.Id = Utf8StringToWide ((const char *) &label.front());
+#else
+				key.Id = StringConverter::ToWide ((const char *) &label.front());
+#endif
+				trace_msgw(key.Id);
+
+				if (key.Id.empty() || (!keyIdFilter.empty() && keyIdFilter != key.Id)) {
+					trace_msg("private key doesn't match with filter");
+					continue;
+				}
+
+				keys.push_back (key);
+
+				if (!keyIdFilter.empty())
+					break;
+			}
+		}
+
+		if (keys.empty() && unrecognizedTokenPresent)
+			throw Pkcs11Exception (CKR_TOKEN_NOT_RECOGNIZED);
+
+		return keys;
 	}
 
 	vector <SecurityTokenKeyfile> SecurityToken::GetAvailableKeyfiles (CK_SLOT_ID *slotIdFilter, const wstring keyfileIdFilter)
@@ -314,8 +428,59 @@ namespace VeraCrypt
 
 	void SecurityToken::GetKeyfileData (const SecurityTokenKeyfile &keyfile, vector <byte> &keyfileData)
 	{
+		// NOTE: this is where we return keyfile data
+		// here we need to read file, decrypt it's content using specified SecurityTokenKeyfile
 		LoginUserIfRequired (keyfile.SlotId);
-		GetObjectAttribute (keyfile.SlotId, keyfile.Handle, CKA_VALUE, keyfileData);
+		if (keyfile.IsKey) {
+			// TODO: pass keyfile's data (read from encrypted keyfile) as a parameter
+
+			File file;
+			Crc32 crc32;
+			uint64 totalLength = 0;
+			uint64 readLength;
+
+			const size_t MinProcessedLength = 1;
+			const size_t MaxProcessedLength = 1024 * 1024;
+
+			FilesystemPath Path("/Users/dan/projects/bluekey/pkcs11-attempt/openssl-encrypted-text.blob");
+
+			SecureBuffer keyfileBuf (File::GetOptimalReadSize());
+			trace_msg("opening file");
+			file.Open (Path, File::OpenRead, File::ShareRead);
+			trace_msg("opened");
+
+			std::vector<byte> str_data;
+
+			while ((readLength = file.Read (keyfileBuf)) > 0)
+			{
+				byte * data = keyfileBuf.Ptr();
+				str_data.insert(str_data.end(), data, data + readLength);
+
+				string log_data(data, data+readLength);
+				trace_msg(log_data);
+
+				for (size_t i = 0; i < readLength; i++)
+				{
+					// TODO: put everything into SecureBuf
+					// pass SecureBuf to decryption function, let's operate with secure buffers
+					// instead of vectors
+				}
+			}
+
+
+			trace_msg("decrypting");
+			trace_msg(str_data.size());
+			// trace_msg(readLength);
+
+			GetDecryptedKeyfile(keyfile.SlotId, keyfile.Handle, str_data, keyfileData);
+
+			trace_msg(keyfileData.size());
+
+			string s(keyfileData.data(), keyfileData.data() + keyfileData.size());
+			trace_msg(s);
+		} else {
+			GetObjectAttribute (keyfile.SlotId, keyfile.Handle, CKA_VALUE, keyfileData);
+		}
 	}
 
 	vector <CK_OBJECT_HANDLE> SecurityToken::GetObjects (CK_SLOT_ID slotId, CK_ATTRIBUTE_TYPE objectClass)
@@ -351,6 +516,142 @@ namespace VeraCrypt
 		}
 
 		return objects;
+	}
+
+	CK_RV SecurityToken::PKCS11Decrypt(
+		CK_SESSION_HANDLE hSession,
+		vector<byte> inEncryptedData,
+		vector<byte> &outData
+		)
+	{
+		CK_RV rv;
+		if (!inEncryptedData.size())
+			return CKR_ARGUMENTS_BAD;
+
+		trace_msg("vectors to buffers");
+		CK_ULONG ulInDataLen = 0;
+		CK_BYTE* pInData = Vector2Buffer(inEncryptedData, ulInDataLen);
+		CK_ULONG ulOutDataLen = 0;
+		CK_BYTE* pOutData = Vector2Buffer(outData, ulOutDataLen);
+
+		trace_msg("C_Decrypt");
+		rv = Pkcs11Functions->C_Decrypt(hSession, pInData, ulInDataLen, pOutData,
+			&ulOutDataLen);
+
+		trace_msg("buffer to vector");
+		trace_msg(ulOutDataLen);
+		trace_msg(ulInDataLen);
+		string s(pOutData, pOutData+2);
+		trace_msg(s);
+		if (CKR_OK == rv) {
+			Buffer2Vector(pOutData, ulOutDataLen, outData, true);
+		} else {
+			trace_msg("nok");
+		}
+		if (pOutData)
+			delete []pOutData;
+		if (pInData)
+			delete []pInData;
+
+		return rv;
+	}
+
+	unsigned char * SecurityToken::Vector2Buffer(vector<unsigned char> &Buf, CK_ULONG &Len)
+	{
+		Len = (CK_ULONG)Buf.size();
+		if (!Len)
+			return NULL;
+		CK_ULONG i;
+		unsigned char *pBuf = new unsigned char[Len];
+		for (i = 0; i<Len; i++)
+			pBuf[i] = Buf[i];
+		return pBuf;
+	}
+
+	void SecurityToken::Buffer2Vector(unsigned char* pBuf, CK_ULONG Len, vector<unsigned char> &Buf, bool bAllocIfNull)
+	{
+		trace_msg("clearing buf");
+		Buf.clear();
+		trace_msg("allocnull");
+		if (!pBuf & bAllocIfNull)
+			Buf = vector<unsigned char>(Len);
+		else
+		{
+			trace_msg("reserve");
+			Buf.reserve(Len);
+			CK_ULONG i;
+			trace_msg("pushing");
+			for (i = 0; i<Len; i++)
+				Buf.push_back(pBuf[i]);
+		}
+	}
+
+	void SecurityToken::GetDecryptedKeyfile (CK_SLOT_ID slotId, CK_OBJECT_HANDLE tokenObject, vector<byte> edata, vector <byte> &keyfiledata)
+	{
+		keyfiledata.clear();
+
+		if (Sessions.find (slotId) == Sessions.end())
+			throw ParameterIncorrect (SRC_POS);
+
+		CK_MECHANISM m = { CKM_RSA_PKCS, 0, 0 };
+		trace_msg("C_DecryptInit");
+		CK_RV status = Pkcs11Functions->C_DecryptInit (Sessions[slotId].Handle, &m, tokenObject);
+		if (status != CKR_OK)
+			throw Pkcs11Exception (status);
+
+		// const unsigned char* raw_memory =
+    		// reinterpret_cast<const unsigned char*>(edata.c_str());
+    	//std::vector<unsigned char>(raw_memory, raw_memory + string_value.size();
+    	trace_msg("vectors");
+		std::vector<unsigned char> inEncryptedData = edata;
+		std::vector<unsigned char> outData(edata.size());
+
+		trace_msg("PKCS11Decrypt");
+		status = SecurityToken::PKCS11Decrypt(
+			Sessions[slotId].Handle,
+			inEncryptedData,
+			outData
+		);
+
+		if (status != CKR_OK)
+			throw Pkcs11Exception (status);
+
+		keyfiledata = outData;
+/*
+		CK_BYTE data[256];
+		CK_ULONG dataLen;
+
+		CK_ULONG cipherDataLen = edata.size();
+		CK_BYTE cipherData[cipherDataLen];
+		memcpy(cipherData, edata.c_str(), cipherDataLen);
+		
+
+		
+
+		status = Pkcs11Functions->C_Decrypt(Sessions[slotId].Handle, cipherData, cipherDataLen,
+			data, &dataLen
+			);
+
+		if (status != CKR_OK)
+			throw Pkcs11Exception (status);
+
+		byte * ptr = reinterpret_cast<byte * >( &data );
+		keyfiledata = vector <byte> (cipherDataLen, *ptr);
+*/
+
+		//keyfiledata.insert(keyfiledata.end(), dataLen, &data);
+
+		/*status = Pkcs11Functions->C_DecryptFinal(Sessions[slotId].Handle, &data, &dataLen);
+		if (status != CKR_OK)
+			throw Pkcs11Exception (status);
+*/
+		
+
+		// NOTE: why do we need this?
+		/*status = Pkcs11Functions->C_GetAttributeValue (Sessions[slotId].Handle, tokenObject, &attribute, 1);
+		if (status != CKR_OK)
+			throw Pkcs11Exception (status);
+		*/
 	}
 
 	void SecurityToken::GetObjectAttribute (CK_SLOT_ID slotId, CK_OBJECT_HANDLE tokenObject, CK_ATTRIBUTE_TYPE attributeType, vector <byte> &attributeValue)
@@ -434,16 +735,19 @@ namespace VeraCrypt
 	
 	void SecurityToken::LoginUserIfRequired (CK_SLOT_ID slotId)
 	{
+		trace_msg("checking library status");
 		CheckLibraryStatus();
 		CK_RV status;
 
 		if (Sessions.find (slotId) == Sessions.end())
 		{
+			trace_msg("opening session");
 			OpenSession (slotId);
 		}
 		else
 		{
 			CK_SESSION_INFO sessionInfo;
+			trace_msg("C_GetSessionInfo");
 			status = Pkcs11Functions->C_GetSessionInfo (Sessions[slotId].Handle, &sessionInfo);
 			
 			if (status == CKR_OK)
@@ -469,6 +773,7 @@ namespace VeraCrypt
 			{
 				if (tokenInfo.Flags & CKF_PROTECTED_AUTHENTICATION_PATH)
 				{
+					trace_msg("C_Login");
 					status = Pkcs11Functions->C_Login (Sessions[slotId].Handle, CKU_USER, NULL_PTR, 0);
 					if (status != CKR_OK)
 						throw Pkcs11Exception (status);

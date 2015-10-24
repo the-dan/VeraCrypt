@@ -1,0 +1,10 @@
+.DS_Store
+**/*.o
+**/*.d
+**/*.a
+src/Setup/MacOSX/VeraCrypt 1.16.pkg
+src/Main/VeraCrypt
+src/Main/VeraCrypt*.dmg
+*.gch
+
+

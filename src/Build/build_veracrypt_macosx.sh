@@ -20,12 +20,13 @@ echo "Using wxWidgets sources in $WX_ROOT"
 export WX_BUILD_DIR=$PARENTDIR/wxBuild
 
 # define the SDK version to use. We use 10.6 by default
-export VC_OSX_TARGET=10.6
+export VC_OSX_TARGET=10.8
 echo "Using MacOSX SDK $VC_OSX_TARGET"
 
 
 cd $SOURCEPATH
 
 echo "Building VeraCrypt"
-make WXSTATIC=1 wxbuild && make WXSTATIC=1 clean && make WXSTATIC=1
+#make WXSTATIC=1 wxbuild && make WXSTATIC=1 clean && make WXSTATIC=1
+make WXSTATIC=1 DEBUG=1
 

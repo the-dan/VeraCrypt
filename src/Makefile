@@ -215,10 +215,10 @@ ifeq "$(shell uname -s)" "Darwin"
 		S := $(C_CXX_FLAGS)
 		C_CXX_FLAGS = $(subst -MMD,,$(S))
 
-		C_CXX_FLAGS += -gfull -arch i386 -arch x86_64
-		LFLAGS += -Wl,-dead_strip -arch i386 -arch x86_64
+		C_CXX_FLAGS += -gfull -arch x86_64
+		LFLAGS += -Wl,-dead_strip -arch x86_64
 
-		WX_CONFIGURE_FLAGS += --enable-universal_binary=i386,x86_64
+		WX_CONFIGURE_FLAGS += --enable-universal_binary=x86_64
 		WXCONFIG_CFLAGS += -gfull
 		WXCONFIG_CXXFLAGS += -gfull
 

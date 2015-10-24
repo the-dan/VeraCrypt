@@ -65,6 +65,9 @@ ifndef DISABLE_PRECOMPILED_HEADERS
 PCH := SystemPrecompiled.h.gch
 endif
 
+ST_OBJS -= $(OBJS)
+ST_OBJS += SecurityTokenTest.o
+
 RESOURCES :=
 RESOURCES += ../License.txt.h
 RESOURCES += ../Common/Language.xml.h
@@ -130,9 +133,14 @@ INSTALLER_NAME := veracrypt-$(TC_VERSION)-setup-$(INSTALLER_TYPE)-$(CPU_ARCH)
 endif
 #-----------------------------------
 
-$(APPNAME): $(LIBS) $(OBJS)
+$(APPNAME): $(LIBS) $(OBJS) $(ST_OBJS)
 	@echo Linking $@
 	$(CXX) -o $(APPNAME) $(OBJS) $(LIBS) $(FUSE_LIBS) $(WX_LIBS) $(LFLAGS)
+
+	@echo Linking $@ $(ST_OBJS)
+	$(CXX) -o STTest $(ST_OBJS) $(LIBS) $(FUSE_LIBS) $(WX_LIBS) $(LFLAGS)
+
+
 
 ifeq "$(TC_BUILD_CONFIG)" "Release"
 ifndef NOSTRIP
@@ -174,11 +182,11 @@ endif
 	
 	echo -n APPLTRUE >$(APPNAME).app/Contents/PkgInfo
 	sed -e 's/_VERSION_/$(patsubst %a,%.1,$(patsubst %b,%.2,$(TC_VERSION)))/' ../Build/Resources/MacOSX/Info.plist.xml >$(APPNAME).app/Contents/Info.plist
-	codesign -s "Developer ID Application: Mounir IDRASSI" $(APPNAME).app
+	#codesign -s "Developer ID Application: Mounir IDRASSI" $(APPNAME).app
 	/usr/local/bin/packagesbuild $(PWD)/Setup/MacOSX/veracrypt.pkgproj
-	productsign --sign "Developer ID Installer: Mounir IDRASSI" "$(PWD)/Setup/MacOSX/VeraCrypt $(TC_VERSION).pkg" $(PWD)/Setup/MacOSX/VeraCrypt_$(TC_VERSION).pkg
-	rm -f $(APPNAME)_$(TC_VERSION).dmg
-	hdiutil create -srcfolder $(PWD)/Setup/MacOSX/VeraCrypt_$(TC_VERSION).pkg -volname "VeraCrypt $(TC_VERSION) for Mac OS X $(VC_OSX_TARGET) and later" $(APPNAME)_$(TC_VERSION).dmg
+	#productsign --sign "Developer ID Installer: Mounir IDRASSI" "$(PWD)/Setup/MacOSX/VeraCrypt $(TC_VERSION).pkg" $(PWD)/Setup/MacOSX/VeraCrypt_$(TC_VERSION).pkg
+	#rm -f $(APPNAME)_$(TC_VERSION).dmg
+	#hdiutil create -srcfolder "$(PWD)/Setup/MacOSX/VeraCrypt $(TC_VERSION).pkg" -volname "VeraCrypt $(TC_VERSION) for Mac OS X $(VC_OSX_TARGET) and later" $(APPNAME)_$(TC_VERSION).dmg
 endif
 
 ifeq "$(PLATFORM)" "Linux"	
