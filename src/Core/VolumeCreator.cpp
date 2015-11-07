@@ -280,7 +280,7 @@ namespace VeraCrypt
 			// Header key
 			HeaderKey.Allocate (VolumeHeader::GetLargestSerializedKeySize());
 			// TODO: pass key spec here if specified
-			PasswordKey = Keyfile::ApplyListToPassword (options->Keyfiles, options->Password, L"1:KEY MAN key");
+			PasswordKey = Keyfile::ApplyListToPassword (options->Keyfiles, options->Password, options->SecurityTokenKeySpec);
 			options->VolumeHeaderKdf->DeriveKey (HeaderKey, *PasswordKey, options->Pim, salt);
 			headerOptions.HeaderKey = HeaderKey;
 

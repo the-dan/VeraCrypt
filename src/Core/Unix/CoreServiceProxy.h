@@ -98,11 +98,11 @@ namespace VeraCrypt
 			{
 				MountOptions newOptions = options;
 				trace_msg("core proxy service called to mount");
-				newOptions.Password = Keyfile::ApplyListToPassword (options.Keyfiles, options.Password, L"1:KEY MAN key");
+				newOptions.Password = Keyfile::ApplyListToPassword (options.Keyfiles, options.Password, options.SecurityTokenKeySpec);
 				if (newOptions.Keyfiles)
 					newOptions.Keyfiles->clear();
 
-				newOptions.ProtectionPassword = Keyfile::ApplyListToPassword (options.ProtectionKeyfiles, options.ProtectionPassword);
+				newOptions.ProtectionPassword = Keyfile::ApplyListToPassword (options.ProtectionKeyfiles, options.ProtectionPassword, options.SecurityTokenKeySpec);
 				if (newOptions.ProtectionKeyfiles)
 					newOptions.ProtectionKeyfiles->clear();
 

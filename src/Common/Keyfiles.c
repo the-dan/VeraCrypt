@@ -248,6 +248,7 @@ BOOL KeyFilesApply (HWND hwndDlg, Password *password, KeyFile *firstKeyFile, con
 	for (kf = firstKeyFile; kf != NULL; kf = kf->Next)
 	{
 		// Determine whether it's a security token path
+		// NOTE: here we must implement the same logic we have in Keyfile.cpp
 		try
 		{
 			if (SecurityToken::IsKeyfilePathValid (SingleStringToWide (kf->FileName)))

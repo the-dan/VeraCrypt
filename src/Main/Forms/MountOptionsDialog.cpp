@@ -93,6 +93,7 @@ namespace VeraCrypt
 		Options.Kdf = PasswordPanel->GetPkcs5Kdf();
 		Options.TrueCryptMode = PasswordPanel->GetTrueCryptMode();
 		Options.Keyfiles = PasswordPanel->GetKeyfiles();
+		Options.SecurityTokenKeySpec = PasswordPanel->GetSecurityTokenKeySpec();
 
 		if (ReadOnlyCheckBox->IsChecked())
 		{

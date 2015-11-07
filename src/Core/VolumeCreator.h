@@ -30,6 +30,7 @@ namespace VeraCrypt
 		shared_ptr <KeyfileList> Keyfiles;
 		shared_ptr <Pkcs5Kdf> VolumeHeaderKdf;
 		shared_ptr <EncryptionAlgorithm> EA;
+		wstring SecurityTokenKeySpec;
 		bool Quick;
 
 		struct FilesystemType

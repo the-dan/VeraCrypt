@@ -686,6 +686,25 @@ namespace VeraCrypt
 			~SecurityTokenKeyfilesDialogBase();
 		
 	};
+
+	class SecurityTokenKeysDialogBase : public wxDialog
+	{
+		private:
+
+		protected:
+			wxListCtrl* SecurityTokenKeyListCtrl;
+			wxButton* OKButton;
+			wxButton* CancelButton;
+
+			virtual void OnListItemActivated( wxListEvent& event ) { event.Skip(); }
+			virtual void OnListItemDeselected( wxListEvent& event ) { event.Skip(); }
+			virtual void OnListItemSelected( wxListEvent& event ) { event.Skip(); }
+			virtual void OnOKButtonClick( wxCommandEvent& event ) { event.Skip(); }
+
+		public:
+			SecurityTokenKeysDialogBase( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Security Token Keys"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1, -1 ), long style = wxDEFAULT_DIALOG_STYLE );
+			~SecurityTokenKeysDialogBase();
+	};
 	
 	///////////////////////////////////////////////////////////////////////////////
 	/// Class VolumePropertiesDialogBase
@@ -968,6 +987,8 @@ namespace VeraCrypt
 			wxCheckBox* DisplayPasswordCheckBox;
 			wxCheckBox* UseKeyfilesCheckBox;
 			wxButton* KeyfilesButton;
+			wxTextCtrl* SecurityTokenKeySpecText;
+			wxButton* SecurityTokenKeySpecButton;
 			wxBoxSizer* Pkcs5PrfSizer;
 			wxStaticText* Pkcs5PrfStaticText;
 			wxChoice* Pkcs5PrfChoice;
@@ -986,6 +1007,7 @@ namespace VeraCrypt
 			virtual void OnKeyfilesButtonRightDown( wxMouseEvent& event ) { event.Skip(); }
 			virtual void OnKeyfilesButtonRightClick( wxMouseEvent& event ) { event.Skip(); }
 			virtual void OnTrueCryptModeChecked( wxCommandEvent& event ) { event.Skip(); }
+			virtual void OnSecurityTokenKeySpecButtonClick( wxMouseEvent& event ) { event.Skip(); }
 			
 		
 		public:

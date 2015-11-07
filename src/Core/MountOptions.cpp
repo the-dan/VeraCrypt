@@ -53,6 +53,7 @@ namespace VeraCrypt
 		TC_CLONE (SlotNumber);
 		TC_CLONE (UseBackupHeaders);
 		TC_CLONE (TrueCryptMode);
+		TC_CLONE (SecurityTokenKeySpec);
 	}
 
 	void MountOptions::Deserialize (shared_ptr <Stream> stream)
@@ -102,6 +103,7 @@ namespace VeraCrypt
 		sr.Deserialize ("UseBackupHeaders", UseBackupHeaders);
 
 		sr.Deserialize ("TrueCryptMode", TrueCryptMode);
+		sr.Deserialize("SecurityTokenKeySpec", SecurityTokenKeySpec);
 		
 		try
 		{
@@ -168,6 +170,8 @@ namespace VeraCrypt
 		sr.Serialize ("UseBackupHeaders", UseBackupHeaders);
 
 		sr.Serialize ("TrueCryptMode", TrueCryptMode);
+
+		sr.Serialize("SecurityTokenKeySpec", SecurityTokenKeySpec);
 
 		sr.Serialize ("KdfNull", Kdf == nullptr);
 		if (Kdf)

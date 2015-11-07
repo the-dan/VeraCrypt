@@ -29,6 +29,7 @@ namespace VeraCrypt
 		shared_ptr <KeyfileList> GetKeyfiles () const { return UseKeyfilesCheckBox->IsChecked() ? Keyfiles : shared_ptr <KeyfileList> (); }
 		shared_ptr <VolumePassword> GetPassword () const;
 		shared_ptr <Pkcs5Kdf> GetPkcs5Kdf () const;
+		wstring GetSecurityTokenKeySpec () const;
 		int GetVolumePim () const;
 		bool GetTrueCryptMode () const;
 		int GetHeaderWipeCount () const;
@@ -62,6 +63,7 @@ namespace VeraCrypt
 		void OnUseKeyfilesCheckBoxClick (wxCommandEvent& event) { OnUpdate(); }
 		void WipeTextCtrl (wxTextCtrl *textCtrl);
 		void OnTrueCryptModeChecked( wxCommandEvent& event );
+		void OnSecurityTokenKeySpecButtonClick( wxMouseEvent& event );
 
 		shared_ptr <KeyfileList> Keyfiles;
 		shared_ptr <Functor> UpdateCallback;

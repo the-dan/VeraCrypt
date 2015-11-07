@@ -205,7 +205,7 @@ namespace VeraCrypt
 		
 
 		vector <SecurityTokenKey> keys = SecurityToken::GetAvailableKeys(&slotId, keyId);
-		if (keys.size() > 1) {
+		if (keys.size() > 1 || keys.size() == 0) {
 			throw Pkcs11Exception (CKR_TOKEN_NOT_RECOGNIZED);
 		}
 		key = keys[0];

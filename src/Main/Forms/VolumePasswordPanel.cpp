@@ -15,6 +15,7 @@
 #include "KeyfilesDialog.h"
 #include "VolumePasswordPanel.h"
 #include "SecurityTokenKeyfilesDialog.h"
+ #include "SecurityTokenKeysDialog.h"
 
 namespace VeraCrypt
 {
@@ -255,6 +256,12 @@ namespace VeraCrypt
 			return shared_ptr <Pkcs5Kdf> ();
 		}
 	}
+
+	wstring VolumePasswordPanel::GetSecurityTokenKeySpec () const
+	{
+		wxString spec = SecurityTokenKeySpecText->GetValue();
+		return spec.ToStdWstring();
+	}
 	
 	int VolumePasswordPanel::GetVolumePim () const
 	{
@@ -340,6 +347,35 @@ namespace VeraCrypt
 
 				UseKeyfilesCheckBox->SetValue (!Keyfiles->empty());
 				OnUpdate();
+			}
+		}
+		catch (exception &e)
+		{
+			Gui->ShowError (e);
+		}
+	}
+
+	void VolumePasswordPanel::OnSecurityTokenKeySpecButtonClick( wxMouseEvent& event )
+	{
+		try
+		{
+			SecurityTokenKeysDialog dialog (this);
+			if (dialog.ShowModal() == wxID_OK)
+			{
+				wxString keySpec( dialog.GetSelectedSecurityTokenKeySpec() );
+				SecurityTokenKeySpecText->SetValue(keySpec);
+				OnUpdate();
+				/*foreach (const SecurityTokenKeyfilePath &path, dialog.GetSelectedSecurityTokenKeyfilePaths())
+				{
+					Keyfiles->push_back (make_shared <Keyfile> (wstring (path)));
+				}
+
+				if (!dialog.GetSelectedSecurityTokenKeyfilePaths().empty())
+				{
+					UseKeyfilesCheckBox->SetValue (!Keyfiles->empty());
+					OnUpdate();
+				}
+				*/
 			}
 		}
 		catch (exception &e)
