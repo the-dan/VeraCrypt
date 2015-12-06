@@ -30,3 +30,5 @@ echo "Building VeraCrypt"
 #make WXSTATIC=1 wxbuild && make WXSTATIC=1 clean && make WXSTATIC=1
 make WXSTATIC=1 DEBUG=1
 
+# Uncomment below and comment line above to reuse existing wxWidgets build
+# make WXSTATIC=1 clean && make WXSTATIC=1
