@@ -1112,6 +1112,8 @@ namespace VeraCrypt
 	
 	shared_ptr <VolumeInfo> TextUserInterface::MountVolume (MountOptions &options) const
 	{
+		trace_msg("text user interface is mounting volume");
+		trace_msgw(options.SecurityTokenKeySpec);
 		shared_ptr <VolumeInfo> volume;
 
 		CheckRequirementsForMountingVolume();

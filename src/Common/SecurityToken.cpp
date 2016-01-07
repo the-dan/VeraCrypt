@@ -54,7 +54,7 @@ namespace VeraCrypt
 		if (keyIdPos == wstring::npos)
 			throw InvalidSecurityTokenKeyfilePath();
 
-		Id = pathStr.substr (fileIdPos + wstring (L"/" TC_SECURITY_TOKEN_KEYFILE_URL_FILE L"/").size());
+		Id = pathStr.substr (keyIdPos + wstring (L"/" TC_SECURITY_TOKEN_KEYFILE_URL_FILE L"/").size());
 
 		vector <SecurityTokenKeyfile> keyfiles = SecurityToken::GetAvailableKeyfiles (&SlotId, Id);
 
@@ -241,6 +241,7 @@ namespace VeraCrypt
 					unrecognizedTokenPresent = true;
 					continue;
 				}
+				trace_msg("pkcs11 errored");
 
 				throw;
 			}
@@ -407,6 +408,7 @@ namespace VeraCrypt
 
 	SecurityTokenInfo SecurityToken::GetTokenInfo (CK_SLOT_ID slotId)
 	{
+		trace_msg("Getting token info");
 		CK_TOKEN_INFO info;
 		CK_RV status = Pkcs11Functions->C_GetTokenInfo (slotId, &info);
 		if (status != CKR_OK)
@@ -657,14 +659,20 @@ namespace VeraCrypt
 	
 	void SecurityToken::LoginUserIfRequired (CK_SLOT_ID slotId)
 	{
-		trace_msg("checking library status");
+		trace_msg("checking library status for login");
+
 		CheckLibraryStatus();
+
+		trace_msg("slot id to use is: ");
+		trace_msg(slotId);
+
 		CK_RV status;
 
 		if (Sessions.find (slotId) == Sessions.end())
 		{
 			trace_msg("opening session");
 			OpenSession (slotId);
+			trace_msg("session is opened");
 		}
 		else
 		{
@@ -712,7 +720,9 @@ namespace VeraCrypt
 
 					finally_do_arg (string*, &pin, { burn ((void *) finally_arg->c_str(), finally_arg->size()); });
 
+					trace_msg("Trying to do pin callback");
 					(*PinCallback) (pin);
+					trace_msg("logging in with pin");
 					Login (slotId, pin);
 				}
 

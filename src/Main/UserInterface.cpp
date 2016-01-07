@@ -965,8 +965,11 @@ namespace VeraCrypt
 					if (Preferences.NonInteractive)
 					{
 						// Volume path
-						if (!cmdLine.ArgMountOptions.Path)
+						if (!cmdLine.ArgMountOptions.Path) {
+							trace_msg("No path");
 							throw MissingArgument (SRC_POS);
+						}
+						trace_msg("Mounting");
 
 						mountedVolumes.push_back (Core->MountVolume (cmdLine.ArgMountOptions));
 					}
