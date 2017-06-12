@@ -1,20 +1,21 @@
 /*
  Legal Notice: Some portions of the source code contained in this file were
- derived from the source code of TrueCrypt 7.1a, which is 
- Copyright (c) 2003-2012 TrueCrypt Developers Association and which is 
+ derived from the source code of TrueCrypt 7.1a, which is
+ Copyright (c) 2003-2012 TrueCrypt Developers Association and which is
  governed by the TrueCrypt License 3.0, also from the source code of
  Encryption for the Masses 2.02a, which is Copyright (c) 1998-2000 Paul Le Roux
- and which is governed by the 'License Agreement for Encryption for the Masses' 
+ and which is governed by the 'License Agreement for Encryption for the Masses'
  and also from the source code of extcv, which is Copyright (c) 2009-2010 Kih-Oskh
  or Copyright (c) 2012-2013 Josef Schneider <josef@netpage.dk>
 
- Modifications and additions to the original source code (contained in this file) 
- and all other portions of this file are Copyright (c) 2013-2015 IDRIX
+ Modifications and additions to the original source code (contained in this file)
+ and all other portions of this file are Copyright (c) 2013-2016 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages. */
 
 #include "Tcdefs.h"
+#include "cpu.h"
 
 #include <time.h>
 #include <math.h>
@@ -241,7 +242,7 @@ void LoadSettings (HWND hwndDlg)
 {
 	WipeAlgorithmId savedWipeAlgorithm = TC_WIPE_NONE;
 
-	LoadSysEncSettings (hwndDlg);
+	LoadSysEncSettings ();
 
 	if (LoadNonSysInPlaceEncSettings (&savedWipeAlgorithm) != 0)
 		bInPlaceEncNonSysPending = TRUE;
@@ -281,6 +282,9 @@ void LoadSettings (HWND hwndDlg)
 	defaultKeyFilesParam.EnableKeyFiles = ConfigReadInt ("UseKeyfiles", FALSE);
 
 	bPreserveTimestamp = defaultMountOptions.PreserveTimestamp = ConfigReadInt ("PreserveTimestamps", TRUE);
+	bShowDisconnectedNetworkDrives = ConfigReadInt ("ShowDisconnectedNetworkDrives", FALSE);
+	bHideWaitingDialog = ConfigReadInt ("HideWaitingDialog", FALSE);
+	bUseSecureDesktop = ConfigReadInt ("UseSecureDesktop", FALSE);
 	defaultMountOptions.Removable =	ConfigReadInt ("MountVolumesRemovable", FALSE);
 	defaultMountOptions.ReadOnly =	ConfigReadInt ("MountVolumesReadOnly", FALSE);
 	defaultMountOptions.ProtectHiddenVolume = FALSE;
@@ -424,13 +428,13 @@ BOOL CALLBACK ExtcvPasswordDlgProc (HWND hwndDlg, UINT msg, WPARAM wParam, LPARA
 			HWND hComboBox = GetDlgItem (hwndDlg, IDC_PKCS5_PRF_ID);
 			SendMessage (hComboBox, CB_RESETCONTENT, 0, 0);
 
-			nIndex = SendMessageW (hComboBox, CB_ADDSTRING, 0, (LPARAM) GetString ("AUTODETECTION"));
-			SendMessage (hComboBox, CB_SETITEMDATA, nIndex, (LPARAM) 0);
+			nIndex =(int) SendMessageW (hComboBox, CB_ADDSTRING, 0, (LPARAM) GetString ("AUTODETECTION"));
+			SendMessage (hComboBox, CB_SETITEMDATA, (WPARAM) nIndex, (LPARAM) 0);
 
 			for (i = FIRST_PRF_ID; i <= LAST_PRF_ID; i++)
 			{
-				nIndex = SendMessage (hComboBox, CB_ADDSTRING, 0, (LPARAM) get_pkcs5_prf_name(i));
-				SendMessage (hComboBox, CB_SETITEMDATA, nIndex, (LPARAM) i);
+				nIndex = (int) SendMessage (hComboBox, CB_ADDSTRING, 0, (LPARAM) get_pkcs5_prf_name(i));
+				SendMessage (hComboBox, CB_SETITEMDATA, (WPARAM) nIndex, (LPARAM) i);
 			}
 
 			/* make autodetection the default */
@@ -466,7 +470,7 @@ BOOL CALLBACK ExtcvPasswordDlgProc (HWND hwndDlg, UINT msg, WPARAM wParam, LPARA
 				EnableWindow (GetDlgItem (hwndDlg, IDC_MOUNT_OPTIONS), FALSE);
 			}
 
-			/* No support for mounting TrueCrypt volumes */				
+			/* No support for mounting TrueCrypt volumes */
 			SetCheckBox (hwndDlg, IDC_TRUECRYPT_MODE, FALSE);
 			EnableWindow (GetDlgItem (hwndDlg, IDC_TRUECRYPT_MODE), FALSE);
 
@@ -490,7 +494,7 @@ BOOL CALLBACK ExtcvPasswordDlgProc (HWND hwndDlg, UINT msg, WPARAM wParam, LPARA
 
 	case TC_APPMSG_PREBOOT_PASSWORD_MODE:
 		{
-			/* No support for mounting TrueCrypt system partition */				
+			/* No support for mounting TrueCrypt system partition */
 			SetCheckBox (hwndDlg, IDC_TRUECRYPT_MODE, FALSE);
 			EnableWindow (GetDlgItem (hwndDlg, IDC_TRUECRYPT_MODE), FALSE);
 
@@ -498,15 +502,23 @@ BOOL CALLBACK ExtcvPasswordDlgProc (HWND hwndDlg, UINT msg, WPARAM wParam, LPARA
 			HWND hComboBox = GetDlgItem (hwndDlg, IDC_PKCS5_PRF_ID);
 			SendMessage (hComboBox, CB_RESETCONTENT, 0, 0);
 
-			int i, nIndex = SendMessageW (hComboBox, CB_ADDSTRING, 0, (LPARAM) GetString ("AUTODETECTION"));
+			int i, nIndex = (int) SendMessageW (hComboBox, CB_ADDSTRING, 0, (LPARAM) GetString ("AUTODETECTION"));
 			SendMessage (hComboBox, CB_SETITEMDATA, nIndex, (LPARAM) 0);
+
+			BOOL bIsGPT = FALSE;
+			try
+			{
+				BootEncryption BootEncObj (hwndDlg);
+				bIsGPT = BootEncObj.GetSystemDriveConfiguration().SystemPartition.IsGPT;
+			}
+			catch (...) {}
 
 			for (i = FIRST_PRF_ID; i <= LAST_PRF_ID; i++)
 			{
-				if (HashForSystemEncryption(i))
+				if (bIsGPT || HashForSystemEncryption(i))
 				{
-					nIndex = SendMessage (hComboBox, CB_ADDSTRING, 0, (LPARAM) get_pkcs5_prf_name(i));
-					SendMessage (hComboBox, CB_SETITEMDATA, nIndex, (LPARAM) i);
+					nIndex = (int) SendMessage (hComboBox, CB_ADDSTRING, 0, (LPARAM) get_pkcs5_prf_name(i));
+					SendMessage (hComboBox, CB_SETITEMDATA, (WPARAM) nIndex, (LPARAM) i);
 				}
 			}
 
@@ -602,7 +614,7 @@ BOOL CALLBACK ExtcvPasswordDlgProc (HWND hwndDlg, UINT msg, WPARAM wParam, LPARA
 
 		if (lw == IDC_MOUNT_OPTIONS)
 		{
-			DialogBoxParamW (hInst, 
+			DialogBoxParamW (hInst,
 				MAKEINTRESOURCEW (IDD_MOUNT_OPTIONS), hwndDlg,
 				(DLGPROC) MountOptionsDlgProc, (LPARAM) &mountOptions);
 
@@ -665,26 +677,26 @@ BOOL CALLBACK ExtcvPasswordDlgProc (HWND hwndDlg, UINT msg, WPARAM wParam, LPARA
 					KeyFilesApply (hwndDlg, &mountOptions.ProtectedHidVolPassword, hidVolProtKeyFilesParam.FirstKeyFile, PasswordDlgVolume);
 
 				if (GetPassword (hwndDlg, IDC_PASSWORD, (LPSTR) szXPwd->Text, MAX_PASSWORD + 1, TRUE))
-					szXPwd->Length = strlen ((char *) szXPwd->Text);
+					szXPwd->Length = (unsigned __int32) (strlen ((char *) szXPwd->Text));
 				else
-					return 1;			
+					return 1;
 
-				bCacheInDriver = IsButtonChecked (GetDlgItem (hwndDlg, IDC_CACHE));	 
+				bCacheInDriver = IsButtonChecked (GetDlgItem (hwndDlg, IDC_CACHE));
 				*pkcs5 = (int) SendMessage (GetDlgItem (hwndDlg, IDC_PKCS5_PRF_ID), CB_GETITEMDATA, SendMessage (GetDlgItem (hwndDlg, IDC_PKCS5_PRF_ID), CB_GETCURSEL, 0, 0), 0);
 				*truecryptMode = GetCheckBox (hwndDlg, IDC_TRUECRYPT_MODE);
 
 				*pim = GetPim (hwndDlg, IDC_PIM);
 
-				/* SHA-256 is not supported by TrueCrypt */
-				if (	(*truecryptMode) 
-					&& ((*pkcs5 == SHA256) || (mountOptions.ProtectHiddenVolume && mountOptions.ProtectedHidVolPkcs5Prf == SHA256))
+				/* check that PRF is supported in TrueCrypt Mode */
+				if (	(*truecryptMode)
+					&& ((!is_pkcs5_prf_supported(*pkcs5, TRUE, PRF_BOOT_NO)) || (mountOptions.ProtectHiddenVolume && !is_pkcs5_prf_supported(mountOptions.ProtectedHidVolPkcs5Prf, TRUE, PRF_BOOT_NO)))
 					)
 				{
 					Error ("ALGO_NOT_SUPPORTED_FOR_TRUECRYPT_MODE", hwndDlg);
 					return 1;
 				}
 
-				if (	(*truecryptMode) 
+				if (	(*truecryptMode)
 					&&	(*pim != 0)
 					)
 				{
@@ -696,8 +708,8 @@ BOOL CALLBACK ExtcvPasswordDlgProc (HWND hwndDlg, UINT msg, WPARAM wParam, LPARA
 			// Attempt to wipe password stored in the input field buffer
 			wmemset (tmp, L'X', MAX_PASSWORD);
 			tmp[MAX_PASSWORD] = 0;
-			SetWindowText (GetDlgItem (hwndDlg, IDC_PASSWORD), tmp);	
-			SetWindowText (GetDlgItem (hwndDlg, IDC_PASSWORD_PROT_HIDVOL), tmp);			
+			SetWindowText (GetDlgItem (hwndDlg, IDC_PASSWORD), tmp);
+			SetWindowText (GetDlgItem (hwndDlg, IDC_PASSWORD_PROT_HIDVOL), tmp);
 
 			if (hidVolProtKeyFilesParam.FirstKeyFile != NULL)
 			{
@@ -710,7 +722,7 @@ BOOL CALLBACK ExtcvPasswordDlgProc (HWND hwndDlg, UINT msg, WPARAM wParam, LPARA
 				KillTimer (hwndDlg, TIMER_ID_KEYB_LAYOUT_GUARD);
 
 				// Restore the original keyboard layout
-				if (LoadKeyboardLayout (OrigKeyboardLayout, KLF_ACTIVATE | KLF_SUBSTITUTE_OK) == NULL) 
+				if (LoadKeyboardLayout (OrigKeyboardLayout, KLF_ACTIVATE | KLF_SUBSTITUTE_OK) == NULL)
 					Warning ("CANNOT_RESTORE_KEYBOARD_LAYOUT", hwndDlg);
 			}
 
@@ -745,7 +757,7 @@ BOOL CALLBACK ExtcvPasswordDlgProc (HWND hwndDlg, UINT msg, WPARAM wParam, LPARA
 				}
 			}
 		}
-		break; 
+		break;
 
 	case WM_DROPFILES:
 		{
@@ -757,7 +769,7 @@ BOOL CALLBACK ExtcvPasswordDlgProc (HWND hwndDlg, UINT msg, WPARAM wParam, LPARA
 				KeyFile *kf = (KeyFile *) malloc (sizeof (KeyFile));
 				if (kf)
 				{
-					DragQueryFile (hdrop, i++, kf->FileName, sizeof (kf->FileName));
+					DragQueryFile (hdrop, i++, kf->FileName, ARRAYSIZE (kf->FileName));
 					FirstKeyFile = KeyFileAdd (FirstKeyFile, kf);
 					KeyFilesEnable = TRUE;
 				}
@@ -791,7 +803,7 @@ int RestoreVolumeHeader (HWND hwndDlg, char *lpszVolume)
 
 int ExtcvAskVolumePassword (HWND hwndDlg, const wchar_t* fileName, Password *password, int *pkcs5, int *pim, BOOL* truecryptMode, char *titleStringId, BOOL enableMountOptions)
 {
-	int result;
+	INT_PTR result;
 	PasswordDlgParam dlgParam;
 
 	PasswordDialogTitleStringId = titleStringId;
@@ -804,7 +816,7 @@ int ExtcvAskVolumePassword (HWND hwndDlg, const wchar_t* fileName, Password *pas
 
 	StringCbCopyW (PasswordDlgVolume, sizeof(PasswordDlgVolume), fileName);
 
-	result = DialogBoxParamW (hInst, 
+	result = SecureDesktopDialogBoxParam (hInst,
 		MAKEINTRESOURCEW (IDD_PASSWORD_DLG), hwndDlg,
 		(DLGPROC) ExtcvPasswordDlgProc, (LPARAM) &dlgParam);
 
@@ -838,7 +850,7 @@ static BOOL SelectPartition (HWND hwndDlg)
 {
 	RawDevicesDlgParam param;
 	param.pszFileName = szFileName;
-	int nResult = DialogBoxParamW (hInst, MAKEINTRESOURCEW (IDD_RAWDEVICES_DLG), hwndDlg,
+	INT_PTR nResult = DialogBoxParamW (hInst, MAKEINTRESOURCEW (IDD_RAWDEVICES_DLG), hwndDlg,
 		(DLGPROC) RawDevicesDlgProc, (LPARAM) & param);
 	if (nResult == IDOK)
 	{
@@ -870,6 +882,9 @@ BOOL CALLBACK MainDialogProc (HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 
 			// Set critical default options in case UsePreferences is false
 			bPreserveTimestamp = defaultMountOptions.PreserveTimestamp = TRUE;
+			bShowDisconnectedNetworkDrives = FALSE;
+			bHideWaitingDialog = FALSE;
+			bUseSecureDesktop = FALSE;
 
 			if (UsePreferences)
 			{
@@ -938,7 +953,7 @@ BOOL CALLBACK MainDialogProc (HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 		if (lw == IDM_HOMEPAGE )
 		{
 			ArrowWaitCursor ();
-			ShellExecute (NULL, L"open", L"https://veracrypt.codeplex.com", NULL, NULL, SW_SHOWNORMAL);
+			ShellExecute (NULL, L"open", L"https://www.veracrypt.fr", NULL, NULL, SW_SHOWNORMAL);
 			Sleep (200);
 			NormalCursor ();
 
@@ -985,11 +1000,12 @@ int WINAPI wWinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, wchar_t *lpsz
 	VirtualLock (&VeraCryptExpander::defaultMountOptions, sizeof (VeraCryptExpander::defaultMountOptions));
 	VirtualLock (&VeraCryptExpander::szFileName, sizeof(VeraCryptExpander::szFileName));
 
-	InitCommonControls ();
 	InitApp (hInstance, lpszCommandLine);
 
 	/* application title */
 	lpszTitle = L"VeraCrypt Expander";
+
+	DetectX86Features ();
 
 	status = DriverAttach ();
 	if (status != 0)

@@ -3,8 +3,8 @@
  Copyright (c) 2008-2012 TrueCrypt Developers Association and which is governed
  by the TrueCrypt License 3.0.
 
- Modifications and additions to the original source code (contained in this file) 
- and all other portions of this file are Copyright (c) 2013-2015 IDRIX
+ Modifications and additions to the original source code (contained in this file)
+ and all other portions of this file are Copyright (c) 2013-2016 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
@@ -178,7 +178,7 @@ namespace VeraCrypt
 	void SecurityToken::DeleteKeyfile (const SecurityTokenKeyfile &keyfile)
 	{
 		LoginUserIfRequired (keyfile.SlotId);
-		
+
 		CK_RV status = Pkcs11Functions->C_DestroyObject (Sessions[keyfile.SlotId].Handle, keyfile.Handle);
 		if (status != CKR_OK)
 			throw Pkcs11Exception (status);
@@ -460,7 +460,7 @@ namespace VeraCrypt
 
 		finally_do_arg (CK_SLOT_ID, slotId, { Pkcs11Functions->C_FindObjectsFinal (Sessions[finally_arg].Handle); });
 
-		CK_ULONG objectCount;	
+		CK_ULONG objectCount;
 		vector <CK_OBJECT_HANDLE> objects;
 
 		while (true)
@@ -642,21 +642,22 @@ namespace VeraCrypt
 		return securityTokenKeyfilePath.find (TC_SECURITY_TOKEN_KEYFILE_URL_PREFIX) == 0;
 	}
 
-	void SecurityToken::Login (CK_SLOT_ID slotId, const string &pin)
+	void SecurityToken::Login (CK_SLOT_ID slotId, const char* pin)
 	{
 		if (Sessions.find (slotId) == Sessions.end())
 			OpenSession (slotId);
 		else if (Sessions[slotId].UserLoggedIn)
 			return;
 
-		CK_RV status = Pkcs11Functions->C_Login (Sessions[slotId].Handle, CKU_USER, (CK_CHAR_PTR) pin.c_str(), (CK_ULONG) pin.size());
+		size_t pinLen = pin? strlen (pin) : 0;
+		CK_RV status = Pkcs11Functions->C_Login (Sessions[slotId].Handle, CKU_USER, (CK_CHAR_PTR) pin, (CK_ULONG) pinLen);
 
 		if (status != CKR_OK)
 			throw Pkcs11Exception (status);
 
 		Sessions[slotId].UserLoggedIn = true;
 	}
-	
+
 	void SecurityToken::LoginUserIfRequired (CK_SLOT_ID slotId)
 	{
 		trace_msg("checking library status for login");
@@ -679,7 +680,7 @@ namespace VeraCrypt
 			CK_SESSION_INFO sessionInfo;
 			trace_msg("C_GetSessionInfo");
 			status = Pkcs11Functions->C_GetSessionInfo (Sessions[slotId].Handle, &sessionInfo);
-			
+
 			if (status == CKR_OK)
 			{
 				Sessions[slotId].UserLoggedIn = (sessionInfo.state == CKS_RO_USER_FUNCTIONS || sessionInfo.state == CKS_RW_USER_FUNCTIONS);
@@ -723,7 +724,7 @@ namespace VeraCrypt
 					trace_msg("Trying to do pin callback");
 					(*PinCallback) (pin);
 					trace_msg("logging in with pin");
-					Login (slotId, pin);
+					Login (slotId, pin.c_str());
 				}
 
 				Sessions[slotId].UserLoggedIn = true;
@@ -738,6 +739,7 @@ namespace VeraCrypt
 				}
 				else if (error == CKR_PIN_INCORRECT && !(tokenInfo.Flags & CKF_PROTECTED_AUTHENTICATION_PATH))
 				{
+					PinCallback->notifyIncorrectPin ();
 					(*WarningCallback) (Pkcs11Exception (CKR_PIN_INCORRECT));
 					continue;
 				}
@@ -758,10 +760,12 @@ namespace VeraCrypt
 
 #ifdef TC_WINDOWS
 		Pkcs11LibraryHandle = LoadLibraryW (pkcs11LibraryPath.c_str());
+		throw_sys_if (!Pkcs11LibraryHandle);
 #else
 		Pkcs11LibraryHandle = dlopen (pkcs11LibraryPath.c_str(), RTLD_NOW | RTLD_LOCAL);
+		throw_sys_sub_if (!Pkcs11LibraryHandle, dlerror());
 #endif
-		throw_sys_if (!Pkcs11LibraryHandle);
+
 
 		typedef CK_RV (*C_GetFunctionList_t) (CK_FUNCTION_LIST_PTR_PTR ppFunctionList);
 #ifdef TC_WINDOWS

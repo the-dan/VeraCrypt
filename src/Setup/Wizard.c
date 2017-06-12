@@ -1,12 +1,12 @@
 /*
  Legal Notice: Some portions of the source code contained in this file were
- derived from the source code of TrueCrypt 7.1a, which is 
- Copyright (c) 2003-2012 TrueCrypt Developers Association and which is 
+ derived from the source code of TrueCrypt 7.1a, which is
+ Copyright (c) 2003-2012 TrueCrypt Developers Association and which is
  governed by the TrueCrypt License 3.0, also from the source code of
  Encryption for the Masses 2.02a, which is Copyright (c) 1998-2000 Paul Le Roux
- and which is governed by the 'License Agreement for Encryption for the Masses' 
- Modifications and additions to the original source code (contained in this file) 
- and all other portions of this file are Copyright (c) 2013-2015 IDRIX
+ and which is governed by the 'License Agreement for Encryption for the Masses'
+ Modifications and additions to the original source code (contained in this file)
+ and all other portions of this file are Copyright (c) 2013-2016 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages. */
@@ -180,24 +180,20 @@ static int GetDonVal (int minVal, int maxVal)
 
 	if (!prngInitialized)
 	{
-		if (!CryptAcquireContext (&hCryptProv, NULL, NULL, PROV_RSA_FULL, 0)
-			&& !CryptAcquireContext (&hCryptProv, NULL, NULL, PROV_RSA_FULL, CRYPT_NEWKEYSET))
+		if (!CryptAcquireContext (&hCryptProv, NULL, MS_ENHANCED_PROV, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT))
 			OsPrngAvailable = FALSE;
 		else
 			OsPrngAvailable = TRUE;
 
-		srand ((unsigned int) time (NULL));
-		rand(); // Generate and discard the inital value, as it always appears to be somewhat non-random.
-
 		prngInitialized = TRUE;
 	}
 
-	if (OsPrngAvailable && CryptGenRandom (hCryptProv, sizeof (buffer), buffer) != 0) 
+	if (OsPrngAvailable && CryptGenRandom (hCryptProv, sizeof (buffer), buffer) != 0)
 	{
 		return  ((int) ((double) *((uint16 *) buffer) / (0xFFFF+1) * (maxVal + 1 - minVal)) + minVal);
 	}
 	else
-		return  ((int) ((double) rand() / (RAND_MAX+1) * (maxVal + 1 - minVal)) + minVal);
+		return maxVal;
 }
 
 
@@ -310,7 +306,7 @@ BOOL CALLBACK PageDialogProc (HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 		case EXTRACTION_OPTIONS_PAGE:
 
 			if (wcslen(WizardDestExtractPath) < 2)
-			{ 
+			{
 				StringCbCopyW (WizardDestExtractPath, sizeof(WizardDestExtractPath), SetupFilesDir);
 				StringCbCatNW (WizardDestExtractPath, sizeof(WizardDestExtractPath), L"VeraCrypt\\", ARRAYSIZE (WizardDestExtractPath) - wcslen (WizardDestExtractPath) - 1);
 			}
@@ -686,11 +682,7 @@ BOOL CALLBACK PageDialogProc (HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 			{
 			case IDC_DONATE:
 				{
-					char tmpstr [200];
-
-					StringCbPrintfA (tmpstr, sizeof(tmpstr), "&ref=%d", DonColorSchemeId);
-
-					Applink ("donate", FALSE, tmpstr);
+					Applink ("donate");
 				}
 				return 1;
 			}
@@ -704,7 +696,7 @@ BOOL CALLBACK PageDialogProc (HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 		if (nCurPageNo == DONATIONS_PAGE)
 		{
 			PAINTSTRUCT tmpPaintStruct;
-			HDC hdc = BeginPaint (hCurPage, &tmpPaintStruct); 
+			HDC hdc = BeginPaint (hCurPage, &tmpPaintStruct);
 
 			if (hdc == NULL)
 				AbortProcessSilent ();
@@ -736,13 +728,13 @@ BOOL CALLBACK PageDialogProc (HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 			TextOutW (hdc,
 				CompensateXDPI (258),
 				CompensateYDPI (70),
-				DonText.c_str(), 
-				DonText.length()); 
-			
-			EndPaint (hCurPage, &tmpPaintStruct); 
+				DonText.c_str(),
+				DonText.length());
+
+			EndPaint (hCurPage, &tmpPaintStruct);
 			ReleaseDC (hCurPage, hdc);
 		}
-		return 0; 
+		return 0;
 
 	}
 
@@ -813,8 +805,8 @@ BOOL CALLBACK MainDialogProc (HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 
 			InitDialog (hwndDlg);
 			LocalizeDialog (hwndDlg, "IDD_INSTL_DLG");
-			
-			// Resize the bitmap if the user has a non-default DPI 
+
+			// Resize the bitmap if the user has a non-default DPI
 			if (ScreenDPI != USER_DEFAULT_SCREEN_DPI)
 			{
 				hbmWizardBitmapRescaled = RenderBitmap (MAKEINTRESOURCE (IDB_SETUP_WIZARD),
@@ -916,7 +908,7 @@ BOOL CALLBACK MainDialogProc (HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 				{
 					Info ("TRAVELER_LIMITATIONS_NOTE", hwndDlg);
 
-					if (IsUacSupported() 
+					if (IsUacSupported()
 						&& AskWarnYesNo ("TRAVELER_UAC_NOTE", hwndDlg) == IDNO)
 					{
 						return 1;
@@ -1001,12 +993,12 @@ BOOL CALLBACK MainDialogProc (HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 			HWND hwndItem = GetDlgItem (MainDlg, IDC_MAIN_CONTENT_CANVAS);
 
 			PAINTSTRUCT tmpPaintStruct;
-			HDC hdc = BeginPaint (hwndItem, &tmpPaintStruct); 
+			HDC hdc = BeginPaint (hwndItem, &tmpPaintStruct);
 
 			if (DonColorSchemeId != 2)
 			{
 				HBRUSH tmpBrush = CreateSolidBrush (DonBkgColor);
-				
+
 				RECT trect;
 
 				trect.left = CompensateXDPI (1);
@@ -1016,11 +1008,11 @@ BOOL CALLBACK MainDialogProc (HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 
 				FillRect (hdc, &trect, tmpBrush);
 			}
-					
-			EndPaint(hwndItem, &tmpPaintStruct); 
+
+			EndPaint(hwndItem, &tmpPaintStruct);
 			ReleaseDC (hwndItem, hdc);
 		}
-		return 0; 
+		return 0;
 
 
 
@@ -1043,9 +1035,9 @@ BOOL CALLBACK MainDialogProc (HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 
 
 	case TC_APPMSG_INSTALL_SUCCESS:
-		
+
 		/* Installation completed successfully */
-		
+
 		bInProgress = FALSE;
 
 		nCurPageNo = DONATIONS_PAGE;
@@ -1065,7 +1057,7 @@ BOOL CALLBACK MainDialogProc (HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 		return 1;
 
 	case TC_APPMSG_INSTALL_FAILURE:
-		
+
 		/* Installation failed */
 
 		bInProgress = FALSE;
@@ -1086,7 +1078,7 @@ BOOL CALLBACK MainDialogProc (HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 		return 1;
 
 	case TC_APPMSG_EXTRACTION_SUCCESS:
-		
+
 		/* Extraction completed successfully */
 
 		UpdateProgressBarProc(100);
@@ -1115,7 +1107,7 @@ BOOL CALLBACK MainDialogProc (HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 		return 1;
 
 	case TC_APPMSG_EXTRACTION_FAILURE:
-		
+
 		/* Extraction failed */
 
 		bInProgress = FALSE;
@@ -1164,7 +1156,7 @@ BOOL CALLBACK MainDialogProc (HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 				if (bPromptReleaseNotes
 					&& AskYesNo ("AFTER_UPGRADE_RELEASE_NOTES", hwndDlg) == IDYES)
 				{
-					Applink ("releasenotes", TRUE, "");
+					Applink ("releasenotes");
 				}
 
 				bPromptReleaseNotes = FALSE;
@@ -1172,7 +1164,7 @@ BOOL CALLBACK MainDialogProc (HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 				if (bPromptTutorial
 					&& AskYesNo ("AFTER_INSTALL_TUTORIAL", hwndDlg) == IDYES)
 				{
-					Applink ("beginnerstutorial", TRUE, "");
+					Applink ("beginnerstutorial");
 				}
 
 				bPromptTutorial = FALSE;
@@ -1181,7 +1173,7 @@ BOOL CALLBACK MainDialogProc (HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 			if (bRestartRequired
 				&& AskYesNo (bUpgrade ? "UPGRADE_OK_REBOOT_REQUIRED" : "CONFIRM_RESTART", hwndDlg) == IDYES)
 			{
-				RestartComputer();
+				RestartComputer(FALSE);
 			}
 		}
 

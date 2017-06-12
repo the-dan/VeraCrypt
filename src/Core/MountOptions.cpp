@@ -3,8 +3,8 @@
  Copyright (c) 2008-2012 TrueCrypt Developers Association and which is governed
  by the TrueCrypt License 3.0.
 
- Modifications and additions to the original source code (contained in this file) 
- and all other portions of this file are Copyright (c) 2013-2015 IDRIX
+ Modifications and additions to the original source code (contained in this file)
+ and all other portions of this file are Copyright (c) 2013-2016 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
@@ -104,14 +104,14 @@ namespace VeraCrypt
 
 		sr.Deserialize ("TrueCryptMode", TrueCryptMode);
 		sr.Deserialize("SecurityTokenKeySpec", SecurityTokenKeySpec);
-		
+
 		try
 		{
 			if (!sr.DeserializeBool ("KdfNull"))
 			{
 				sr.Deserialize ("Kdf", nameValue);
 				Kdf = Pkcs5Kdf::GetAlgorithm (nameValue, TrueCryptMode);
-			}			
+			}
 		}
 		catch(...) {}
 
@@ -124,7 +124,7 @@ namespace VeraCrypt
 			}
 		}
 		catch(...) {}
-		
+
 		sr.Deserialize ("Pim", Pim);
 		sr.Deserialize ("ProtectionPim", ProtectionPim);
 	}
@@ -146,7 +146,7 @@ namespace VeraCrypt
 		sr.Serialize ("NoFilesystem", NoFilesystem);
 		sr.Serialize ("NoHardwareCrypto", NoHardwareCrypto);
 		sr.Serialize ("NoKernelCrypto", NoKernelCrypto);
-		
+
 		sr.Serialize ("PasswordNull", Password == nullptr);
 		if (Password)
 			Password->Serialize (stream);
@@ -180,7 +180,7 @@ namespace VeraCrypt
 		sr.Serialize ("ProtectionKdfNull", ProtectionKdf == nullptr);
 		if (ProtectionKdf)
 			sr.Serialize ("ProtectionKdf", ProtectionKdf->GetName());
-		
+
 		sr.Serialize ("Pim", Pim);
 		sr.Serialize ("ProtectionPim", ProtectionPim);
 	}

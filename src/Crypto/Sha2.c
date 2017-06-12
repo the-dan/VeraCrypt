@@ -69,6 +69,9 @@
 */
 
 #include "Common/Endian.h"
+#include "Common/Tcdefs.h"
+#include "Crypto/misc.h"
+
 #define PLATFORM_BYTE_ORDER BYTE_ORDER
 #define IS_LITTLE_ENDIAN LITTLE_ENDIAN
 
@@ -76,7 +79,9 @@
 #define UNROLL_SHA2     /* for SHA2 loop unroll     */
 #endif
 
+#if !defined(_UEFI)
 #include <string.h>     /* for memcpy() etc.        */
+#endif // !defined(_UEFI)
 
 #include "Sha2.h"
 
@@ -85,20 +90,8 @@ extern "C"
 {
 #endif
 
-#if defined( _MSC_VER ) && ( _MSC_VER > 800 )
+#if defined( _MSC_VER ) && ( _MSC_VER > 800 ) && !defined(_UEFI)
 #pragma intrinsic(memcpy)
-#endif
-
-#if 0 && defined(_MSC_VER)
-#define rotl32 _lrotl
-#define rotr32 _lrotr
-#else
-#define rotl32(x,n)   (((x) << n) | ((x) >> (32 - n)))
-#define rotr32(x,n)   (((x) >> n) | ((x) << (32 - n)))
-#endif
-
-#if !defined(bswap_32)
-#define bswap_32(x) ((rotr32((x), 24) & 0x00ff00ff) | (rotr32((x), 8) & 0xff00ff00))
 #endif
 
 #if (PLATFORM_BYTE_ORDER == IS_LITTLE_ENDIAN)
@@ -427,12 +420,6 @@ VOID_RETURN sha256(unsigned char hval[], const unsigned char data[], unsigned lo
 
 #define SHA512_MASK (SHA512_BLOCK_SIZE - 1)
 
-#define rotr64(x,n)   (((x) >> n) | ((x) << (64 - n)))
-
-#if !defined(bswap_64)
-#define bswap_64(x) (((uint_64t)(bswap_32((uint_32t)(x)))) << 32 | bswap_32((uint_32t)((x) >> 32)))
-#endif
-
 #if defined(SWAP_BYTES)
 #define bsw_64(p,n) \
     { int _i = (n); while(_i--) ((uint_64t*)p)[_i] = bswap_64(((uint_64t*)p)[_i]); }
@@ -511,11 +498,20 @@ const uint_64t  k512[80] =
 VOID_RETURN sha512_compile(sha512_ctx ctx[1])
 {   uint_64t    v[8], *p = ctx->wbuf;
     uint_32t    j;
+#if defined (TC_WINDOWS_DRIVER) && defined (DEBUG)
+	 uint_32t	  i;
+#endif
 
     memcpy(v, ctx->hash, 8 * sizeof(uint_64t));
 
     for(j = 0; j < 80; j += 16)
     {
+#if defined (TC_WINDOWS_DRIVER) && defined (DEBUG)
+		 for (i = 0; i < 16; i++)
+		 {
+			 v_cycle( i, j);
+		 }
+#else
         v_cycle( 0, j); v_cycle( 1, j);
         v_cycle( 2, j); v_cycle( 3, j);
         v_cycle( 4, j); v_cycle( 5, j);
@@ -524,6 +520,7 @@ VOID_RETURN sha512_compile(sha512_ctx ctx[1])
         v_cycle(10, j); v_cycle(11, j);
         v_cycle(12, j); v_cycle(13, j);
         v_cycle(14, j); v_cycle(15, j);
+#endif
     }
 
     ctx->hash[0] += v[0]; ctx->hash[1] += v[1];
