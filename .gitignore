@@ -6,5 +6,9 @@ src/Setup/MacOSX/VeraCrypt 1.16.pkg
 src/Main/VeraCrypt
 src/Main/VeraCrypt*.dmg
 *.gch
+src/Main/VeraCrypt.app
+src/**/*.app
 
-
+**/*.oo
+**/*.o.32
+**/*.o.64
