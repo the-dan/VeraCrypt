@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <VeraCrypt>
   <localization prog-version="1.24-Update8">
     <language langid="en" name="English" en-name="English" version="0.0.0" translators="TrueCrypt/VeraCrypt Teams" />
@@ -366,6 +366,12 @@
     <entry lang="en" key="IDT_RANDOM_POOL_ENRICHMENT_NOTE">IMPORTANT: Move your mouse as randomly as possible within this window. The longer you move it, the better. This significantly increases security. When done, click 'Continue'.</entry>
     <entry lang="en" key="IDT_SECONDARY_KEY">Secondary key (hexadecimal)</entry>
     <entry lang="en" key="IDT_SECURITY_TOKEN">Security token:</entry>
+    <entry lang="en" key="IDC_SECURITY_TOKEN_KEY">Security token key</entry>
+    <entry lang="en" key="IDT_SECURITY_TOKENS">Security Tokens...</entry>
+    <entry lang="en" key="TOKEN_SLOT_ID">Slot ID</entry>
+    <entry lang="en" key="SELECT_TOKEN_KEYS">Select token keys</entry>
+    <entry lang="en" key="TOKEN_NAME">Token name</entry>
+    <entry lang="en" key="TOKEN_KEY_LABEL">Key label</entry>
     <entry lang="en" key="IDT_SORT_METHOD">Sort Method:</entry>
     <entry lang="en" key="IDT_STATIC_MODELESS_WAIT_DLG_INFO">Please wait. This process may take a long time...</entry>
     <entry lang="en" key="IDT_STATIC_MODAL_WAIT_DLG_INFO">Please wait...\nThis process may take a long time and VeraCrypt may seem unresponsive.</entry>

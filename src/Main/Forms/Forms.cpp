@@ -2603,11 +2603,11 @@ SecurityTokenKeysDialogBase::SecurityTokenKeysDialogBase( wxWindow* parent, wxWi
 	wxBoxSizer* bSizer139;
 	bSizer139 = new wxBoxSizer( wxVERTICAL );
 	
-	OKButton = new wxButton( this, wxID_OK, _("OK"), wxDefaultPosition, wxDefaultSize, 0 );
+	OKButton = new wxButton( this, wxID_OK, _("IDOK"), wxDefaultPosition, wxDefaultSize, 0 );
 	OKButton->SetDefault(); 
 	bSizer139->Add( OKButton, 0, wxALL, 5 );
 	
-	CancelButton = new wxButton( this, wxID_CANCEL, _("Cancel"), wxDefaultPosition, wxDefaultSize, 0 );
+	CancelButton = new wxButton( this, wxID_CANCEL, _("IDCANCEL"), wxDefaultPosition, wxDefaultSize, 0 );
 	bSizer139->Add( CancelButton, 0, wxALL, 5 );
 	
 	
@@ -3478,7 +3478,7 @@ VolumePasswordPanelBase::VolumePasswordPanelBase( wxWindow* parent, wxWindowID i
 	GridBagSizer->Add( KeyfilesButton, wxGBPosition( 7, 2 ), wxGBSpan( 1, 1 ), wxALIGN_RIGHT|wxALIGN_BOTTOM|wxLEFT, 5 );
 
 	SecurityTokenKeySpecText = new wxTextCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0);
-	SecurityTokenKeySpecButton = new wxButton(this, wxID_ANY, _("Security &token key"), wxDefaultPosition, wxDefaultSize, 0);
+	SecurityTokenKeySpecButton = new wxButton(this, wxID_ANY, _("IDC_SECURITY_TOKEN_KEY"), wxDefaultPosition, wxDefaultSize, 0);
 	GridBagSizer->Add (SecurityTokenKeySpecText, wxGBPosition(8, 1), wxGBSpan( 1, 1), wxTOP | wxRIGHT | wxLEFT, 5);
 	GridBagSizer->Add (SecurityTokenKeySpecButton, wxGBPosition (8, 2), wxGBSpan( 1, 1), wxALIGN_RIGHT|wxALIGN_BOTTOM|wxLEFT, 5);
 

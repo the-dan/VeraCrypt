@@ -23,15 +23,15 @@ namespace VeraCrypt
 		: SecurityTokenKeysDialogBase (parent)
 	{
 		if (selectionMode)
-			SetTitle (LangString["SELECT_TOKEN_KEYS"]);
+			SetTitle (_["SELECT_TOKEN_KEYS"]);
 
 		list <int> colPermilles;
 
-		SecurityTokenKeyListCtrl->InsertColumn (ColumnSecurityTokenSlotId, LangString["TOKEN_SLOT_ID"], wxLIST_FORMAT_CENTER, 1);
+		SecurityTokenKeyListCtrl->InsertColumn (ColumnSecurityTokenSlotId, _("TOKEN_SLOT_ID"), wxLIST_FORMAT_CENTER, 1);
 		colPermilles.push_back (102);
-		SecurityTokenKeyListCtrl->InsertColumn (ColumnSecurityTokenLabel, LangString["TOKEN_NAME"], wxLIST_FORMAT_LEFT, 1);
+		SecurityTokenKeyListCtrl->InsertColumn (ColumnSecurityTokenLabel, _("TOKEN_NAME"), wxLIST_FORMAT_LEFT, 1);
 		colPermilles.push_back (368);
-		SecurityTokenKeyListCtrl->InsertColumn (ColumnSecurityTokenKeyLabel, LangString["TOKEN_KEY_LABEL"], wxLIST_FORMAT_LEFT, 1);
+		SecurityTokenKeyListCtrl->InsertColumn (ColumnSecurityTokenKeyLabel, _("TOKEN_KEY_LABEL"), wxLIST_FORMAT_LEFT, 1);
 		colPermilles.push_back (529);
 
 		FillSecurityTokenKeyListCtrl();
