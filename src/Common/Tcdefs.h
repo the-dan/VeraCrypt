@@ -6,7 +6,7 @@
  Encryption for the Masses 2.02a, which is Copyright (c) 1998-2000 Paul Le Roux
  and which is governed by the 'License Agreement for Encryption for the Masses'
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2017 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages. */
@@ -55,15 +55,21 @@ extern unsigned short _rotl16(unsigned short value, unsigned char shift);
 #define TC_APP_NAME						"VeraCrypt"
 
 // Version displayed to user 
-#define VERSION_STRING					"1.20-BETA2p1"
+#define VERSION_STRING					"1.24-Update9"
+
+#ifdef VC_EFI_CUSTOM_MODE
+#define VERSION_STRING_SUFFIX			"-CustomEFI"
+#else
+#define VERSION_STRING_SUFFIX			""
+#endif
 
 // Version number to compare against driver
-#define VERSION_NUM						0x0120
+#define VERSION_NUM						0x0124
 
 // Release date
-#define TC_STR_RELEASE_DATE			L"February 25, 2017"
-#define TC_RELEASE_DATE_YEAR			2017
-#define TC_RELEASE_DATE_MONTH			 02
+#define TC_STR_RELEASE_DATE			L"January 1, 2021"
+#define TC_RELEASE_DATE_YEAR			2021
+#define TC_RELEASE_DATE_MONTH			 1
 
 #define BYTES_PER_KB                    1024LL
 #define BYTES_PER_MB                    1048576LL
@@ -242,14 +248,27 @@ void ThrowFatalException(int line);
 /* variables used in the implementation of enhanced protection of NX pool under Windows 8 and later */
 extern POOL_TYPE ExDefaultNonPagedPoolType;
 extern ULONG ExDefaultMdlProtection;
+#ifdef _WIN64
+extern ULONG AllocTag;
+#else
+#define AllocTag 'MMCV'
+#endif
 
-#define TCalloc(size) ((void *) ExAllocatePoolWithTag( ExDefaultNonPagedPoolType, size, 'MMCV' ))
-#define TCfree(memblock) ExFreePoolWithTag( memblock, 'MMCV' )
+#define TCalloc(size) ((void *) ExAllocatePoolWithTag( ExDefaultNonPagedPoolType, size, AllocTag ))
+#define TCfree(memblock) ExFreePoolWithTag( memblock, AllocTag )
 
 #define DEVICE_DRIVER
 
 #ifndef BOOL
 typedef int BOOL;
+#endif
+
+#ifndef WORD
+typedef USHORT WORD;
+#endif
+
+#ifndef BOOLEAN
+typedef unsigned char  BOOLEAN;
 #endif
 
 #ifndef TRUE
@@ -259,6 +278,50 @@ typedef int BOOL;
 #ifndef FALSE
 #define FALSE !TRUE
 #endif
+
+typedef NTSTATUS (NTAPI *KeSaveExtendedProcessorStateFn) (
+    __in ULONG64 Mask,
+    PXSTATE_SAVE XStateSave
+    );
+
+
+typedef VOID (NTAPI *KeRestoreExtendedProcessorStateFn) (
+	PXSTATE_SAVE XStateSave
+	);
+
+typedef NTSTATUS (NTAPI *ExGetFirmwareEnvironmentVariableFn) (
+  PUNICODE_STRING VariableName,
+  LPGUID          VendorGuid,
+  PVOID           Value,
+  PULONG          ValueLength,
+  PULONG          Attributes
+);
+
+typedef BOOLEAN (NTAPI *KeAreAllApcsDisabledFn) ();
+
+typedef void (NTAPI *KeSetSystemGroupAffinityThreadFn)(
+  PGROUP_AFFINITY Affinity,
+  PGROUP_AFFINITY PreviousAffinity
+);
+
+typedef USHORT (NTAPI *KeQueryActiveGroupCountFn)();
+
+typedef ULONG (NTAPI *KeQueryActiveProcessorCountExFn)(
+  USHORT GroupNumber
+);
+
+extern NTSTATUS NTAPI KeSaveExtendedProcessorStateVC (
+    __in ULONG64 Mask,
+    PXSTATE_SAVE XStateSave
+    );
+
+
+extern VOID NTAPI KeRestoreExtendedProcessorStateVC (
+	PXSTATE_SAVE XStateSave
+	);
+
+extern BOOLEAN VC_KeAreAllApcsDisabled (VOID);
+
 
 #else				/* !TC_WINDOWS_DRIVER */
 #if !defined(_UEFI)
@@ -304,6 +367,9 @@ typedef int BOOL;
 #		define Dump(...)
 #		define DumpMem(...)
 #	endif
+#elif !defined (TC_WINDOWS_BOOT)
+#	define Dump(...)
+#	define DumpMem(...)
 #endif
 
 #if !defined (trace_msg) && !defined (TC_WINDOWS_BOOT)
@@ -335,6 +401,8 @@ typedef int BOOL;
 #else
 #define burn(mem,size) do { volatile char *burnm = (volatile char *)(mem); int burnc = size; while (burnc--) *burnm++ = 0; } while (0)
 #endif
+
+#define volatile_memcpy(d,s,size) do { volatile char *destm = (volatile char *)(d); volatile char *srcm = (volatile char *)(s); size_t memc = size; while (memc--) *destm++ = *srcm++; } while (0)
 
 // The size of the memory area to wipe is in bytes amd it must be a multiple of 8.
 #ifndef TC_NO_COMPILER_INT64

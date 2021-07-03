@@ -6,7 +6,7 @@
  Encryption for the Masses 2.02a, which is Copyright (c) 1998-2000 Paul Le Roux
  and which is governed by the 'License Agreement for Encryption for the Masses'
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2017 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages. */
@@ -100,6 +100,10 @@ int TCFormatVolume (volatile FORMAT_VOL_PARAMETERS *volParams)
 	LARGE_INTEGER offset;
 	BOOL bFailedRequiredDASD = FALSE;
 	HWND hwndDlg = volParams->hwndDlg;
+#ifdef _WIN64
+	CRYPTO_INFO tmpCI;
+	PCRYPTO_INFO cryptoInfoBackup = NULL;
+#endif
 
 	FormatSectorSize = volParams->sectorSize;
 
@@ -170,6 +174,13 @@ int TCFormatVolume (volatile FORMAT_VOL_PARAMETERS *volParams)
 		VirtualUnlock (header, sizeof (header));
 		return nStatus? nStatus : ERR_OUTOFMEMORY;
 	}
+
+#ifdef _WIN64
+	if (IsRamEncryptionEnabled ())
+	{
+		VcProtectKeys (cryptoInfo, VcGetEncryptionID (cryptoInfo));
+	}
+#endif
 
 begin_format:
 
@@ -343,13 +354,31 @@ begin_format:
 			nStatus = ERR_OS_ERROR;
 			goto error;
 		}
+		else if (volParams->hiddenVol && bPreserveTimestamp)
+		{
+			// ensure that Last Access and Last Write timestamps are not modified
+			ftLastAccessTime.dwHighDateTime = 0xFFFFFFFF;
+			ftLastAccessTime.dwLowDateTime = 0xFFFFFFFF;
+
+			SetFileTime (dev, NULL, &ftLastAccessTime, NULL);
+
+			if (GetFileTime ((HANDLE) dev, &ftCreationTime, &ftLastAccessTime, &ftLastWriteTime) == 0)
+				bTimeStampValid = FALSE;
+			else
+				bTimeStampValid = TRUE;
+		}
 
 		DisableFileCompression (dev);
 
 		if (!volParams->hiddenVol && !bInstantRetryOtherFilesys)
 		{
 			LARGE_INTEGER volumeSize;
+			BOOL speedupFileCreation = FALSE;
 			volumeSize.QuadPart = dataAreaSize + TC_VOLUME_HEADER_GROUP_SIZE;
+
+			// speedup for file creation only makes sens when using quick format
+			if (volParams->quickFormat && volParams->fastCreateFile)
+				speedupFileCreation = TRUE;
 
 			if (volParams->sparseFileSwitch && volParams->quickFormat)
 			{
@@ -364,21 +393,29 @@ begin_format:
 
 			// Preallocate the file
 			if (!SetFilePointerEx (dev, volumeSize, NULL, FILE_BEGIN)
-				|| !SetEndOfFile (dev)
-				|| SetFilePointer (dev, 0, NULL, FILE_BEGIN) != 0)
+				|| !SetEndOfFile (dev))
 			{
 				nStatus = ERR_OS_ERROR;
 				goto error;
 			}
-		}
-	}
 
-	if (volParams->hiddenVol && !volParams->bDevice && bPreserveTimestamp)
-	{
-		if (GetFileTime ((HANDLE) dev, &ftCreationTime, &ftLastAccessTime, &ftLastWriteTime) == 0)
-			bTimeStampValid = FALSE;
-		else
-			bTimeStampValid = TRUE;
+			if (speedupFileCreation)
+			{
+				// accelerate file creation by telling Windows not to fill all file content with zeros
+				// this has security issues since it will put existing disk content into file container
+				// We use this mechanism only when switch /fastCreateFile specific and when quick format
+				// also specified and which is documented to have security issues.
+				// we don't check returned status because failure is not issue for us
+				SetFileValidData (dev, volumeSize.QuadPart);
+			}
+
+			if (SetFilePointer (dev, 0, NULL, FILE_BEGIN) != 0)
+			{
+				nStatus = ERR_OS_ERROR;
+				goto error;
+			}
+
+		}
 	}
 
 	if (volParams->hwndDlg && volParams->bGuiMode) KillTimer (volParams->hwndDlg, TIMER_ID_RANDVIEW);
@@ -541,6 +578,17 @@ begin_format:
 		goto error;
 	}
 
+#ifdef _WIN64
+	if (IsRamEncryptionEnabled ())
+	{
+		VirtualLock (&tmpCI, sizeof (tmpCI));
+		memcpy (&tmpCI, cryptoInfo, sizeof (CRYPTO_INFO));
+		VcUnprotectKeys (&tmpCI, VcGetEncryptionID (cryptoInfo));
+		cryptoInfoBackup = cryptoInfo;
+		cryptoInfo = &tmpCI;
+	}
+#endif
+
 	nStatus = CreateVolumeHeaderInMemory (hwndDlg, FALSE,
 		header,
 		volParams->ea,
@@ -559,6 +607,15 @@ begin_format:
 		FormatSectorSize,
 		FALSE);
 
+#ifdef _WIN64
+	if (IsRamEncryptionEnabled ())
+	{
+		cryptoInfo = cryptoInfoBackup;
+		burn (&tmpCI, sizeof (CRYPTO_INFO));
+		VirtualUnlock (&tmpCI, sizeof (tmpCI));
+	}
+#endif
+
 	if (!WriteEffectiveVolumeHeader (volParams->bDevice, dev, header))
 	{
 		nStatus = ERR_OS_ERROR;
@@ -570,7 +627,27 @@ begin_format:
 	{
 		BOOL bUpdateBackup = FALSE;
 
+#ifdef _WIN64
+		if (IsRamEncryptionEnabled ())
+		{
+			VirtualLock (&tmpCI, sizeof (tmpCI));
+			memcpy (&tmpCI, cryptoInfo, sizeof (CRYPTO_INFO));
+			VcUnprotectKeys (&tmpCI, VcGetEncryptionID (cryptoInfo));
+			cryptoInfoBackup = cryptoInfo;
+			cryptoInfo = &tmpCI;
+		}
+#endif
+
 		nStatus = WriteRandomDataToReservedHeaderAreas (hwndDlg, dev, cryptoInfo, dataAreaSize, FALSE, FALSE);
+
+#ifdef _WIN64
+		if (IsRamEncryptionEnabled ())
+		{
+			cryptoInfo = cryptoInfoBackup;
+			burn (&tmpCI, sizeof (CRYPTO_INFO));
+			VirtualUnlock (&tmpCI, sizeof (tmpCI));
+		}
+#endif
 
 		if (nStatus != ERR_SUCCESS)
 			goto error;
@@ -685,13 +762,13 @@ error:
 		}
 
 		mountOptions.ReadOnly = FALSE;
-		mountOptions.Removable = FALSE;
+		mountOptions.Removable = TRUE; /* mount as removal media to allow formatting without admin rights */
 		mountOptions.ProtectHiddenVolume = FALSE;
 		mountOptions.PreserveTimestamp = bPreserveTimestamp;
 		mountOptions.PartitionInInactiveSysEncScope = FALSE;
 		mountOptions.UseBackupHeader = FALSE;
 
-		if (MountVolume (volParams->hwndDlg, driveNo, volParams->volumePath, volParams->password, volParams->pkcs5, volParams->pim, FALSE, FALSE, FALSE, TRUE, &mountOptions, FALSE, TRUE) < 1)
+		if (MountVolume (volParams->hwndDlg, driveNo, volParams->volumePath, volParams->password, volParams->pkcs5, volParams->pim, FALSE, FALSE, FALSE, TRUE, &mountOptions, Silent, TRUE) < 1)
 		{
 			if (!Silent)
 			{
@@ -702,10 +779,15 @@ error:
 			goto fv_end;
 		}
 
-		if (!Silent && !IsAdmin () && IsUacSupported ())
-			retCode = UacFormatFs (volParams->hwndDlg, driveNo, volParams->clusterSize, fsType);
-		else
-			retCode = FormatFs (driveNo, volParams->clusterSize, fsType);
+		retCode = ExternalFormatFs (driveNo, volParams->clusterSize, fsType);
+		if (retCode != TRUE)
+		{
+			/* fallback to using FormatEx function from fmifs.dll */
+			if (!Silent && !IsAdmin () && IsUacSupported ())
+				retCode = UacFormatFs (volParams->hwndDlg, driveNo, volParams->clusterSize, fsType);
+			else
+				retCode = FormatFs (driveNo, volParams->clusterSize, fsType);
+		}
 
 		if (retCode != TRUE)
 		{
@@ -761,6 +843,10 @@ int FormatNoFs (HWND hwndDlg, unsigned __int64 startSector, __int64 num_sectors,
 	LARGE_INTEGER startOffset;
 	LARGE_INTEGER newOffset;
 
+#ifdef _WIN64
+	CRYPTO_INFO tmpCI;
+#endif
+
 	// Seek to start sector
 	startOffset.QuadPart = startSector * FormatSectorSize;
 	if (!SetFilePointerEx ((HANDLE) dev, startOffset, &newOffset, FILE_BEGIN)
@@ -777,6 +863,16 @@ int FormatNoFs (HWND hwndDlg, unsigned __int64 startSector, __int64 num_sectors,
 	VirtualLock (originalK2, sizeof (originalK2));
 
 	memset (sector, 0, sizeof (sector));
+
+#ifdef _WIN64
+	if (IsRamEncryptionEnabled ())
+	{
+		VirtualLock (&tmpCI, sizeof (tmpCI));
+		memcpy (&tmpCI, cryptoInfo, sizeof (CRYPTO_INFO));
+		VcUnprotectKeys (&tmpCI, VcGetEncryptionID (cryptoInfo));
+		cryptoInfo = &tmpCI;
+	}
+#endif
 
 	// Remember the original secondary key (XTS mode) before generating a temporary one
 	memcpy (originalK2, cryptoInfo->k2, sizeof (cryptoInfo->k2));
@@ -801,11 +897,16 @@ int FormatNoFs (HWND hwndDlg, unsigned __int64 startSector, __int64 num_sectors,
 		if (retVal != ERR_SUCCESS)
 			goto fail;
 
-		if (!EAInitMode (cryptoInfo))
+		if (!EAInitMode (cryptoInfo, cryptoInfo->k2))
 		{
 			retVal = ERR_MODE_INIT_FAILED;
 			goto fail;
 		}
+
+#ifdef _WIN64
+		if (IsRamEncryptionEnabled ())
+			VcProtectKeys (cryptoInfo, VcGetEncryptionID (cryptoInfo));
+#endif
 
 		while (num_sectors--)
 		{
@@ -829,7 +930,7 @@ int FormatNoFs (HWND hwndDlg, unsigned __int64 startSector, __int64 num_sectors,
 	retVal = EAInit (cryptoInfo->ea, cryptoInfo->master_keydata, cryptoInfo->ks);
 	if (retVal != ERR_SUCCESS)
 		goto fail;
-	if (!EAInitMode (cryptoInfo))
+	if (!EAInitMode (cryptoInfo, cryptoInfo->k2))
 	{
 		retVal = ERR_MODE_INIT_FAILED;
 		goto fail;
@@ -840,6 +941,13 @@ int FormatNoFs (HWND hwndDlg, unsigned __int64 startSector, __int64 num_sectors,
 	VirtualUnlock (temporaryKey, sizeof (temporaryKey));
 	VirtualUnlock (originalK2, sizeof (originalK2));
 	TCfree (write_buf);
+#ifdef _WIN64
+	if (IsRamEncryptionEnabled ())
+	{
+		burn (&tmpCI, sizeof (CRYPTO_INFO));
+		VirtualUnlock (&tmpCI, sizeof (tmpCI));
+	}
+#endif
 
 	return 0;
 
@@ -851,6 +959,13 @@ fail:
 	VirtualUnlock (temporaryKey, sizeof (temporaryKey));
 	VirtualUnlock (originalK2, sizeof (originalK2));
 	TCfree (write_buf);
+#ifdef _WIN64
+	if (IsRamEncryptionEnabled ())
+	{
+		burn (&tmpCI, sizeof (CRYPTO_INFO));
+		VirtualUnlock (&tmpCI, sizeof (tmpCI));
+	}
+#endif
 
 	SetLastError (err);
 	return (retVal ? retVal : ERR_OS_ERROR);
@@ -982,6 +1097,151 @@ BOOL FormatFs (int driveNo, int clusterSize, int fsType)
 BOOL FormatNtfs (int driveNo, int clusterSize)
 {
 	return FormatFs (driveNo, clusterSize, FILESYS_NTFS);
+}
+
+/* call Windows format.com program to perform formatting */
+BOOL ExternalFormatFs (int driveNo, int clusterSize, int fsType)
+{
+	wchar_t exePath[MAX_PATH] = {0};
+	HANDLE hChildStd_IN_Rd = NULL;
+	HANDLE hChildStd_IN_Wr = NULL;
+	HANDLE hChildStd_OUT_Rd = NULL;
+	HANDLE hChildStd_OUT_Wr = NULL;
+	WCHAR szFsFormat[16];
+	TCHAR szCmdline[2 * MAX_PATH];
+	STARTUPINFO siStartInfo;
+	PROCESS_INFORMATION piProcInfo;
+	BOOL bSuccess = FALSE; 
+	SECURITY_ATTRIBUTES saAttr; 
+
+	switch (fsType)
+	{
+		case FILESYS_NTFS:
+			StringCchCopyW (szFsFormat, ARRAYSIZE (szFsFormat),L"NTFS");
+			break;
+		case FILESYS_EXFAT:
+			StringCchCopyW (szFsFormat, ARRAYSIZE (szFsFormat),L"exFAT");
+			break;
+		case FILESYS_REFS:
+			StringCchCopyW (szFsFormat, ARRAYSIZE (szFsFormat),L"ReFS");
+			break;
+		default:
+			return FALSE;
+	}
+
+	/* Set the bInheritHandle flag so pipe handles are inherited.  */
+	saAttr.nLength = sizeof(SECURITY_ATTRIBUTES); 
+	saAttr.bInheritHandle = TRUE; 
+	saAttr.lpSecurityDescriptor = NULL; 
+
+	/* Create a pipe for the child process's STDOUT. */
+	if ( !CreatePipe(&hChildStd_OUT_Rd, &hChildStd_OUT_Wr, &saAttr, 0) ) 
+		return FALSE;
+
+	/* Ensure the read handle to the pipe for STDOUT is not inherited. */
+	/* Create a pipe for the child process's STDIN.  */ 
+	if (	!SetHandleInformation(hChildStd_OUT_Rd, HANDLE_FLAG_INHERIT, 0) 
+		||	!CreatePipe(&hChildStd_IN_Rd, &hChildStd_IN_Wr, &saAttr, 0))
+	{
+		CloseHandle (hChildStd_OUT_Rd);
+		CloseHandle (hChildStd_OUT_Wr);
+		return FALSE;
+	}
+
+	/* Ensure the write handle to the pipe for STDIN is not inherited. */ 
+	if ( !SetHandleInformation(hChildStd_IN_Wr, HANDLE_FLAG_INHERIT, 0))
+	{
+		CloseHandle (hChildStd_OUT_Rd);
+		CloseHandle (hChildStd_OUT_Wr);
+		CloseHandle (hChildStd_IN_Rd);
+		CloseHandle (hChildStd_IN_Wr);
+		return FALSE;
+	}
+
+	if (GetSystemDirectory (exePath, MAX_PATH))
+	{
+		StringCchCatW(exePath, ARRAYSIZE(exePath), L"\\format.com");
+	}
+	else
+		StringCchCopyW(exePath, ARRAYSIZE(exePath), L"C:\\Windows\\System32\\format.com");
+	
+	StringCbPrintf (szCmdline, sizeof(szCmdline), L"%s %c: /FS:%s /Q /X /V:\"\"", exePath, (WCHAR) driveNo + L'A', szFsFormat);
+	
+	if (clusterSize)
+	{
+		WCHAR szSize[8];
+		uint32 unitSize = (uint32) clusterSize * FormatSectorSize;
+		if (unitSize <= 8192)
+			StringCbPrintf (szSize, sizeof (szSize), L"%d", unitSize);
+		else if (unitSize < BYTES_PER_MB)
+		{
+			StringCbPrintf (szSize, sizeof (szSize), L"%dK", unitSize / BYTES_PER_KB);
+		}
+		else
+			StringCbPrintf (szSize, sizeof (szSize), L"%dM", unitSize / BYTES_PER_MB);
+
+		StringCbCat (szCmdline, sizeof (szCmdline), L" /A:");
+		StringCbCat (szCmdline, sizeof (szCmdline), szSize);
+	}
+
+ 
+   ZeroMemory( &piProcInfo, sizeof(PROCESS_INFORMATION) ); 
+
+   /* Set up members of the STARTUPINFO structure. 
+	  This structure specifies the STDIN and STDOUT handles for redirection.
+	*/ 
+   ZeroMemory( &siStartInfo, sizeof(STARTUPINFO) );
+   siStartInfo.cb = sizeof(STARTUPINFO); 
+   siStartInfo.hStdError = hChildStd_OUT_Wr;
+   siStartInfo.hStdOutput = hChildStd_OUT_Wr;
+   siStartInfo.hStdInput = hChildStd_IN_Rd;
+   siStartInfo.wShowWindow = SW_HIDE;
+   siStartInfo.dwFlags |= STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+ 
+   /* Create the child process.      */
+   bSuccess = CreateProcess(NULL, 
+      szCmdline,     // command line 
+      NULL,          // process security attributes 
+      NULL,          // primary thread security attributes 
+      TRUE,          // handles are inherited 
+      0,             // creation flags 
+      NULL,          // use parent's environment 
+      NULL,          // use parent's current directory 
+      &siStartInfo,  // STARTUPINFO pointer 
+      &piProcInfo);  // receives PROCESS_INFORMATION 
+
+   if (bSuccess)
+   {
+	   /* Unblock the format process by simulating hit on ENTER key */
+	   DWORD dwExitCode, dwWritten;
+	   LPCSTR newLine = "\n";
+	   
+	   WriteFile(hChildStd_IN_Wr, (LPCVOID) newLine, 1, &dwWritten, NULL);
+
+	   /* wait for the format process to finish */
+	   WaitForSingleObject (piProcInfo.hProcess, INFINITE);
+
+	   /* check if it was successfull */	   
+	   if (GetExitCodeProcess (piProcInfo.hProcess, &dwExitCode))
+	   {
+		   if (dwExitCode == 0)
+			   bSuccess = TRUE;
+		   else
+			   bSuccess = FALSE;
+	   }
+	   else
+		   bSuccess = FALSE;
+
+	   CloseHandle (piProcInfo.hThread);
+	   CloseHandle (piProcInfo.hProcess);
+   }
+
+	CloseHandle(hChildStd_OUT_Wr);
+	CloseHandle(hChildStd_OUT_Rd);
+	CloseHandle(hChildStd_IN_Rd);
+	CloseHandle(hChildStd_IN_Wr);
+
+   return bSuccess;
 }
 
 BOOL WriteSector (void *dev, char *sector,

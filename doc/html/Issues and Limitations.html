@@ -36,7 +36,7 @@
 <h1>Known Issues &amp; Limitations</h1>
 <h3>Known Issues</h3>
 <ul>
-<li>On Windows, it may happen that two drive letters are assigned to a mounted volume instead of a single one. This is caused by an issue with Windows Mount Manager cache and it can be solve by typing the command &quot;<strong>mountvol.exe /r</strong>&quot; in an elevated
+<li>On Windows, it may happen that two drive letters are assigned to a mounted volume instead of a single one. This is caused by an issue with Windows Mount Manager cache and it can be solved by typing the command &quot;<strong>mountvol.exe /r</strong>&quot; in an elevated
  command prompt (run as an administrator) before mounting any volume. If the issue persists after rebooting, the following procedure can be used to solve it:
 <ul>
 <li>Check the registry key &quot;HKEY_LOCAL_MACHINE\SYSTEM\MountedDevices&quot; using regedit. Scroll down and you'll find entries starting with &quot;\DosDevices\&quot; or &quot;\Global??\&quot; which indicate the drive letters that are taken by the system. Before mounting any volume,
@@ -44,7 +44,12 @@
 <br>
 Also, there are other entries whose name start with &quot;#{&quot; and &quot;\??\Volume{&quot;: double click on each one of them and remove the ones whose data value contains the name &quot;VeraCrypt&quot; and &quot;TrueCrypt&quot;.
 </li></ul>
-</li></ul>
+</li>
+<li>On some Windows machines, VeraCrypt may hang intermittently when mounting or dismounting a volume. Similar hanging may affect other running applications during VeraCrypt mounting or dismounting operations.
+This issue is caused by a conflict between VeraCrypt waiting dialog displayed during mount/dismount operations and other software installed on the machine (e.g. Outpost Firewall Pro).
+In such situations, the issue can be solved by disabling VeraCrypt waiting dialog in the Preferences: use menu "Settings -> Preferences" and check the option "Don't show wait message dialog when performing operations".
+</li>
+</ul>
 <h3 id="limitations">Limitations</h3>
 <ul>
 <li>[<em>Note: This limitation does not apply to users of Windows Vista and later versions of Windows.</em>] On Windows XP/2003, VeraCrypt does not support encrypting an entire system drive that contains extended (logical) partitions. You can encrypt an entire
@@ -87,14 +92,18 @@ Note: The only exception is the multi-boot configuration where a running VeraCry
  access) and then choosing the option &quot;Remote shared folder&quot; (it is not remote of course but Windows needs a network path). There, you can type the path of the shared drive (for example \\ServerName\sharename) and the backup will be configured correctly.
 </li><li>Due to Microsoft design flaws in NTFS sparse files handling, you may encounter system errors when writing data to large Dynamic volumes (more than few hundreds GB). To avoid this, the recommended size for a Dynamic volume container file for maximum compatibility
  is 300 GB. The following link gives more details concerning this limitation: <a href="http://www.flexhex.com/docs/articles/sparse-files.phtml#msdn" target="_blank">
-http://www.flexhex.com/docs/articles/sparse-files.phtml#msdn</a> </li><li>Windows 8 introduced a new feature called &quot;<strong>Hybrid boot and shutdown</strong>&quot; to give users the impression that booting is quick. This feature is enabled by default and it has side effects on VeraCrypt volumes usage. It is advised to disable this
+http://www.flexhex.com/docs/articles/sparse-files.phtml#msdn</a> </li>
+<li>In Windows 8 and Windows 10, a feature was introduced with the name &quot;<strong>Hybrid boot and shutdown</strong>&quot; and &quot;<strong>Fast Startup</strong>&quot; and which make Windows boot more quickly. This feature is enabled by default and it has side effects on VeraCrypt volumes usage. It is advised to disable this
  feature (e.g. this <a href="https://www.maketecheasier.com/disable-hybrid-boot-and-shutdown-in-windows-8/" target="_blank">
-link </a>explains how). Some examples of issues:
+link </a>explains how to disable it in Windows 8 and this <a href="https://www.tenforums.com/tutorials/4189-turn-off-fast-startup-windows-10-a.html" target="_blank">link</a> gives equivalent instructions for Windows 10). Some examples of issues:
 <ul>
 <li>after a shutdown and a restart, mounted volume will continue to be mounted without typing the password: this due to the fact the new Windows 8 shutdown is not a real shutdown but a disguised hibernate/sleep.
-</li><li>when using system encryption and when there are System Favorites configured to be mounted at boot time: after shutdown and restart, these system favorites will not be mounted.
-</li></ul>
-</li><li>Windows system Repair/Recovery Disk can't be created when a VeraCrypt volume is mounted as a fixed disk (which is the default). To solve this, either dismount all volumes or mount volumes are removable media.
+</li>
+<li>when using system encryption and when there are System Favorites configured to be mounted at boot time: after shutdown and restart, these system favorites will not be mounted.
+</li>
+</ul>
+</li>
+<li>Windows system Repair/Recovery Disk can't be created when a VeraCrypt volume is mounted as a fixed disk (which is the default). To solve this, either dismount all volumes or mount volumes are removable media.
 </li><li>Further limitations are listed in the section <a href="Security%20Model.html">
 <em>Security Model</em></a>. </li></ul>
 </div><div class="ClearBoth"></div></body></html>

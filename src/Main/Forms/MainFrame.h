@@ -4,7 +4,7 @@
  by the TrueCrypt License 3.0.
 
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2017 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
@@ -15,6 +15,9 @@
 
 #include "Forms.h"
 #include "ChangePasswordDialog.h"
+#ifdef TC_MACOSX
+#include <wx/display.h>
+#endif
 
 namespace VeraCrypt
 {
@@ -162,6 +165,35 @@ namespace VeraCrypt
 		void UpdateWipeCacheButton ();
 		void WipeCache ();
 
+#ifdef TC_MACOSX
+		void OnMoveHandler(wxMoveEvent& event);
+
+        void EnsureVisible(bool bOnlyHeadingBar = false)
+        {
+        	wxDisplay display (this);
+        	wxRect displayRect = display.GetClientArea();
+        	    
+        	bool bMove = false;
+        	wxPoint p = GetScreenPosition();
+        	wxRect r = GetRect ();
+        	wxRect rc = GetClientRect ();
+        	int titleBarHeight = r.height - rc.height; 	
+        	
+        	if (!bOnlyHeadingBar && (p.x < displayRect.x))
+        		p.x = 0, bMove = true;
+        	if (p.y < displayRect.y)
+        		p.y = displayRect.y, bMove = true;
+        	if (!bOnlyHeadingBar && (p.x + r.width > displayRect.x + displayRect.width))
+        		p.x = displayRect.x + displayRect.width - r.width, bMove = true;
+        	if (!bOnlyHeadingBar && (p.y + r.height > displayRect.y + displayRect.height))
+        		p.y = displayRect.y + displayRect.height - r.height, bMove = true;
+        	if (bOnlyHeadingBar && (p.y > (displayRect.y + displayRect.height - titleBarHeight)))
+        		p.y = displayRect.y + displayRect.height - titleBarHeight, bMove = true;
+        	if (bMove)
+        		Move (p);
+        }
+#endif
+
 		struct VolumeActivityMapEntry
 		{
 			VolumeActivityMapEntry () { }
@@ -182,8 +214,8 @@ namespace VeraCrypt
 		map <int, FavoriteVolume> FavoriteVolumesMenuMap;
 		bool ListItemRightClickEventPending;
 		VolumeInfoList MountedVolumes;
-		auto_ptr <wxTaskBarIcon> mTaskBarIcon;
-		auto_ptr <wxTimer> mTimer;
+		unique_ptr <wxTaskBarIcon> mTaskBarIcon;
+		unique_ptr <wxTimer> mTimer;
 		long SelectedItemIndex;
 		VolumeSlotNumber SelectedSlotNumber;
 		int ShowRequestFifo;

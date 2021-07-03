@@ -4,7 +4,7 @@
  by the TrueCrypt License 3.0.
 
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2017 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
@@ -39,17 +39,17 @@ namespace VeraCrypt
 		static void Stop ();
 
 	protected:
-		template <class T> static auto_ptr <T> GetResponse ();
-		template <class T> static auto_ptr <T> SendRequest (CoreServiceRequest &request);
+		template <class T> static unique_ptr <T> GetResponse ();
+		template <class T> static unique_ptr <T> SendRequest (CoreServiceRequest &request);
 		static void StartElevated (const CoreServiceRequest &request);
 
 		static shared_ptr <GetStringFunctor> AdminPasswordCallback;
 
-		static auto_ptr <Pipe> AdminInputPipe;
-		static auto_ptr <Pipe> AdminOutputPipe;
+		static unique_ptr <Pipe> AdminInputPipe;
+		static unique_ptr <Pipe> AdminOutputPipe;
 
-		static auto_ptr <Pipe> InputPipe;
-		static auto_ptr <Pipe> OutputPipe;
+		static unique_ptr <Pipe> InputPipe;
+		static unique_ptr <Pipe> OutputPipe;
 		static shared_ptr <Stream> ServiceInputStream;
 		static shared_ptr <Stream> ServiceOutputStream;
 

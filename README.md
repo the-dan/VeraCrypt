@@ -18,16 +18,16 @@ Contents
 ========
 
 I. Windows
-   Requirements for Building VeraCrypt for Windows
-   Instructions for Building VeraCrypt for Windows
-	Instructions for Signing and Packaging VeraCrypt for Windows
+   Requirements for Building VeraCrypt for Windows.
+   Instructions for Building VeraCrypt for Windows.
+	Instructions for Signing and Packaging VeraCrypt for Windows.
 
 II. Linux and Mac OS X
-    Requirements for Building VeraCrypt for Linux and Mac OS X
-    Instructions for Building VeraCrypt for Linux and Mac OS X
+    Requirements for Building VeraCrypt for Linux and Mac OS X.
+    Instructions for Building VeraCrypt for Linux and Mac OS X.
 	Mac OS X specifics
 
-III. FreeBSD and OpenSolaris
+III. FreeBSD
 
 IV. Third-Party Developers (Contributors)
 
@@ -49,6 +49,7 @@ Requirements for Building VeraCrypt for Windows:
 - Microsoft Windows SDK for Windows 8.1 (needed for SHA-256 code signing)
 - Microsoft Windows Driver Kit 7.1.0 (build 7600.16385.1)
 - NASM assembler 2.08 or compatible
+- YASM 1.3.0 or newer.
 - gzip compressor
 - upx packer (available at https://upx.github.io/)
 
@@ -67,7 +68,7 @@ IDRIX certificate).
 Keep this in mind if you compile VeraCrypt
 and compare your binaries with the official binaries. If your binaries are
 unsigned, the sizes of the official binaries will usually be approximately
-10 KB greater than sizes of your binaries (there may be further differences
+10 KiB greater than sizes of your binaries (there may be further differences
 if you use a different version of the compiler, or if you install a different
 or no service pack for Visual Studio, or different hotfixes for it, or if you
 use different versions of the required SDKs).
@@ -128,9 +129,8 @@ Requirements for Building VeraCrypt for Linux and Mac OS X:
 - GNU Make
 - GNU C++ Compiler 4.0 or compatible
 - Apple Xcode (Mac OS X only)
-- NASM assembler 2.08 or compatible (x86/x64 architecture only)
+- YASM 1.3.0 or newer (Linux only, x86/x64 architecture only)
 - pkg-config
-- makeself (Linux only)
 - wxWidgets 3.0 shared library and header files installed or
   wxWidgets 3.0 library source code (available at https://www.wxwidgets.org)
 - FUSE library and header files (available at https://github.com/libfuse/libfuse
@@ -146,7 +146,7 @@ Instructions for Building VeraCrypt for Linux and Mac OS X:
    command to configure the wxWidgets static library for VeraCrypt and to
    build it:
 
-   $ make WXSTATIC=1 WX_ROOT=/usr/src/wxWidgets wxbuild
+       $ make WXSTATIC=1 WX_ROOT=/usr/src/wxWidgets wxbuild
 
    The variable WX_ROOT must point to the location of the source code of the
    wxWidgets library. Output files will be placed in the './wxrelease/'
@@ -154,11 +154,11 @@ Instructions for Building VeraCrypt for Linux and Mac OS X:
 
 3) To build VeraCrypt, run the following command:
 
-   $ make
+       $ make
 
    or if you have no wxWidgets shared library installed:
 
-   $ make WXSTATIC=1
+       $ make WXSTATIC=1
 
 4) If successful, the VeraCrypt executable should be located in the directory
    'Main'.
@@ -168,8 +168,8 @@ interface (through the switch --text) is built.
 On Linux, a console-only executable, which requires no GUI library, can be
 built using the 'NOGUI' parameter:
 
-   $ make NOGUI=1 WXSTATIC=1 WX_ROOT=/usr/src/wxWidgets wxbuild
-   $ make NOGUI=1 WXSTATIC=1
+    $ make NOGUI=1 WXSTATIC=1 WX_ROOT=/usr/src/wxWidgets wxbuild
+    $ make NOGUI=1 WXSTATIC=1
 
 On MacOSX, building a console-only executable is not supported.
 
@@ -206,14 +206,16 @@ your Code Signing certificates or comment them if you don't have one.
 
 Because of incompatibility issues with OSXFUSE, the SDK 10.9 generates a
 VeraCrypt binary that has issues communicating with the OSXFUSE kernel extension.
-Thus, we recommend to use the SDK 10.8 or earlier for building VeraCrypt.
+Thus, we recommend using a different OSX SDK version for building VeraCrypt.
 
 
 
-III. FreeBSD and OpenSolaris
+III. FreeBSD
 ============================
 
-FreeBSD and OpenSolaris are not yet supported.
+FreeBSD is supported starting from version 11.
+The build requirements and instructions are the same as Linux except that gmake
+should be used instead of make.
 
 
 
@@ -238,19 +240,20 @@ V. Legal Information
 Copyright Information
 ---------------------
 
-This software as a whole:
-Copyright (c) 2013-2016 IDRIX. All rights reserved.
+This software as a whole:  
+Copyright (c) 2013-2020 IDRIX. All rights reserved.
 
-Portions of this software:
-Copyright (c) 2013-2016 IDRIX. All rights reserved.
-Copyright (c) 2003-2012 TrueCrypt Developers Association. All rights reserved.
-Copyright (c) 1998-2000 Paul Le Roux. All rights reserved.
-Copyright (c) 1998-2008 Brian Gladman, Worcester, UK. All rights reserved.
-Copyright (c) 1995-2017 Jean-loup Gailly and Mark Adler.
-Copyright (c) 2016 Disk Cryptography Services for EFI (DCS), Alex Kolotnikov
-Copyright (c) Dieter Baron and Thomas Klausner.
-Copyright (c) 2013, Alexey Degtyarev. All rights reserved.
-Copyright (c) 1999-2013,2014,2015,2016 Jack Lloyd. All rights reserved.
+Portions of this software:  
+Copyright (c) 2013-2020 IDRIX. All rights reserved.  
+Copyright (c) 2003-2012 TrueCrypt Developers Association. All rights reserved.  
+Copyright (c) 1998-2000 Paul Le Roux. All rights reserved.  
+Copyright (c) 1998-2008 Brian Gladman, Worcester, UK. All rights reserved.  
+Copyright (c) 1995-2017 Jean-loup Gailly and Mark Adler.  
+Copyright (c) 2016 Disk Cryptography Services for EFI (DCS), Alex Kolotnikov  
+Copyright (c) 1999-2017 Dieter Baron and Thomas Klausner.  
+Copyright (c) 2013, Alexey Degtyarev. All rights reserved.  
+Copyright (c) 1999-2016 Jack Lloyd. All rights reserved.  
+Copyright (c) 2013-2019 Stephan Mueller <smueller@chronox.de>
 
 For more information, please see the legal notices attached to parts of the
 source code.

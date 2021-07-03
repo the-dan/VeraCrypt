@@ -1,6 +1,6 @@
 /*
   zip_get_encryption_implementation.c -- get encryption implementation
-  Copyright (C) 2009-2016 Dieter Baron and Thomas Klausner
+  Copyright (C) 2009-2019 Dieter Baron and Thomas Klausner
 
   This file is part of libzip, a library to manipulate ZIP archives.
   The authors can be contacted at <libzip@nih.at>
@@ -17,7 +17,7 @@
   3. The names of the authors may not be used to endorse or promote
      products derived from this software without specific prior
      written permission.
- 
+
   THIS SOFTWARE IS PROVIDED BY THE AUTHORS ``AS IS'' AND ANY EXPRESS
   OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
   WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -36,21 +36,27 @@
 
 
 zip_encryption_implementation
-_zip_get_encryption_implementation(zip_uint16_t em, int operation)
-{
+_zip_get_encryption_implementation(zip_uint16_t em, int operation) {
     switch (em) {
     case ZIP_EM_TRAD_PKWARE:
-	if (operation == ZIP_CODEC_ENCODE) {
-	    return NULL;
-	}
-	return zip_source_pkware;
-/*
+	return operation == ZIP_CODEC_DECODE ? zip_source_pkware_decode : zip_source_pkware_encode;
+
+#if defined(HAVE_CRYPTO)
     case ZIP_EM_AES_128:
     case ZIP_EM_AES_192:
     case ZIP_EM_AES_256:
 	return operation == ZIP_CODEC_DECODE ? zip_source_winzip_aes_decode : zip_source_winzip_aes_encode;
-*/
+#endif
+
     default:
 	return NULL;
     }
+}
+
+ZIP_EXTERN int
+zip_encryption_method_supported(zip_uint16_t method, int encode) {
+    if (method == ZIP_EM_NONE) {
+	return 1;
+    }
+    return _zip_get_encryption_implementation(method, encode ? ZIP_CODEC_ENCODE : ZIP_CODEC_DECODE) != NULL;
 }

@@ -4,7 +4,7 @@
  by the TrueCrypt License 3.0.
 
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2017 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
@@ -233,7 +233,7 @@ namespace VeraCrypt
 
 			str.clear();
 			str.insert (0, &buf.front(), size);
-			Memory::Erase (&buf.front(), buf.size());
+			burn (&buf.front(), buf.size());
 		}
 		catch (...)
 		{

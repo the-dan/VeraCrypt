@@ -4,7 +4,7 @@
  by the TrueCrypt License 3.0.
 
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2017 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
@@ -20,6 +20,9 @@ namespace VeraCrypt
 {
 	CoreBase::CoreBase ()
 		: DeviceChangeInProgress (false)
+#if defined(TC_LINUX ) || defined (TC_FREEBSD)
+		, UseDummySudoPassword (false)
+#endif
 	{
 	}
 
@@ -252,7 +255,11 @@ namespace VeraCrypt
 
 	bool CoreBase::IsVolumeMounted (const VolumePath &volumePath) const
 	{
-		return GetMountedVolume (volumePath);
+		shared_ptr<VolumeInfo> mountedVolume = GetMountedVolume (volumePath);
+		if (mountedVolume)
+			return true;
+		else
+			return false;
 	}
 
 	shared_ptr <Volume> CoreBase::OpenVolume (shared_ptr <VolumePath> volumePath, bool preserveTimestamps, shared_ptr <VolumePassword> password, int pim, shared_ptr<Pkcs5Kdf> kdf, bool truecryptMode, shared_ptr <KeyfileList> keyfiles, VolumeProtection::Enum protection, shared_ptr <VolumePassword> protectionPassword, int protectionPim, shared_ptr<Pkcs5Kdf> protectionKdf, shared_ptr <KeyfileList> protectionKeyfiles, bool sharedAccessAllowed, VolumeType::Enum volumeType, bool useBackupHeaders, bool partitionInSystemEncryptionScope, wstring securityTokenKeySpec) const

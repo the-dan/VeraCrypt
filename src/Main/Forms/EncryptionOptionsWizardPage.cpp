@@ -4,7 +4,7 @@
  by the TrueCrypt License 3.0.
 
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2017 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
@@ -24,6 +24,9 @@ namespace VeraCrypt
 		: EncryptionOptionsWizardPageBase (parent)
 	{
 
+#ifdef TC_MACOSX
+		EncryptionAlgorithmStaticText->Connect( wxEVT_SIZE, wxSizeEventHandler( EncryptionOptionsWizardPage::HandleOnSize ), NULL, this );
+#endif
 		EncryptionAlgorithms = EncryptionAlgorithm::GetAvailableAlgorithms();
 		foreach (shared_ptr <EncryptionAlgorithm> ea, EncryptionAlgorithms)
 		{
@@ -44,6 +47,21 @@ namespace VeraCrypt
 		OnEncryptionAlgorithmSelected();
 
 	}
+
+#ifdef TC_MACOSX
+	EncryptionOptionsWizardPage::~EncryptionOptionsWizardPage()
+	{
+		EncryptionAlgorithmStaticText->Disconnect( wxEVT_SIZE, wxSizeEventHandler( EncryptionOptionsWizardPage::HandleOnSize ), NULL, this );
+	}
+	
+	void EncryptionOptionsWizardPage::HandleOnSize( wxSizeEvent& event )
+	{
+		int width, height;
+		EncryptionAlgorithmStaticText->GetClientSize (&width, &height);
+		EncryptionAlgorithmStaticText->Wrap (width);
+		event.Skip();
+	}
+#endif
 
 	shared_ptr <EncryptionAlgorithm> EncryptionOptionsWizardPage::GetEncryptionAlgorithm () const
 	{
@@ -103,7 +121,7 @@ namespace VeraCrypt
 			else
 				EncryptionAlgorithmStaticText->SetLabel (L"");
 
-			EncryptionAlgorithmHyperlink->SetLabel (_("More information"));
+			EncryptionAlgorithmHyperlink->SetLabel (LangString["IDC_MORE_INFO_SYS_ENCRYPTION"]);
 		}
 
 		Layout();

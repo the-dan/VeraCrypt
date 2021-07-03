@@ -9,9 +9,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="libzip\mkstemp.c">
-      <Filter>libzip</Filter>
-    </ClCompile>
     <ClCompile Include="libzip\zip_add.c">
       <Filter>libzip</Filter>
     </ClCompile>
@@ -55,12 +52,6 @@
       <Filter>libzip</Filter>
     </ClCompile>
     <ClCompile Include="libzip\zip_error_strerror.c">
-      <Filter>libzip</Filter>
-    </ClCompile>
-    <ClCompile Include="libzip\zip_error_to_str.c">
-      <Filter>libzip</Filter>
-    </ClCompile>
-    <ClCompile Include="libzip\zip_err_str.c">
       <Filter>libzip</Filter>
     </ClCompile>
     <ClCompile Include="libzip\zip_extra_field.c">
@@ -133,9 +124,6 @@
       <Filter>libzip</Filter>
     </ClCompile>
     <ClCompile Include="libzip\zip_get_archive_flag.c">
-      <Filter>libzip</Filter>
-    </ClCompile>
-    <ClCompile Include="libzip\zip_get_compression_implementation.c">
       <Filter>libzip</Filter>
     </ClCompile>
     <ClCompile Include="libzip\zip_get_encryption_implementation.c">
@@ -213,13 +201,7 @@
     <ClCompile Include="libzip\zip_source_crc.c">
       <Filter>libzip</Filter>
     </ClCompile>
-    <ClCompile Include="libzip\zip_source_deflate.c">
-      <Filter>libzip</Filter>
-    </ClCompile>
     <ClCompile Include="libzip\zip_source_error.c">
-      <Filter>libzip</Filter>
-    </ClCompile>
-    <ClCompile Include="libzip\zip_source_filep.c">
       <Filter>libzip</Filter>
     </ClCompile>
     <ClCompile Include="libzip\zip_source_free.c">
@@ -235,9 +217,6 @@
       <Filter>libzip</Filter>
     </ClCompile>
     <ClCompile Include="libzip\zip_source_open.c">
-      <Filter>libzip</Filter>
-    </ClCompile>
-    <ClCompile Include="libzip\zip_source_pkware.c">
       <Filter>libzip</Filter>
     </ClCompile>
     <ClCompile Include="libzip\zip_source_read.c">
@@ -265,18 +244,6 @@
       <Filter>libzip</Filter>
     </ClCompile>
     <ClCompile Include="libzip\zip_source_tell_write.c">
-      <Filter>libzip</Filter>
-    </ClCompile>
-    <ClCompile Include="libzip\zip_source_win32a.c">
-      <Filter>libzip</Filter>
-    </ClCompile>
-    <ClCompile Include="libzip\zip_source_win32handle.c">
-      <Filter>libzip</Filter>
-    </ClCompile>
-    <ClCompile Include="libzip\zip_source_win32utf8.c">
-      <Filter>libzip</Filter>
-    </ClCompile>
-    <ClCompile Include="libzip\zip_source_win32w.c">
       <Filter>libzip</Filter>
     </ClCompile>
     <ClCompile Include="libzip\zip_source_window.c">
@@ -351,6 +318,54 @@
     <ClCompile Include="zlib\uncompr.c">
       <Filter>zlib</Filter>
     </ClCompile>
+    <ClCompile Include="libzip\zip_progress.c">
+      <Filter>libzip</Filter>
+    </ClCompile>
+    <ClCompile Include="libzip\zip_source_begin_write_cloning.c">
+      <Filter>libzip</Filter>
+    </ClCompile>
+    <ClCompile Include="libzip\zip_source_compress.c">
+      <Filter>libzip</Filter>
+    </ClCompile>
+    <ClCompile Include="libzip\zip_algorithm_deflate.c">
+      <Filter>libzip</Filter>
+    </ClCompile>
+    <ClCompile Include="libzip\zip_source_accept_empty.c">
+      <Filter>libzip</Filter>
+    </ClCompile>
+    <ClCompile Include="libzip\zip_source_get_file_attributes.c">
+      <Filter>libzip</Filter>
+    </ClCompile>
+    <ClCompile Include="libzip\zip_source_pkware_decode.c">
+      <Filter>libzip</Filter>
+    </ClCompile>
+    <ClCompile Include="libzip\zip_source_pkware_encode.c">
+      <Filter>libzip</Filter>
+    </ClCompile>
+    <ClCompile Include="libzip\zip_pkware.c">
+      <Filter>libzip</Filter>
+    </ClCompile>
+    <ClCompile Include="libzip\zip_source_file_common.c">
+      <Filter>libzip</Filter>
+    </ClCompile>
+    <ClCompile Include="libzip\zip_source_file_stdio.c">
+      <Filter>libzip</Filter>
+    </ClCompile>
+    <ClCompile Include="libzip\zip_source_file_win32_named.c">
+      <Filter>libzip</Filter>
+    </ClCompile>
+    <ClCompile Include="libzip\zip_source_file_win32_utf8.c">
+      <Filter>libzip</Filter>
+    </ClCompile>
+    <ClCompile Include="libzip\zip_source_file_win32_utf16.c">
+      <Filter>libzip</Filter>
+    </ClCompile>
+    <ClCompile Include="libzip\zip_source_file_win32.c">
+      <Filter>libzip</Filter>
+    </ClCompile>
+    <ClCompile Include="libzip\zip_err_str.c">
+      <Filter>libzip</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="libzip\compat.h">
@@ -369,9 +384,6 @@
       <Filter>libzip</Filter>
     </ClInclude>
     <ClInclude Include="libzip\zipint.h">
-      <Filter>libzip</Filter>
-    </ClInclude>
-    <ClInclude Include="libzip\zipwin32.h">
       <Filter>libzip</Filter>
     </ClInclude>
     <ClInclude Include="zlib\crc32.h">
@@ -403,6 +415,15 @@
     </ClInclude>
     <ClInclude Include="zlib\zutil.h">
       <Filter>zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="libzip\zip_source_file.h">
+      <Filter>libzip</Filter>
+    </ClInclude>
+    <ClInclude Include="libzip\zip_source_file_stdio.h">
+      <Filter>libzip</Filter>
+    </ClInclude>
+    <ClInclude Include="libzip\zip_source_file_win32.h">
+      <Filter>libzip</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

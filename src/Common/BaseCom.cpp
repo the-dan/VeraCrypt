@@ -4,7 +4,7 @@
  by the TrueCrypt License 3.0.
 
  Modifications and additions to the original source code (contained in this file) 
- and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2017 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
@@ -130,7 +130,7 @@ DWORD BaseCom::ReadWriteFile (BOOL write, BOOL device, BSTR filePath, BSTR *buff
 {
 	try
 	{
-		auto_ptr <File> file (device ? new Device (filePath, !write) : new File (filePath, !write));
+		unique_ptr <File> file (device ? new Device (filePath, !write) : new File (filePath, !write));
 		file->CheckOpened (SRC_POS);
 		file->SeekAt (offset);
 
@@ -194,7 +194,7 @@ DWORD BaseCom::DeviceIoControl (BOOL readOnly, BOOL device, BSTR filePath, DWORD
 {
 	try
 	{
-		auto_ptr <File> file (device ? new Device (filePath, readOnly == TRUE) : new File (filePath, readOnly == TRUE));
+		unique_ptr <File> file (device ? new Device (filePath, readOnly == TRUE) : new File (filePath, readOnly == TRUE));
 		file->CheckOpened (SRC_POS);
 		if (!file->IoCtl (dwIoControlCode, (BYTE *) input, !(BYTE *) input ? 0 : ((DWORD *) ((BYTE *) input))[-1],
 			(BYTE *) *output, !(BYTE *) *output ? 0 : ((DWORD *) ((BYTE *) *output))[-1]))
@@ -336,6 +336,10 @@ DWORD BaseCom::BackupEfiSystemLoader ()
 	{
 		return GetLastError();
 	}
+	catch (UserAbort&)
+	{
+		return ERROR_CANCELLED;
+	}
 	catch (Exception &e)
 	{
 		e.Show (NULL);
@@ -400,6 +404,33 @@ DWORD BaseCom::GetEfiBootDeviceNumber (BSTR* pSdn)
 	return ERROR_SUCCESS;
 }
 
+DWORD BaseCom::GetSecureBootConfig (BOOL* pSecureBootEnabled, BOOL *pVeraCryptKeysLoaded)
+{
+	if (!pSecureBootEnabled || !pVeraCryptKeysLoaded)
+		return ERROR_INVALID_PARAMETER;
+
+	try
+	{
+		BootEncryption bootEnc (NULL);
+		bootEnc.GetSecureBootConfig (pSecureBootEnabled, pVeraCryptKeysLoaded);
+	}
+	catch (SystemException &)
+	{
+		return GetLastError();
+	}
+	catch (Exception &e)
+	{
+		e.Show (NULL);
+		return ERROR_EXCEPTION_IN_SERVICE;
+	}
+	catch (...)
+	{
+		return ERROR_EXCEPTION_IN_SERVICE;
+	}
+
+	return ERROR_SUCCESS;
+}
+
 DWORD BaseCom::WriteEfiBootSectorUserConfig (DWORD userConfig, BSTR customUserMessage, int pim, int hashAlg)
 {
 	if (!customUserMessage)
@@ -414,6 +445,30 @@ DWORD BaseCom::WriteEfiBootSectorUserConfig (DWORD userConfig, BSTR customUserMe
 		std::string msgStr = maxSize > 0 ? msg : "";
 		BootEncryption bootEnc (NULL);
 		bootEnc.WriteEfiBootSectorUserConfig ((byte) userConfig,  msgStr, pim, hashAlg);
+	}
+	catch (SystemException &)
+	{
+		return GetLastError();
+	}
+	catch (Exception &e)
+	{
+		e.Show (NULL);
+		return ERROR_EXCEPTION_IN_SERVICE;
+	}
+	catch (...)
+	{
+		return ERROR_EXCEPTION_IN_SERVICE;
+	}
+
+	return ERROR_SUCCESS;
+}
+
+DWORD BaseCom::UpdateSetupConfigFile (BOOL bForInstall)
+{
+	try
+	{
+		BootEncryption bootEnc (NULL);
+		bootEnc.UpdateSetupConfigFile (bForInstall? true : false);
 	}
 	catch (SystemException &)
 	{

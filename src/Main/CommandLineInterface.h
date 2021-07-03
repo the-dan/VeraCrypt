@@ -4,7 +4,7 @@
  by the TrueCrypt License 3.0.
 
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2017 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
@@ -83,6 +83,11 @@ namespace VeraCrypt
 		VolumeType::Enum ArgVolumeType;
 		bool ArgTrueCryptMode;
         shared_ptr<SecureBuffer> ArgTokenPin;
+        bool ArgDisableFileSizeCheck;
+        bool ArgUseLegacyPassword;
+#if defined(TC_LINUX ) || defined (TC_FREEBSD)
+        bool ArgUseDummySudoPassword;
+#endif
 
 		bool StartBackgroundTask;
 		UserPreferences Preferences;
@@ -97,10 +102,10 @@ namespace VeraCrypt
 		CommandLineInterface &operator= (const CommandLineInterface &);
 	};
 
-	shared_ptr<VolumePassword> ToUTF8Password (const wchar_t* str, size_t charCount = (size_t) -1);
-	shared_ptr<SecureBuffer> ToUTF8Buffer (const wchar_t* str, size_t charCount = (size_t) -1);
+	shared_ptr<VolumePassword> ToUTF8Password (const wchar_t* str, size_t charCount, size_t maxUtf8Len);
+	shared_ptr<SecureBuffer> ToUTF8Buffer (const wchar_t* str, size_t charCount, size_t maxUtf8Len);
 
-	extern auto_ptr <CommandLineInterface> CmdLine;
+	extern unique_ptr <CommandLineInterface> CmdLine;
 }
 
 #endif // TC_HEADER_Main_CommandInterface

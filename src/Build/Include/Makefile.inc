@@ -4,7 +4,7 @@
 # by the TrueCrypt License 3.0.
 #
 # Modifications and additions to the original source code (contained in this file)
-# and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+# and all other portions of this file are Copyright (c) 2013-2017 IDRIX
 # and are governed by the Apache License 2.0 the full text of which is
 # contained in the file License.txt included in VeraCrypt binary and source
 # code distribution packages.
@@ -14,11 +14,15 @@ $(NAME): $(NAME).a
 
 clean:
 	@echo Cleaning $(NAME)
-	rm -f $(APPNAME) $(NAME).a $(OBJS) $(OBJSEX) $(OBJS:.o=.d) *.gch
+	rm -f $(APPNAME) $(NAME).a $(OBJS) $(OBJSEX) $(OBJSNOOPT) $(OBJS:.o=.d) $(OBJSEX:.oo=.d) $(OBJSNOOPT:.o0=.d) *.gch
 
 %.o: %.c
 	@echo Compiling $(<F)
 	$(CC) $(CFLAGS) -c $< -o $@
+
+%.o0: %.c
+	@echo Compiling $(<F)
+	$(CC) $(CFLAGS) -O0 -c $< -o $@
 
 %.o: %.cpp
 	@echo Compiling $(<F)
@@ -31,8 +35,8 @@ clean:
 ifeq "$(PLATFORM)" "MacOSX"
 %.o: %.asm
 	@echo Assembling $(<F)
-	$(AS) $(ASFLAGS) -f macho32 -o $@.32 $<
-	$(AS) $(ASFLAGS) -f macho64 -o $@.64 $<
+	$(AS) $(ASFLAGS32) -f macho32 -o $@.32 $<
+	$(AS) $(ASFLAGS64) -f macho64 -o $@.64 $<
 	lipo -create $@.32 $@.64 -output $@
 else
 %.o: %.asm
@@ -64,10 +68,10 @@ TR_SED_BIN := tr '\n' ' ' | tr -s ' ' ',' | sed -e 's/^,//g' -e 's/,$$/n/' | tr 
 
 
 # Dependencies
--include $(OBJS:.o=.d) $(OBJSEX:.oo=.d)
+-include $(OBJS:.o=.d) $(OBJSEX:.oo=.d) $(OBJSNOOPT:.o0=.d)
 
 
-$(NAME).a: $(OBJS) $(OBJSEX)
+$(NAME).a: $(OBJS) $(OBJSEX) $(OBJSNOOPT)
 	@echo Updating library $@
-	$(AR) $(AFLAGS) -rcu $@ $(OBJS) $(OBJSEX)
+	$(AR) $(AFLAGS) -rcu $@ $(OBJS) $(OBJSEX) $(OBJSNOOPT)
 	$(RANLIB) $@

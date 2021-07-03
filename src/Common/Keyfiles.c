@@ -4,7 +4,7 @@
  by the TrueCrypt License 3.0.
 
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2017 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
@@ -147,52 +147,43 @@ void KeyFileCloneAll (KeyFile *firstKeyFile, KeyFile **outputKeyFile)
 }
 
 
-static BOOL KeyFileProcess (unsigned __int8 *keyPool, KeyFile *keyFile)
+static BOOL KeyFileProcess (unsigned __int8 *keyPool, unsigned __int32 keyPoolSize, KeyFile *keyFile)
 {
-	FILE *f;
 	unsigned __int8 buffer[64 * 1024];
 	unsigned __int32 crc = 0xffffffff;
-	int writePos = 0;
-	size_t bytesRead, totalRead = 0;
+	unsigned __int32 writePos = 0;
+	DWORD bytesRead, totalRead = 0;
 	int status = TRUE;
-
 	HANDLE src;
-	FILETIME ftCreationTime;
-	FILETIME ftLastWriteTime;
-	FILETIME ftLastAccessTime;
+	BOOL bReadStatus = FALSE;
 
-	BOOL bTimeStampValid = FALSE;
-
-	/* Remember the last access time of the keyfile. It will be preserved in order to prevent
-	an adversary from determining which file may have been used as keyfile. */
 	src = CreateFile (keyFile->FileName,
-		GENERIC_READ | GENERIC_WRITE,
+		GENERIC_READ | FILE_WRITE_ATTRIBUTES,
 		FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
 
 	if (src != INVALID_HANDLE_VALUE)
 	{
-		if (GetFileTime ((HANDLE) src, &ftCreationTime, &ftLastAccessTime, &ftLastWriteTime))
-			bTimeStampValid = TRUE;
+		/* We tell Windows not to update the Last Access timestamp in order to prevent
+		an adversary from determining which file may have been used as keyfile. */
+		FILETIME ftLastAccessTime;
+		ftLastAccessTime.dwHighDateTime = 0xFFFFFFFF;
+		ftLastAccessTime.dwLowDateTime = 0xFFFFFFFF;
+
+		SetFileTime (src, NULL, &ftLastAccessTime, NULL);
+	}
+	else
+	{
+		/* try to open without FILE_WRITE_ATTRIBUTES in case we are in a ReadOnly filesystem (e.g. CD)                                                                                                                                                                                                                                         */
+		src = CreateFile (keyFile->FileName,
+			GENERIC_READ,
+			FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+		if (src == INVALID_HANDLE_VALUE)
+			return FALSE;
 	}
 
-	finally_do_arg (HANDLE, src,
+	while ((bReadStatus = ReadFile (src, buffer, sizeof (buffer), &bytesRead, NULL)) && (bytesRead > 0))
 	{
-		if (finally_arg != INVALID_HANDLE_VALUE)
-			CloseHandle (finally_arg);
-	});
-
-	f = _wfopen (keyFile->FileName, L"rb");
-	if (f == NULL) return FALSE;
-
-	while ((bytesRead = fread (buffer, 1, sizeof (buffer), f)) > 0)
-	{
-		size_t i;
-
-		if (ferror (f))
-		{
-			status = FALSE;
-			goto close;
-		}
+		DWORD i;
 
 		for (i = 0; i < bytesRead; i++)
 		{
@@ -203,7 +194,7 @@ static BOOL KeyFileProcess (unsigned __int8 *keyPool, KeyFile *keyFile)
 			keyPool[writePos++] += (unsigned __int8) (crc >> 8);
 			keyPool[writePos++] += (unsigned __int8) crc;
 
-			if (writePos >= KEYFILE_POOL_SIZE)
+			if (writePos >= keyPoolSize)
 				writePos = 0;
 
 			if (++totalRead >= KEYFILE_MAX_READ_LEN)
@@ -211,7 +202,7 @@ static BOOL KeyFileProcess (unsigned __int8 *keyPool, KeyFile *keyFile)
 		}
 	}
 
-	if (ferror (f))
+	if (!bReadStatus)
 	{
 		status = FALSE;
 	}
@@ -223,13 +214,9 @@ static BOOL KeyFileProcess (unsigned __int8 *keyPool, KeyFile *keyFile)
 
 close:
 	DWORD err = GetLastError();
-	fclose (f);
 
-	if (bTimeStampValid && !IsFileOnReadOnlyFilesystem (keyFile->FileName))
-	{
-		// Restore the keyfile timestamp
-		SetFileTime (src, &ftCreationTime, &ftLastAccessTime, &ftLastWriteTime);
-	}
+	CloseHandle (src);
+	burn (buffer, sizeof (buffer));
 
 	SetLastError (err);
 	return status;
@@ -248,6 +235,7 @@ BOOL KeyFilesApply (HWND hwndDlg, Password *password, KeyFile *firstKeyFile, con
 	wchar_t searchPath [TC_MAX_PATH*2];
 	struct _wfinddata_t fBuf;
 	intptr_t searchHandle;
+	unsigned __int32 keyPoolSize = password->Length <= MAX_LEGACY_PASSWORD? KEYFILE_POOL_LEGACY_SIZE : KEYFILE_POOL_SIZE;
 
 	HiddenFilesPresentInKeyfilePath = FALSE;
 
@@ -279,7 +267,7 @@ BOOL KeyFilesApply (HWND hwndDlg, Password *password, KeyFile *firstKeyFile, con
 				}
 
 				unsigned __int32 crc = 0xffffffff;
-				int writePos = 0;
+				unsigned __int32 writePos = 0;
 				size_t totalRead = 0;
 
 				for (size_t i = 0; i < keyfileData.size(); i++)
@@ -291,7 +279,7 @@ BOOL KeyFilesApply (HWND hwndDlg, Password *password, KeyFile *firstKeyFile, con
 					keyPool[writePos++] += (unsigned __int8) (crc >> 8);
 					keyPool[writePos++] += (unsigned __int8) crc;
 
-					if (writePos >= KEYFILE_POOL_SIZE)
+					if (writePos >= keyPoolSize)
 						writePos = 0;
 
 					if (++totalRead >= KEYFILE_MAX_READ_LEN)
@@ -372,7 +360,7 @@ BOOL KeyFilesApply (HWND hwndDlg, Password *password, KeyFile *firstKeyFile, con
 				++keyfileCount;
 
 				// Apply keyfile to the pool
-				if (!KeyFileProcess (keyPool, kfSub))
+				if (!KeyFileProcess (keyPool, keyPoolSize, kfSub))
 				{
 					handleWin32Error (hwndDlg, SRC_POS);
 					Error ("ERR_PROCESS_KEYFILE", hwndDlg);
@@ -391,7 +379,7 @@ BOOL KeyFilesApply (HWND hwndDlg, Password *password, KeyFile *firstKeyFile, con
 			}
 		}
 		// Apply keyfile to the pool
-		else if (!KeyFileProcess (keyPool, kf))
+		else if (!KeyFileProcess (keyPool, keyPoolSize, kf))
 		{
 			handleWin32Error (hwndDlg, SRC_POS);
 			Error ("ERR_PROCESS_KEYFILE", hwndDlg);
@@ -401,7 +389,7 @@ BOOL KeyFilesApply (HWND hwndDlg, Password *password, KeyFile *firstKeyFile, con
 
 	/* Mix the keyfile pool contents into the password */
 
-	for (i = 0; i < sizeof (keyPool); i++)
+	for (i = 0; i < keyPoolSize; i++)
 	{
 		if (i < password->Length)
 			password->Text[i] += keyPool[i];
@@ -409,8 +397,8 @@ BOOL KeyFilesApply (HWND hwndDlg, Password *password, KeyFile *firstKeyFile, con
 			password->Text[i] = keyPool[i];
 	}
 
-	if (password->Length < (int)sizeof (keyPool))
-        password->Length = sizeof (keyPool);
+	if (password->Length < keyPoolSize)
+        password->Length = keyPoolSize;
 
 	burn (keyPool, sizeof (keyPool));
 

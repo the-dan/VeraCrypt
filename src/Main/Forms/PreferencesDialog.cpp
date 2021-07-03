@@ -4,7 +4,7 @@
  by the TrueCrypt License 3.0.
 
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2017 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
@@ -87,7 +87,7 @@ namespace VeraCrypt
 		// Encryption
 		AesHwCpuSupportedStaticText->SetLabel (
 #ifdef TC_AES_HW_CPU
-			(is_aes_hw_cpu_supported() ? LangString["UISTR_YES"] : LangString["UISTR_NO"]));
+			(HasAESNI() ? LangString["UISTR_YES"] : LangString["UISTR_NO"]));
 #else
 			LangString["NOT_APPLICABLE_OR_NOT_AVAILABLE"]);
 #endif
@@ -135,8 +135,8 @@ namespace VeraCrypt
 
 #ifdef TC_MACOSX
 		DismountOnScreenSaverCheckBox->Show (false);
-		DismountOnLogOffCheckBox->SetLabel (_("VeraCrypt quits"));
-		OpenExplorerWindowAfterMountCheckBox->SetLabel (_("Open Finder window for successfully mounted volume"));
+		DismountOnLogOffCheckBox->SetLabel (LangString["LINUX_VC_QUITS"]);
+		OpenExplorerWindowAfterMountCheckBox->SetLabel (LangString["LINUX_OPEN_FINDER"]);
 
 		MountRemovableCheckBox->Show (false);
 		FilesystemSizer->Show (false);
@@ -200,7 +200,7 @@ namespace VeraCrypt
 		Fit();
 		Center();
 
-		StdButtonsOK->SetDefault();
+		OKButton->SetDefault();
 
 #ifdef TC_WINDOWS
 		// Hotkey timer
@@ -302,20 +302,20 @@ namespace VeraCrypt
 			if (Gui->AskYesNo (LangString["CONFIRM_SETTING_DEGRADES_PERFORMANCE"], true, true))
 			{
 #ifdef TC_LINUX
-				Gui->ShowWarning (_("Please note that this setting takes effect only if use of the kernel cryptographic services is disabled."));
+				Gui->ShowWarning (LangString["LINUX_DISABLE_KERNEL_ONLY_SETTING"]);
 #endif
 			}
 			else
 				NoHardwareCryptoCheckBox->SetValue (false);
 		}
 
-		Gui->ShowWarning (_("Please note that any currently mounted volumes need to be remounted before they can use this setting."));
+		Gui->ShowWarning (LangString["LINUX_REMOUNT_BECAUSEOF_SETTING"]);
 	}
 
 	void PreferencesDialog::OnNoKernelCryptoCheckBoxClick (wxCommandEvent& event)
 	{
 		if (event.IsChecked())
-			NoKernelCryptoCheckBox->SetValue (Gui->AskYesNo (_("Disabling the use of kernel cryptographic services can degrade performance.\n\nAre you sure?"), false, true));
+			NoKernelCryptoCheckBox->SetValue (Gui->AskYesNo (LangString["LINUX_DISABLE_KERNEL_CRYPT_CONFIRM"], false, true));
 	}
 
 	void PreferencesDialog::OnClose (wxCloseEvent& event)
@@ -424,7 +424,7 @@ namespace VeraCrypt
 	{
 #ifdef TC_LINUX
 		if (!event.IsChecked())
-			Gui->ShowInfo (_("Please note that disabling this option may have no effect on volumes mounted using kernel cryptographic services."));
+			Gui->ShowInfo (LangString["LINUX_KERNEL_CRYPT_OPTION_CHANGE_MOUNTED_HINT"]);
 #endif
 	}
 

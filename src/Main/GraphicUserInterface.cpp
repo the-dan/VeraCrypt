@@ -4,7 +4,7 @@
  by the TrueCrypt License 3.0.
 
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2017 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
@@ -37,6 +37,11 @@
 
 namespace VeraCrypt
 {
+#ifdef TC_MACOSX
+	int GraphicUserInterface::g_customIdCmdV = 0;
+	int GraphicUserInterface::g_customIdCmdA = 0;
+#endif
+
 	GraphicUserInterface::GraphicUserInterface () :
 		ActiveFrame (nullptr),
 		BackgroundMode (false),
@@ -51,7 +56,9 @@ namespace VeraCrypt
 #endif
 
 #ifdef TC_MACOSX
-		wxApp::s_macHelpMenuTitleName = _("&Help");
+		g_customIdCmdV = wxNewId();
+		g_customIdCmdA = wxNewId();
+		wxApp::s_macHelpMenuTitleName = LangString["MENU_HELP"];
 #endif
 	}
 
@@ -201,7 +208,42 @@ namespace VeraCrypt
 				}
 				catch (PasswordException &e)
 				{
-					ShowWarning (e);
+					bool bFailed = true;
+					if (!options->UseBackupHeaders)
+					{
+						try
+						{
+							OpenVolumeThreadRoutine routine2(
+								options->Path,
+								options->PreserveTimestamps,
+								options->Password,
+								options->Pim,
+								options->Kdf,
+								false,
+								options->Keyfiles,
+								options->Protection,
+								options->ProtectionPassword,
+								options->ProtectionPim,
+								options->ProtectionKdf,
+								options->ProtectionKeyfiles,
+								true,
+								volumeType,
+								true
+							);
+
+							ExecuteWaitThreadRoutine (parent, &routine2);
+							volume = routine2.m_pVolume;
+							bFailed = false;
+						}
+						catch (...)
+						{
+						}
+					}
+
+					if (bFailed)
+						ShowWarning (e);
+					else
+						ShowWarning ("HEADER_DAMAGED_AUTO_USED_HEADER_BAK");
 				}
 			}
 
@@ -219,7 +261,7 @@ namespace VeraCrypt
 
 				wxSingleChoiceDialog choiceDialog (parent, LangString["DOES_VOLUME_CONTAIN_HIDDEN"], Application::GetName(), choices);
 				choiceDialog.SetSize (wxSize (Gui->GetCharWidth (&choiceDialog) * 60, -1));
-				choiceDialog.SetSelection (-1);
+				choiceDialog.SetSelection (0);
 
 				if (choiceDialog.ShowModal() != wxID_OK)
 					return;
@@ -302,7 +344,7 @@ namespace VeraCrypt
 
 	void GraphicUserInterface::BeginInteractiveBusyState (wxWindow *window)
 	{
-		static auto_ptr <wxCursor> arrowWaitCursor;
+		static unique_ptr <wxCursor> arrowWaitCursor;
 
 		if (arrowWaitCursor.get() == nullptr)
 			arrowWaitCursor.reset (new wxCursor (wxCURSOR_ARROWWAIT));
@@ -367,7 +409,7 @@ namespace VeraCrypt
 
 	void GraphicUserInterface::EndInteractiveBusyState (wxWindow *window) const
 	{
-		static auto_ptr <wxCursor> arrowCursor;
+		static unique_ptr <wxCursor> arrowCursor;
 
 		if (arrowCursor.get() == nullptr)
 			arrowCursor.reset (new wxCursor (wxCURSOR_ARROW));
@@ -424,7 +466,7 @@ namespace VeraCrypt
 				}
 				else
 				{
-					wxPasswordEntryDialog dialog (Gui->GetActiveWindow(), _("Enter your user password or administrator password:"), _("Administrator privileges required"));
+					wxPasswordEntryDialog dialog (Gui->GetActiveWindow(), LangString["LINUX_ADMIN_PW_QUERY"], LangString["LINUX_ADMIN_PW_QUERY_TITLE"]);
 					if (dialog.ShowModal() != wxID_OK)
 						throw UserAbort (SRC_POS);
 					sValue = dialog.GetValue();
@@ -590,7 +632,7 @@ namespace VeraCrypt
 
 		try
 		{
-			SecurityToken::InitLibrary (Preferences.SecurityTokenModule, auto_ptr <GetPinFunctor> (new PinRequestHandler), auto_ptr <SendExceptionFunctor> (new WarningHandler));
+			SecurityToken::InitLibrary (Preferences.SecurityTokenModule, unique_ptr <GetPinFunctor> (new PinRequestHandler), unique_ptr <SendExceptionFunctor> (new WarningHandler));
 		}
 		catch (Exception &e)
 		{
@@ -656,6 +698,41 @@ namespace VeraCrypt
 	void GraphicUserInterface::MacReopenApp ()
 	{
 		SetBackgroundMode (false);
+	}
+	
+	bool GraphicUserInterface::HandlePasswordEntryCustomEvent (wxEvent& event)
+	{
+		bool bHandled = false;
+		if (	(event.GetEventType() == wxEVT_MENU)
+			&&	((event.GetId() == g_customIdCmdV) || (event.GetId() == g_customIdCmdA)))
+		{
+			wxWindow* focusedCtrl = wxWindow::FindFocus();
+			if (focusedCtrl 
+				&& (focusedCtrl->IsKindOf(wxCLASSINFO(wxTextCtrl)))
+				&& (focusedCtrl->GetWindowStyle() & wxTE_PASSWORD))
+			{
+				wxTextCtrl* passwordCtrl = (wxTextCtrl*) focusedCtrl;
+				if (event.GetId() == g_customIdCmdV)
+					passwordCtrl->Paste ();
+				else if (event.GetId() == g_customIdCmdA)
+					passwordCtrl->SelectAll ();
+				bHandled = true;
+			}
+		}
+		
+		return bHandled;
+	}
+	
+	void GraphicUserInterface::InstallPasswordEntryCustomKeyboardShortcuts (wxWindow* window)
+	{
+		// we manually handle CMD+V and CMD+A on password fields in order to support
+		// pasting password values into them. By default, wxWidgets doesn't handle this
+		// for password entry fields.
+		wxAcceleratorEntry entries[2];
+		entries[0].Set(wxACCEL_CMD, (int) 'V', g_customIdCmdV);
+		entries[1].Set(wxACCEL_CMD, (int) 'A', g_customIdCmdA);
+		wxAcceleratorTable accel(sizeof(entries) / sizeof(wxAcceleratorEntry), entries);
+		window->SetAcceleratorTable(accel);
 	}
 #endif
 
@@ -808,7 +885,7 @@ namespace VeraCrypt
 #ifdef TC_LINUX
 		if (volume && !Preferences.NonInteractive && !Preferences.DisableKernelEncryptionModeWarning
 			&& volume->EncryptionModeName != L"XTS"
-			&& !AskYesNo (LangString["ENCRYPTION_MODE_NOT_SUPPORTED_BY_KERNEL"] + _("\n\nDo you want to show this message next time you mount such a volume?"), true, true))
+			&& !AskYesNo (LangString["ENCRYPTION_MODE_NOT_SUPPORTED_BY_KERNEL"] + LangString["LINUX_MESSAGE_ON_MOUNT_AGAIN"], true, true))
 		{
 			UserPreferences prefs = GetPreferences();
 			prefs.DisableKernelEncryptionModeWarning = true;
@@ -888,8 +965,8 @@ namespace VeraCrypt
 					wxConnectionBase *OnMakeConnection () { return new Connection; }
 				};
 
-				auto_ptr <wxDDEClient> client (new Client);
-				auto_ptr <wxConnectionBase> connection (client->MakeConnection (L"localhost", serverName, L"raise"));
+				unique_ptr <wxDDEClient> client (new Client);
+				unique_ptr <wxConnectionBase> connection (client->MakeConnection (L"localhost", serverName, L"raise"));
 
 				if (connection.get() && connection->Execute (nullptr))
 				{
@@ -909,7 +986,7 @@ namespace VeraCrypt
 					if (write (showFifo, buf, 1) == 1)
 					{
 						close (showFifo);
-						Gui->ShowInfo (_("VeraCrypt is already running."));
+						Gui->ShowInfo (LangString["LINUX_VC_RUNNING_ALREADY"]);
 						Application::SetExitCode (0);
 						return false;
 					}
@@ -941,7 +1018,7 @@ namespace VeraCrypt
 
 				wxLog::FlushActive();
 				Application::SetExitCode (1);
-				Gui->ShowInfo (_("VeraCrypt is already running."));
+				Gui->ShowInfo (LangStrin["LINUX_VC_RUNNING_ALREADY"]);
 				return false;
 #endif
 			}
@@ -1232,7 +1309,7 @@ namespace VeraCrypt
 #elif defined (TC_MACOSX)
 			htmlPath += L"/../Resources/doc/HTML/";
 #elif defined (TC_UNIX)
-			htmlPath = L"/usr/share/veracrypt/doc/HTML/";
+			htmlPath = L"/usr/share/doc/veracrypt/HTML/";
 #else
 			localFile = false;
 #endif
@@ -1247,9 +1324,13 @@ namespace VeraCrypt
 			if (!localFile)
 			{
 				htmlPath = L"https://www.veracrypt.fr/en/";
-				url.Replace (L" ", L"%20");
-				url.Replace (L"'", L"%27");
 			}
+			else
+			{
+				htmlPath = L"file://" + htmlPath;
+			}
+			url.Replace (L" ", L"%20");
+			url.Replace (L"'", L"%27");
 
 			url = htmlPath + url;
 		}
@@ -1320,7 +1401,7 @@ namespace VeraCrypt
 
 		wxSingleChoiceDialog choiceDialog (parent, LangString["HEADER_RESTORE_EXTERNAL_INTERNAL"], Application::GetName(), choices);
 		choiceDialog.SetSize (wxSize (Gui->GetCharWidth (&choiceDialog) * 80, -1));
-		choiceDialog.SetSelection (-1);
+		choiceDialog.SetSelection (0);
 
 		if (choiceDialog.ShowModal() != wxID_OK)
 			return;
@@ -1570,13 +1651,18 @@ namespace VeraCrypt
 
 	DirectoryPath GraphicUserInterface::SelectDirectory (wxWindow *parent, const wxString &message, bool existingOnly) const
 	{
+		/* Avoid OS leaking previously used directory when user choose not to save history */
+		wxString defaultPath;
+		if (!GetPreferences().SaveHistory)
+			defaultPath = wxGetHomeDir ();
+
 		return DirectoryPath (::wxDirSelector (!message.empty() ? message :
 #ifdef __WXGTK__
 			wxDirSelectorPromptStr,
 #else
 			L"",
 #endif
-			L"", wxDD_DEFAULT_STYLE | (existingOnly ? wxDD_DIR_MUST_EXIST : 0), wxDefaultPosition, parent).wc_str());
+			defaultPath, wxDD_DEFAULT_STYLE | (existingOnly ? wxDD_DIR_MUST_EXIST : 0), wxDefaultPosition, parent).wc_str());
 	}
 
 	FilePathList GraphicUserInterface::SelectFiles (wxWindow *parent, const wxString &caption, bool saveMode, bool allowMultiple, const list < pair <wstring, wstring> > &fileExtensions, const DirectoryPath &directory) const
@@ -1615,7 +1701,12 @@ namespace VeraCrypt
 			}
 		}
 
-		wxFileDialog dialog (parent, !caption.empty() ? caption : LangString ["OPEN_TITLE"], wstring (directory), wxString(), wildcards, style);
+		/* Avoid OS leaking previously used directory when user choose not to save history */
+		wxString defaultDir = wstring (directory);
+		if (defaultDir.IsEmpty () && !GetPreferences().SaveHistory)
+			defaultDir = wxGetHomeDir ();
+
+		wxFileDialog dialog (parent, !caption.empty() ? caption : LangString ["OPEN_TITLE"], defaultDir, wxString(), wildcards, style);
 
 		if (dialog.ShowModal() == wxID_OK)
 		{
@@ -1637,7 +1728,7 @@ namespace VeraCrypt
 	FilePath GraphicUserInterface::SelectVolumeFile (wxWindow *parent, bool saveMode, const DirectoryPath &directory) const
 	{
 		list < pair <wstring, wstring> > extensions;
-		extensions.push_back (make_pair (L"tc", LangString["TC_VOLUMES"].ToStdWstring()));
+		extensions.push_back (make_pair (L"hc", LangString["TC_VOLUMES"].ToStdWstring()));
 
 		FilePathList selFiles = Gui->SelectFiles (parent, LangString[saveMode ? "OPEN_NEW_VOLUME" : "OPEN_VOL_TITLE"], saveMode, false, extensions, directory);
 
@@ -1797,9 +1888,9 @@ namespace VeraCrypt
 		else
 		{
 			if (style & wxICON_EXCLAMATION)
-				caption = wxString (_("Warning")) + L':';
+				caption = wxString (LangString["LINUX_WARNING"]) + L':';
 			else if (style & wxICON_ERROR || style & wxICON_HAND)
-				caption = wxString (_("Error")) + L':';
+				caption = wxString (LangString["LINUX_ERROR"]) + L':';
 			else
 				caption.clear();
 		}
@@ -1817,8 +1908,9 @@ namespace VeraCrypt
 
 				style |= wxSTAY_ON_TOP;
 			}
-
-			return wxMessageBox (subMessage, caption, style, GetActiveWindow());
+			wxMessageDialog cur(GetActiveWindow(), subMessage, caption, style);
+			cur.SetYesNoLabels(LangString["UISTR_YES"], LangString["UISTR_NO"]);
+			return (cur.ShowModal() == wxID_YES ? wxYES : wxNO) ;
 		}
 	}
 
@@ -1833,7 +1925,7 @@ namespace VeraCrypt
 
 	void GraphicUserInterface::ThrowTextModeRequired () const
 	{
-		Gui->ShowError (_("This feature is currently supported only in text mode."));
+		Gui->ShowError (LangString["LINUX_ONLY_TEXTMODE"]);
 		throw UserAbort (SRC_POS);
 	}
 

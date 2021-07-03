@@ -1,5 +1,5 @@
 /*
- Copyright (c) 2013-2016 IDRIX. All rights reserved.
+ Copyright (c) 2013-2017 IDRIX. All rights reserved.
 
  Governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
@@ -38,12 +38,14 @@ namespace VeraCrypt
 		VC_CONVERT_EXCEPTION (PasswordEmpty);
 		VC_CONVERT_EXCEPTION (PasswordTooLong);
 		VC_CONVERT_EXCEPTION (PasswordUTF8TooLong);
+		VC_CONVERT_EXCEPTION (PasswordLegacyUTF8TooLong);
 		VC_CONVERT_EXCEPTION (PasswordUTF8Invalid);
 		VC_CONVERT_EXCEPTION (UnportablePassword);
 		VC_CONVERT_EXCEPTION (ElevationFailed);
 		VC_CONVERT_EXCEPTION (RootDeviceUnavailable);
 		VC_CONVERT_EXCEPTION (DriveLetterUnavailable);
 		VC_CONVERT_EXCEPTION (DriverError);
+		VC_CONVERT_EXCEPTION (DeviceSectorSizeMismatch);
 		VC_CONVERT_EXCEPTION (EncryptedSystemRequired);
 		VC_CONVERT_EXCEPTION (HigherFuseVersionRequired);
 		VC_CONVERT_EXCEPTION (KernelCryptoServiceTestFailed);

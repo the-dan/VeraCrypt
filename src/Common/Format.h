@@ -6,7 +6,7 @@
  Encryption for the Masses 2.02a, which is Copyright (c) 1998-2000 Paul Le Roux
  and which is governed by the 'License Agreement for Encryption for the Masses'
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2017 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages. */
@@ -38,6 +38,7 @@ typedef struct
 	unsigned int clusterSize;
 	BOOL sparseFileSwitch;
 	BOOL quickFormat;
+	BOOL fastCreateFile;
 	DWORD sectorSize;
 	int *realClusterSize;
 	Password *password;
@@ -75,6 +76,7 @@ extern int FormatWriteBufferSize;
 int TCFormatVolume (volatile FORMAT_VOL_PARAMETERS *volParams);
 BOOL FormatNtfs (int driveNo, int clusterSize);
 BOOL FormatFs (int driveNo, int clusterSize, int fsType);
+BOOL ExternalFormatFs (int driveNo, int clusterSize, int fsType);
 uint64 GetVolumeDataAreaSize (BOOL hiddenVolume, uint64 volumeSize);
 int FormatNoFs (HWND hwndDlg, unsigned __int64 startSector, __int64 num_sectors, void *dev, PCRYPTO_INFO cryptoInfo, BOOL quickFormat);
 BOOL WriteSector ( void *dev , char *sector , char *write_buf , int *write_buf_cnt , __int64 *nSecNo , PCRYPTO_INFO cryptoInfo );

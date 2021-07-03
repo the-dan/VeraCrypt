@@ -6,7 +6,7 @@
  Encryption for the Masses 2.02a, which is Copyright (c) 1998-2000 Paul Le Roux
  and which is governed by the 'License Agreement for Encryption for the Masses'
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2017 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages. */
@@ -181,7 +181,7 @@ int ReadVolumeHeader (BOOL bBoot, char *encryptedHeader, Password *password, int
 #if !defined(_UEFI)
 	TC_EVENT keyDerivationCompletedEvent;
 	TC_EVENT noOutstandingWorkItemEvent;
-	KeyDerivationWorkItem *keyDerivationWorkItems;
+	KeyDerivationWorkItem *keyDerivationWorkItems = NULL;
 	KeyDerivationWorkItem *item;
 	size_t encryptionThreadCount = GetEncryptionThreadCount();
 	LONG outstandingWorkItemCount = 0;
@@ -392,11 +392,12 @@ KeyReady:	;
 
 				if (cryptoInfo->mode == XTS)
 				{
+#ifndef TC_WINDOWS_DRIVER
 					// Copy the secondary key (if cascade, multiple concatenated)
 					memcpy (cryptoInfo->k2, dk + EAGetKeySize (cryptoInfo->ea), EAGetKeySize (cryptoInfo->ea));
-
+#endif
 					// Secondary key schedule
-					if (!EAInitMode (cryptoInfo))
+					if (!EAInitMode (cryptoInfo, dk + EAGetKeySize (cryptoInfo->ea)))
 					{
 						status = ERR_MODE_INIT_FAILED;
 						goto err;
@@ -465,13 +466,13 @@ KeyReady:	;
 
 				// Header version
 				cryptoInfo->HeaderVersion = headerVersion;
-
+#if 0
 				// Volume creation time (legacy)
 				cryptoInfo->volume_creation_time = GetHeaderField64 (header, TC_HEADER_OFFSET_VOLUME_CREATION_TIME).Value;
 
 				// Header creation time (legacy)
 				cryptoInfo->header_creation_time = GetHeaderField64 (header, TC_HEADER_OFFSET_MODIFICATION_TIME).Value;
-
+#endif
 				// Hidden volume size (if any)
 				cryptoInfo->hiddenVolumeSize = GetHeaderField64 (header, TC_HEADER_OFFSET_HIDDEN_VOLUME_SIZE).Value;
 
@@ -526,10 +527,19 @@ KeyReady:	;
 
 				// Master key data
 				memcpy (keyInfo.master_keydata, header + HEADER_MASTER_KEYDATA_OFFSET, MASTER_KEYDATA_SIZE);
+#ifdef TC_WINDOWS_DRIVER
+				{
+					RMD160_CTX ctx;
+					RMD160Init (&ctx);
+					RMD160Update (&ctx, keyInfo.master_keydata, MASTER_KEYDATA_SIZE);
+					RMD160Update (&ctx, header, sizeof(header));
+					RMD160Final (cryptoInfo->master_keydata_hash, &ctx);
+					burn(&ctx, sizeof (ctx));
+				}
+#else
 				memcpy (cryptoInfo->master_keydata, keyInfo.master_keydata, MASTER_KEYDATA_SIZE);
-
+#endif
 				// PKCS #5
-				memcpy (cryptoInfo->salt, keyInfo.salt, PKCS5_SALT_SIZE);
 				cryptoInfo->pkcs5 = pkcs5_prf;
 				cryptoInfo->noIterations = keyInfo.noIterations;
 				cryptoInfo->bTrueCryptMode = truecryptMode;
@@ -539,17 +549,11 @@ KeyReady:	;
 				status = EAInit (cryptoInfo->ea, keyInfo.master_keydata + primaryKeyOffset, cryptoInfo->ks);
 				if (status == ERR_CIPHER_INIT_FAILURE)
 					goto err;
-
-				switch (cryptoInfo->mode)
-				{
-
-				default:
-					// The secondary master key (if cascade, multiple concatenated)
-					memcpy (cryptoInfo->k2, keyInfo.master_keydata + EAGetKeySize (cryptoInfo->ea), EAGetKeySize (cryptoInfo->ea));
-
-				}
-
-				if (!EAInitMode (cryptoInfo))
+#ifndef TC_WINDOWS_DRIVER
+				// The secondary master key (if cascade, multiple concatenated)
+				memcpy (cryptoInfo->k2, keyInfo.master_keydata + EAGetKeySize (cryptoInfo->ea), EAGetKeySize (cryptoInfo->ea));
+#endif
+				if (!EAInitMode (cryptoInfo, keyInfo.master_keydata + EAGetKeySize (cryptoInfo->ea)))
 				{
 					status = ERR_MODE_INIT_FAILED;
 					goto err;
@@ -585,8 +589,11 @@ ret:
 	{
 		TC_WAIT_EVENT (noOutstandingWorkItemEvent);
 
-		burn (keyDerivationWorkItems, sizeof (KeyDerivationWorkItem) * pkcs5PrfCount);
-		TCfree (keyDerivationWorkItems);
+		if (keyDerivationWorkItems)
+		{
+			burn (keyDerivationWorkItems, sizeof (KeyDerivationWorkItem) * pkcs5PrfCount);
+			TCfree (keyDerivationWorkItems);
+		}
 
 #if !defined(DEVICE_DRIVER) 
 		CloseHandle (keyDerivationCompletedEvent);
@@ -1032,14 +1039,11 @@ int CreateVolumeHeaderInMemory (HWND hwndDlg, BOOL bBoot, char *header, int ea, 
 
 	/* Header encryption */
 
-	switch (mode)
-	{
-
-	default:
-		// The secondary key (if cascade, multiple concatenated)
-		memcpy (cryptoInfo->k2, dk + EAGetKeySize (cryptoInfo->ea), EAGetKeySize (cryptoInfo->ea));
-		primaryKeyOffset = 0;
-	}
+#ifndef TC_WINDOWS_DRIVER
+	// The secondary key (if cascade, multiple concatenated)
+	memcpy (cryptoInfo->k2, dk + EAGetKeySize (cryptoInfo->ea), EAGetKeySize (cryptoInfo->ea));
+	primaryKeyOffset = 0;
+#endif
 
 	retVal = EAInit (cryptoInfo->ea, dk + primaryKeyOffset, cryptoInfo->ks);
 	if (retVal != ERR_SUCCESS)
@@ -1049,7 +1053,7 @@ int CreateVolumeHeaderInMemory (HWND hwndDlg, BOOL bBoot, char *header, int ea, 
 	}
 
 	// Mode of operation
-	if (!EAInitMode (cryptoInfo))
+	if (!EAInitMode (cryptoInfo, dk + EAGetKeySize (cryptoInfo->ea)))
 	{
 		crypto_close (cryptoInfo);
 		retVal = ERR_OUTOFMEMORY;
@@ -1075,16 +1079,13 @@ int CreateVolumeHeaderInMemory (HWND hwndDlg, BOOL bBoot, char *header, int ea, 
 
 	memcpy (cryptoInfo->master_keydata, keyInfo.master_keydata, MASTER_KEYDATA_SIZE);
 
-	switch (cryptoInfo->mode)
-	{
-
-	default:
-		// The secondary master key (if cascade, multiple concatenated)
-		memcpy (cryptoInfo->k2, keyInfo.master_keydata + EAGetKeySize (cryptoInfo->ea), EAGetKeySize (cryptoInfo->ea));
-	}
+#ifndef TC_WINDOWS_DRIVER
+	// The secondary master key (if cascade, multiple concatenated)
+	memcpy (cryptoInfo->k2, keyInfo.master_keydata + EAGetKeySize (cryptoInfo->ea), EAGetKeySize (cryptoInfo->ea));
+#endif
 
 	// Mode of operation
-	if (!EAInitMode (cryptoInfo))
+	if (!EAInitMode (cryptoInfo, keyInfo.master_keydata + EAGetKeySize (cryptoInfo->ea)))
 	{
 		crypto_close (cryptoInfo);
 		retVal = ERR_OUTOFMEMORY;
@@ -1155,21 +1156,21 @@ BOOL ReadEffectiveVolumeHeader (BOOL device, HANDLE fileHandle, byte *header, DW
 #endif
 
 	byte sectorBuffer[TC_MAX_VOLUME_SECTOR_SIZE];
-	DISK_GEOMETRY_EX geometry;
+	DISK_GEOMETRY geometry;
 
 	if (!device)
 		return ReadFile (fileHandle, header, TC_VOLUME_HEADER_EFFECTIVE_SIZE, bytesRead, NULL);
 
-	if (!DeviceIoControl (fileHandle, IOCTL_DISK_GET_DRIVE_GEOMETRY_EX, NULL, 0, &geometry, sizeof (geometry), bytesRead, NULL))
+	if (!DeviceIoControl (fileHandle, IOCTL_DISK_GET_DRIVE_GEOMETRY, NULL, 0, &geometry, sizeof (geometry), bytesRead, NULL))
 		return FALSE;
 
-	if (geometry.Geometry.BytesPerSector > sizeof (sectorBuffer) || geometry.Geometry.BytesPerSector < TC_MIN_VOLUME_SECTOR_SIZE)
+	if (geometry.BytesPerSector > sizeof (sectorBuffer) || geometry.BytesPerSector < TC_MIN_VOLUME_SECTOR_SIZE)
 	{
 		SetLastError (ERROR_INVALID_PARAMETER);
 		return FALSE;
 	}
 
-	if (!ReadFile (fileHandle, sectorBuffer, max (TC_VOLUME_HEADER_EFFECTIVE_SIZE, geometry.Geometry.BytesPerSector), bytesRead, NULL))
+	if (!ReadFile (fileHandle, sectorBuffer, max (TC_VOLUME_HEADER_EFFECTIVE_SIZE, geometry.BytesPerSector), bytesRead, NULL))
 		return FALSE;
 
 	memcpy (header, sectorBuffer, min (*bytesRead, TC_VOLUME_HEADER_EFFECTIVE_SIZE));
@@ -1189,7 +1190,7 @@ BOOL WriteEffectiveVolumeHeader (BOOL device, HANDLE fileHandle, byte *header)
 
 	byte sectorBuffer[TC_MAX_VOLUME_SECTOR_SIZE];
 	DWORD bytesDone;
-	DISK_GEOMETRY_EX geometry;
+	DISK_GEOMETRY geometry;
 
 	if (!device)
 	{
@@ -1205,23 +1206,24 @@ BOOL WriteEffectiveVolumeHeader (BOOL device, HANDLE fileHandle, byte *header)
 		return TRUE;
 	}
 
-	if (!DeviceIoControl (fileHandle, IOCTL_DISK_GET_DRIVE_GEOMETRY_EX, NULL, 0, &geometry, sizeof (geometry), &bytesDone, NULL))
+
+	if (!DeviceIoControl (fileHandle, IOCTL_DISK_GET_DRIVE_GEOMETRY, NULL, 0, &geometry, sizeof (geometry), &bytesDone, NULL))
 		return FALSE;
 
-	if (geometry.Geometry.BytesPerSector > sizeof (sectorBuffer) || geometry.Geometry.BytesPerSector < TC_MIN_VOLUME_SECTOR_SIZE)
+	if (geometry.BytesPerSector > sizeof (sectorBuffer) || geometry.BytesPerSector < TC_MIN_VOLUME_SECTOR_SIZE)
 	{
 		SetLastError (ERROR_INVALID_PARAMETER);
 		return FALSE;
 	}
 
-	if (geometry.Geometry.BytesPerSector != TC_VOLUME_HEADER_EFFECTIVE_SIZE)
+	if (geometry.BytesPerSector != TC_VOLUME_HEADER_EFFECTIVE_SIZE)
 	{
 		LARGE_INTEGER seekOffset;
 
-		if (!ReadFile (fileHandle, sectorBuffer, geometry.Geometry.BytesPerSector, &bytesDone, NULL))
+		if (!ReadFile (fileHandle, sectorBuffer, geometry.BytesPerSector, &bytesDone, NULL))
 			return FALSE;
 
-		if (bytesDone != geometry.Geometry.BytesPerSector)
+		if (bytesDone != geometry.BytesPerSector)
 		{
 			SetLastError (ERROR_INVALID_PARAMETER);
 			return FALSE;
@@ -1234,10 +1236,10 @@ BOOL WriteEffectiveVolumeHeader (BOOL device, HANDLE fileHandle, byte *header)
 
 	memcpy (sectorBuffer, header, TC_VOLUME_HEADER_EFFECTIVE_SIZE);
 
-	if (!WriteFile (fileHandle, sectorBuffer, geometry.Geometry.BytesPerSector, &bytesDone, NULL))
+	if (!WriteFile (fileHandle, sectorBuffer, geometry.BytesPerSector, &bytesDone, NULL))
 		return FALSE;
 
-	if (bytesDone != geometry.Geometry.BytesPerSector)
+	if (bytesDone != geometry.BytesPerSector)
 	{
 		SetLastError (ERROR_INVALID_PARAMETER);
 		return FALSE;
@@ -1282,7 +1284,7 @@ int WriteRandomDataToReservedHeaderAreas (HWND hwndDlg, HANDLE dev, CRYPTO_INFO 
 		if (nStatus != ERR_SUCCESS)
 			goto final_seq;
 
-		if (!EAInitMode (cryptoInfo))
+		if (!EAInitMode (cryptoInfo, cryptoInfo->k2))
 		{
 			nStatus = ERR_MODE_INIT_FAILED;
 			goto final_seq;
@@ -1344,7 +1346,7 @@ int WriteRandomDataToReservedHeaderAreas (HWND hwndDlg, HANDLE dev, CRYPTO_INFO 
 	if (nStatus != ERR_SUCCESS)
 		goto final_seq;
 
-	if (!EAInitMode (cryptoInfo))
+	if (!EAInitMode (cryptoInfo, cryptoInfo->k2))
 	{
 		nStatus = ERR_MODE_INIT_FAILED;
 		goto final_seq;

@@ -4,7 +4,7 @@
  by the TrueCrypt License 3.0.
 
  Modifications and additions to the original source code (contained in this file) 
- and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2017 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
@@ -17,7 +17,7 @@
 #include "BootDefs.h"
 
 // The user will be advised to upgrade the rescue disk if upgrading from the following or any previous version
-#define TC_RESCUE_DISK_UPGRADE_NOTICE_MAX_VERSION 0x0118
+#define TC_RESCUE_DISK_UPGRADE_NOTICE_MAX_VERSION 0x0123
 
 #define TC_BOOT_LOADER_AREA_SIZE (TC_BOOT_LOADER_AREA_SECTOR_COUNT * TC_SECTOR_SIZE_BIOS)
 
@@ -58,7 +58,7 @@ typedef struct
 	uint16 CryptoInfoOffset;
 	uint16 CryptoInfoLength;
 	uint32 HeaderSaltCrc32;
-	Password BootPassword;
+	PasswordLegacy BootPassword;
 	uint64 HiddenSystemPartitionStart;
 	uint64 DecoySystemPartitionStart;
 	uint32 Flags;
@@ -206,9 +206,9 @@ typedef struct _DCS_DEP_PWD_CACHE {
 	uint64       Sign;
 	uint32       CRC;
 	uint32       Count;
-	Password     Pwd[4];
+	PasswordLegacy     Pwd[4];
 	int32        Pim[4];
-	byte         pad[512 - 8 - 4 - 4 - (sizeof(Password) + 4) * 4];
+	byte         pad[512 - 8 - 4 - 4 - (sizeof(PasswordLegacy) + 4) * 4];
 } DCS_DEP_PWD_CACHE;
 CSTATIC_ASSERT(sizeof(DCS_DEP_PWD_CACHE) == 512, Wrong_size_DCS_DEP_PWD_CACHE);
 #pragma pack()

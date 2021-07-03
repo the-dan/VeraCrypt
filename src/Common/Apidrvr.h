@@ -6,7 +6,7 @@
  Encryption for the Masses 2.02a, which is Copyright (c) 1998-2000 Paul Le Roux
  and which is governed by the 'License Agreement for Encryption for the Masses'
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2017 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages. */
@@ -123,6 +123,10 @@
 // IN OUT - DISK_GEOMETRY_EX_STRUCT
 #define VC_IOCTL_GET_DRIVE_GEOMETRY_EX					TC_IOCTL (40)
 
+#define VC_IOCTL_EMERGENCY_CLEAR_ALL_KEYS				TC_IOCTL (41)
+
+#define VC_IOCTL_IS_RAM_ENCRYPTION_ENABLED				TC_IOCTL (42)
+
 // Legacy IOCTLs used before version 5.0
 #define TC_IOCTL_LEGACY_GET_DRIVER_VERSION		466968
 #define TC_IOCTL_LEGACY_GET_MOUNTED_VOLUMES		466948
@@ -220,6 +224,7 @@ typedef struct
 	wchar_t wszLabel[33];
 	BOOL bDriverSetLabel;
 	unsigned char volumeID[VOLUME_ID_SIZE];
+	BOOL mountDisabled;
 } VOLUME_PROPERTIES_STRUCT;
 
 typedef struct
@@ -410,5 +415,11 @@ typedef struct
 #define TC_DRIVER_CONFIG_ENABLE_EXTENDED_IOCTL						0x10
 #define TC_DRIVER_CONFIG_DISABLE_EVIL_MAID_ATTACK_DETECTION			0x20
 #define TC_DRIVER_CONFIG_CACHE_BOOT_PIM								0x40
+#define VC_DRIVER_CONFIG_ALLOW_NONSYS_TRIM							0x80
+#define VC_DRIVER_CONFIG_BLOCK_SYS_TRIM								0x100
+#define VC_DRIVER_CONFIG_ALLOW_WINDOWS_DEFRAG						0x200
+#define VC_DRIVER_CONFIG_CLEAR_KEYS_ON_NEW_DEVICE_INSERTION			0x400
+#define VC_DRIVER_CONFIG_ENABLE_CPU_RNG								0x800
+#define VC_DRIVER_CONFIG_ENABLE_RAM_ENCRYPTION						0x1000
 
 #endif		/* _WIN32 */

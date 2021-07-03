@@ -4,7 +4,7 @@
  by the TrueCrypt License 3.0.
 
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2017 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
@@ -466,6 +466,7 @@ namespace VeraCrypt
 					continue;
 				}
 
+				options.Password.reset();
 				throw;
 			}
 
@@ -474,19 +475,10 @@ namespace VeraCrypt
 
 		if (options.Path->IsDevice())
 		{
-			if (volume->GetFile()->GetDeviceSectorSize() != volume->GetSectorSize())
-				throw ParameterIncorrect (SRC_POS);
-
-#if defined (TC_LINUX)
-			if (volume->GetSectorSize() != TC_SECTOR_SIZE_LEGACY)
-			{
-				if (options.Protection == VolumeProtection::HiddenVolumeReadOnly)
-					throw UnsupportedSectorSizeHiddenVolumeProtection();
-
-				if (options.NoKernelCrypto)
-					throw UnsupportedSectorSizeNoKernelCrypto();
-			}
-#endif
+			const uint32 devSectorSize = volume->GetFile()->GetDeviceSectorSize();
+			const size_t volSectorSize = volume->GetSectorSize();
+			if (devSectorSize != volSectorSize)
+				throw DeviceSectorSizeMismatch (SRC_POS, StringConverter::ToWide(devSectorSize) + L" != " + StringConverter::ToWide((uint32) volSectorSize));
 		}
 
 		// Find a free mount point for FUSE service

@@ -6,7 +6,7 @@
  Encryption for the Masses 2.02a, which is Copyright (c) 1998-2000 Paul Le Roux
  and which is governed by the 'License Agreement for Encryption for the Masses'
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2017 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages. */
@@ -79,6 +79,7 @@ enum
 #define TC_APPD_FILENAME_NONSYS_INPLACE_ENC_WIPE			L"In-Place Encryption Wipe Algo"
 #define TC_APPD_FILENAME_POST_INSTALL_TASK_TUTORIAL			L"Post-Install Task - Tutorial"
 #define TC_APPD_FILENAME_POST_INSTALL_TASK_RELEASE_NOTES	L"Post-Install Task - Release Notes"
+#define TC_APPD_FILENAME_POST_INSTALL_TASK_RESCUE_DISK		L"Post-Install Task - Rescue Disk"
 
 #define VC_FILENAME_RENAMED_SUFFIX				L"_old"
 
@@ -94,7 +95,8 @@ enum
 {
 	TC_POST_INSTALL_CFG_REMOVE_ALL = 0,
 	TC_POST_INSTALL_CFG_TUTORIAL,
-	TC_POST_INSTALL_CFG_RELEASE_NOTES
+	TC_POST_INSTALL_CFG_RELEASE_NOTES,
+	TC_POST_INSTALL_CFG_RESCUE_DISK,
 };
 
 extern char *LastDialogId;
@@ -122,6 +124,9 @@ extern BOOL bHideWaitingDialog;
 extern BOOL bCmdHideWaitingDialog;
 extern BOOL bCmdHideWaitingDialogValid;
 extern BOOL bUseSecureDesktop;
+extern volatile BOOL bSecureDesktopOngoing;
+extern TCHAR SecureDesktopName[65];
+extern BOOL bUseLegacyMaxPasswordLength;
 extern BOOL bCmdUseSecureDesktop;
 extern BOOL bCmdUseSecureDesktopValid;
 extern BOOL bStartOnLogon;
@@ -133,6 +138,7 @@ extern OSVersionEnum nCurrentOS;
 extern int CurrentOSMajor;
 extern int CurrentOSMinor;
 extern int CurrentOSServicePack;
+extern int CurrentOSBuildNumber;
 extern BOOL RemoteSession;
 extern HANDLE hDriver;
 extern HINSTANCE hInst;
@@ -160,6 +166,13 @@ extern BOOL MountVolumesAsSystemFavorite;
 extern BOOL FavoriteMountOnArrivalInProgress;
 extern BOOL MultipleMountOperationInProgress;
 
+extern volatile BOOL NeedPeriodicDeviceListUpdate;
+extern BOOL DisablePeriodicDeviceListUpdate;
+extern BOOL EnableMemoryProtection;
+
+#ifndef SETUP
+extern BOOL bLanguageSetInSetup;
+#endif
 
 enum tc_app_msg_ids
 {
@@ -178,6 +191,7 @@ enum tc_app_msg_ids
 	TC_APPMSG_MOUNT_ENABLE_DISABLE_CONTROLS =		WM_APP + 201,
 	TC_APPMSG_MOUNT_SHOW_WINDOW =					WM_APP + 202,
 	TC_APPMSG_PREBOOT_PASSWORD_MODE =				WM_APP + 203,
+	VC_APPMSG_CREATE_RESCUE_DISK =					WM_APP + 204,
 	// Format
 	TC_APPMSG_VOL_TRANSFORM_THREAD_ENDED =			WM_APP + 301,
 	TC_APPMSG_FORMAT_FINISHED =						WM_APP + 302,
@@ -229,6 +243,13 @@ typedef struct
 
 } OpenVolumeContext;
 
+typedef enum BitLockerEncryptionStatus
+{
+    BL_Status_Unknown = 0,
+    BL_Status_Unprotected,
+    BL_Status_Protected
+} BitLockerEncryptionStatus;
+
 
 #define DEFAULT_VOL_CREATION_WIZARD_MODE	WIZARD_MODE_FILE_CONTAINER
 
@@ -238,6 +259,8 @@ typedef struct
 #define	ISO_BURNER_TOOL L"isoburn.exe"
 #define PRINT_TOOL L"notepad.exe"
 
+void InitGlobalLocks ();
+void FinalizeGlobalLocks ();
 void cleanup ( void );
 void LowerCaseCopy ( wchar_t *lpszDest , const wchar_t *lpszSource );
 void UpperCaseCopy ( wchar_t *lpszDest , size_t cbDest, const wchar_t *lpszSource );
@@ -297,6 +320,7 @@ BOOL InstanceHasAppSetupMutex (void);
 void CloseAppSetupMutex (void);
 BOOL IsTrueCryptInstallerRunning (void);
 uint32 ReadDriverConfigurationFlags ();
+uint32 ReadServiceConfigurationFlags ();
 uint32 ReadEncryptionThreadPoolFreeCpuCountLimit ();
 BOOL LoadSysEncSettings ();
 int LoadNonSysInPlaceEncSettings (WipeAlgorithmId *wipeAlgorithm);
@@ -337,6 +361,7 @@ BOOL CloseVolumeExplorerWindows (HWND hwnd, int driveNo);
 BOOL UpdateDriveCustomLabel (int driveNo, wchar_t* effectiveLabel, BOOL bSetValue);
 BOOL CheckCapsLock (HWND hwnd, BOOL quiet);
 BOOL CheckFileExtension (wchar_t *fileName);
+BOOL IsTrueCryptFileExtension (wchar_t *fileName);
 void CorrectFileName (wchar_t* fileName);
 void CorrectURL (wchar_t* fileName);
 void IncreaseWrongPwdRetryCount (int count);
@@ -448,6 +473,7 @@ void DebugMsgBox (char *format, ...);
 BOOL IsOSAtLeast (OSVersionEnum reqMinOS);
 BOOL IsOSVersionAtLeast (OSVersionEnum reqMinOS, int reqMinServicePack);
 BOOL Is64BitOs ();
+BOOL IsARM();
 BOOL IsServerOS ();
 BOOL IsHiddenOSRunning (void);
 BOOL EnableWow64FsRedirection (BOOL enable);
@@ -459,7 +485,7 @@ BOOL CALLBACK CloseTCWindowsEnum( HWND hwnd, LPARAM lParam);
 BOOL CALLBACK FindTCWindowEnum (HWND hwnd, LPARAM lParam);
 BYTE *MapResource (wchar_t *resourceType, int resourceId, PDWORD size);
 void InconsistencyResolved (char *msg);
-void ReportUnexpectedState (char *techInfo);
+void ReportUnexpectedState (const char *techInfo);
 BOOL SelectMultipleFiles (HWND hwndDlg, const char *stringId, wchar_t *lpszFileName, size_t cbFileName, BOOL keepHistory);
 BOOL SelectMultipleFilesNext (wchar_t *lpszFileName, size_t cbFileName);
 void OpenOnlineHelp ();
@@ -478,6 +504,7 @@ BOOL ToCustHyperlink (HWND hwndDlg, UINT ctrlId, HFONT hFont);
 void DisableCloseButton (HWND hwndDlg);
 void EnableCloseButton (HWND hwndDlg);
 void ToBootPwdField (HWND hwndDlg, UINT ctrlId);
+void ToNormalPwdField (HWND hwndDlg, UINT ctrlId);
 void AccommodateTextField (HWND hwndDlg, UINT ctrlId, BOOL bFirstUpdate, HFONT hFont);
 BOOL GetDriveLabel (int driveNo, wchar_t *label, int labelSize);
 BOOL GetSysDevicePaths (HWND hwndDlg);
@@ -494,7 +521,9 @@ BOOL InitSecurityTokenLibrary (HWND hwndDlg);
 BOOL FileHasReadOnlyAttribute (const wchar_t *path);
 BOOL IsFileOnReadOnlyFilesystem (const wchar_t *path);
 void CheckFilesystem (HWND hwndDlg, int driveNo, BOOL fixErrors);
+BOOL BufferContainsPattern (const byte *buffer, size_t bufferSize, const byte *pattern, size_t patternSize);
 BOOL BufferContainsString (const byte *buffer, size_t bufferSize, const char *str);
+BOOL BufferContainsWideString (const byte *buffer, size_t bufferSize, const wchar_t *str);
 int AskNonSysInPlaceEncryptionResume (HWND hwndDlg, BOOL* pbDecrypt);
 BOOL RemoveDeviceWriteProtection (HWND hwndDlg, wchar_t *devicePath);
 void EnableElevatedCursorChange (HWND parent);
@@ -503,9 +532,9 @@ BOOL VolumePathExists (const wchar_t *volumePath);
 BOOL IsWindowsIsoBurnerAvailable ();
 BOOL LaunchWindowsIsoBurner (HWND hwnd, const wchar_t *isoPath);
 BOOL IsApplicationInstalled (const wchar_t *appName);
-int GetPim (HWND hwndDlg, UINT ctrlId);
+int GetPim (HWND hwndDlg, UINT ctrlId, int defaultPim);
 void SetPim (HWND hwndDlg, UINT ctrlId, int pim);
-BOOL GetPassword (HWND hwndDlg, UINT ctrlID, char* passValue, int bufSize, BOOL bShowError);
+BOOL GetPassword (HWND hwndDlg, UINT ctrlID, char* passValue, int bufSize, BOOL bLegacyPassword, BOOL bShowError);
 void SetPassword (HWND hwndDlg, UINT ctrlID, char* passValue);
 void HandleShowPasswordFieldAction (HWND hwndDlg, UINT checkBoxId, UINT edit1Id, UINT edit2Id);
 HKEY OpenDeviceClassRegKey (const GUID *deviceClassGuid);
@@ -520,10 +549,20 @@ BOOL TranslateVolumeID (HWND hwndDlg, wchar_t* pathValue, size_t cchPathValue);
 BOOL CopyTextToClipboard (const wchar_t* txtValue);
 BOOL LaunchElevatedProcess (HWND hwndDlg, const wchar_t* szModPath, const wchar_t* args);
 BOOL GetFreeDriveLetter(WCHAR* pCh);
-BOOL RaisePrivileges(void);
+BOOL SetPrivilege(LPTSTR szPrivilegeName, BOOL bEnable);
 BOOL DeleteDirectory (const wchar_t* szDirName);
+BOOL IsThreadInSecureDesktop(DWORD dwThreadID);
 INT_PTR SecureDesktopDialogBoxParam (HINSTANCE, LPCWSTR, HWND, DLGPROC, LPARAM);
-
+BOOL VerifyModuleSignature (const wchar_t* path);
+void GetInstallationPath (HWND hwndDlg, wchar_t* szInstallPath, DWORD cchSize, BOOL* pbInstallPathDetermined);
+BOOL GetSetupconfigLocation (wchar_t* path, DWORD cchSize);
+BOOL BufferHasPattern (const unsigned char* buffer, size_t bufferLen, const void* pattern, size_t patternLen);
+BOOL EnableProcessProtection();
+void SafeOpenURL (LPCWSTR szUrl);
+BitLockerEncryptionStatus GetBitLockerEncryptionStatus(WCHAR driveLetter);
+#ifdef _WIN64
+void GetAppRandomSeed (unsigned char* pbRandSeed, size_t cbRandSeed);
+#endif
 #ifdef __cplusplus
 }
 
@@ -574,6 +613,30 @@ struct HostDevice
 
 	~HostDevice () {}
 
+	HostDevice& operator= (const HostDevice& device)
+	{
+		if (this != &device)
+		{
+			Bootable = device.Bootable;
+			ContainsSystem = device.ContainsSystem;
+			DynamicVolume = device.DynamicVolume;
+			Floppy = device.Floppy;
+			IsPartition = device.IsPartition;
+			IsVirtualPartition = device.IsVirtualPartition;
+			HasUnencryptedFilesystem = device.HasUnencryptedFilesystem;
+			MountPoint = device.MountPoint;
+			Name = device.Name;
+			Path = device.Path;
+			Removable = device.Removable;
+			Size = device.Size;
+			SystemNumber = device.SystemNumber;
+			HasVolumeIDs = device.HasVolumeIDs;
+			Partitions = device.Partitions;
+			memcpy (VolumeIDs, device.VolumeIDs, sizeof (VolumeIDs));
+		}
+		return *this;
+	}
+
 	bool Bootable;
 	bool ContainsSystem;
 	bool DynamicVolume;
@@ -616,7 +679,7 @@ std::wstring GetUserFriendlyVersionString (int version);
 std::wstring IntToWideString (int val);
 std::wstring ArrayToHexWideString (const unsigned char* pbData, int cbData);
 bool HexWideStringToArray (const wchar_t* hexStr, std::vector<byte>& arr);
-std::wstring FindDeviceByVolumeID (const BYTE volumeID [VOLUME_ID_SIZE]);
+std::wstring FindDeviceByVolumeID (const BYTE volumeID [VOLUME_ID_SIZE], BOOL bFromService);
 void RegisterDriverInf (bool registerFilter, const std::string& filter, const std::string& filterReg, HWND ParentWindow, HKEY regKey);
 std::wstring GetTempPathString ();
 void CorrectFileName (std::wstring& fileName);
@@ -631,6 +694,62 @@ INT_PTR TextEditDialogBox (BOOL readOnly, HWND parent, const WCHAR* Title, std::
 typedef void (CALLBACK* WaitThreadProc)(void* pArg, HWND hWaitDlg);
 void BringToForeground(HWND hWnd);
 void ShowWaitDialog(HWND hwnd, BOOL bUseHwndAsParent, WaitThreadProc callback, void* pArg);
+
+// classes used to implement support for password drag-n-drop from KeePass Password Safe
+// Implementation based the following source code with many modifications to fix isses and add features
+// URL: https://www.codeguru.com/cpp/misc/misc/draganddrop/article.php/c349/Drag-And-Drop-between-Window-Controls.htm
+
+interface GenericDropTarget : public IDropTarget
+{
+public:
+	GenericDropTarget(CLIPFORMAT* pFormats, size_t count);
+	~GenericDropTarget();
+
+	//	basic IUnknown stuff
+	HRESULT	STDMETHODCALLTYPE	QueryInterface(REFIID iid, void ** ppvObject); 
+	ULONG	STDMETHODCALLTYPE	AddRef(void); 
+	ULONG	STDMETHODCALLTYPE	Release(void); 
+
+	HRESULT	STDMETHODCALLTYPE	DragEnter(struct IDataObject *,unsigned long,struct _POINTL,unsigned long *); 
+	HRESULT	STDMETHODCALLTYPE	DragOver(unsigned long,struct _POINTL,unsigned long *); 
+	HRESULT	STDMETHODCALLTYPE	DragLeave(void);
+	HRESULT	STDMETHODCALLTYPE	Drop(struct IDataObject *,unsigned long,struct _POINTL,unsigned long *);
+
+	//	called by parents
+	BOOL						Register(HWND hWnd);
+	void						Revoke();
+
+	//	call parent we have goodies
+	virtual	void				GotDrop(CLIPFORMAT format);
+	virtual	DWORD				GotDrag(void);
+	virtual	void				GotLeave(void);
+	virtual	DWORD				GotEnter(void);
+public:
+	BYTE			*m_Data;
+
+	POINT			m_DropPoint;
+
+	DWORD			m_KeyState;
+
+protected:
+	HWND			m_DropTargetWnd;
+	std::vector<CLIPFORMAT> m_SupportedFormat;
+	volatile LONG	m_dwRefCount;
+};
+
+class PasswordEditDropTarget : public GenericDropTarget
+{
+public:
+	PasswordEditDropTarget();
+
+	//	called by child we have drop
+	void	GotDrop(CLIPFORMAT format);
+	DWORD	GotDrag(void);
+	void	GotLeave(void);
+	DWORD	GotEnter(void);
+};
+
+BOOL GetHibernateStatus (BOOL& bHibernateEnabled, BOOL& bHiberbootEnabled);
 
 #endif // __cplusplus
 

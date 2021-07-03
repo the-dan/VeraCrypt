@@ -4,7 +4,7 @@
  by the TrueCrypt License 3.0.
 
  Modifications and additions to the original source code (contained in this file) 
- and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2017 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
@@ -96,7 +96,7 @@ public:
 	}
 
 	virtual int STDMETHODCALLTYPE AnalyzeHiddenVolumeHost (
-		LONG_PTR hwndDlg, int *driveNo, __int64 hiddenVolHostSize, int *realClusterSize, __int64 *nbrFreeClusters)
+		__int64 hwndDlg, int *driveNo, __int64 hiddenVolHostSize, int *realClusterSize, __int64 *nbrFreeClusters)
 	{
 		return ::AnalyzeHiddenVolumeHost (
 			(HWND) hwndDlg, driveNo, hiddenVolHostSize, realClusterSize, nbrFreeClusters);
@@ -167,9 +167,19 @@ public:
 		return BaseCom::GetEfiBootDeviceNumber (pSdn);
 	}
 
+	virtual DWORD STDMETHODCALLTYPE GetSecureBootConfig (BOOL* pSecureBootEnabled, BOOL *pVeraCryptKeysLoaded)
+	{
+		return BaseCom::GetSecureBootConfig (pSecureBootEnabled, pVeraCryptKeysLoaded);
+	}
+
 	virtual DWORD STDMETHODCALLTYPE WriteEfiBootSectorUserConfig (DWORD userConfig, BSTR customUserMessage, int pim, int hashAlg)
 	{
 		return BaseCom::WriteEfiBootSectorUserConfig (userConfig, customUserMessage,pim, hashAlg);
+	}
+
+	virtual DWORD STDMETHODCALLTYPE UpdateSetupConfigFile (BOOL bForInstall)
+	{
+		return BaseCom::UpdateSetupConfigFile (bForInstall);
 	}
 
 protected:
@@ -273,7 +283,7 @@ extern "C" int UacAnalyzeHiddenVolumeHost (HWND hwndDlg, int *driveNo, __int64 h
 	CoInitialize (NULL);
 
 	if (ComGetInstance (hwndDlg, &tc))
-		r = tc->AnalyzeHiddenVolumeHost ((LONG_PTR) hwndDlg, driveNo, hiddenVolHostSize, realClusterSize, nbrFreeClusters);
+		r = tc->AnalyzeHiddenVolumeHost ((__int64) hwndDlg, driveNo, hiddenVolHostSize, realClusterSize, nbrFreeClusters);
 	else
 		r = 0;
 
@@ -281,3 +291,42 @@ extern "C" int UacAnalyzeHiddenVolumeHost (HWND hwndDlg, int *driveNo, __int64 h
 
 	return r;
 }
+
+extern "C" BOOL UacWriteLocalMachineRegistryDword (HWND hwndDlg, wchar_t *keyPath, wchar_t *valueName, DWORD value)
+{
+	CComPtr<ITrueCryptFormatCom> tc;
+	int r = 0;
+
+	CoInitialize (NULL);
+
+	if (ComGetInstance (hwndDlg, &tc))
+	{
+		CComBSTR keyPathBstr, valueNameBstr;
+		BSTR bstr = W2BSTR(keyPath);
+		if (bstr)
+		{
+			keyPathBstr.Attach (bstr);
+			bstr = W2BSTR(valueName);
+			if (bstr)
+			{
+				valueNameBstr.Attach (bstr);
+				r = tc->WriteLocalMachineRegistryDwordValue (keyPathBstr, valueNameBstr, value);
+			}
+			else
+				r = ERROR_OUTOFMEMORY;
+		}
+		else
+			r = ERROR_OUTOFMEMORY;
+	}
+
+	CoUninitialize ();
+
+	if (r == ERROR_SUCCESS)
+		return TRUE;
+	else
+	{
+		SetLastError (r);
+		return FALSE;
+	}
+}
+

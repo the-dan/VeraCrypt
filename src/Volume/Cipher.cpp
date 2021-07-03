@@ -4,7 +4,7 @@
  by the TrueCrypt License 3.0.
 
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2017 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
@@ -23,6 +23,23 @@
 #	include "Crypto/Aes_hw_cpu.h"
 #endif
 #include "Crypto/cpu.h"
+
+extern "C" int IsAesHwCpuSupported ()
+{
+#ifdef TC_AES_HW_CPU
+	static bool state = false;
+	static bool stateValid = false;
+
+	if (!stateValid)
+	{
+		state = g_hasAESNI ? true : false;
+		stateValid = true;
+	}
+	return state && VeraCrypt::Cipher::IsHwSupportEnabled();
+#else
+	return false;
+#endif
+}
 
 namespace VeraCrypt
 {
@@ -230,7 +247,7 @@ namespace VeraCrypt
 		if (!Initialized)
 			throw NotInitialized (SRC_POS);
 
-#if CRYPTOPP_BOOL_SSE2_INTRINSICS_AVAILABLE
+#if CRYPTOPP_BOOL_SSE2_INTRINSICS_AVAILABLE && !defined(CRYPTOPP_DISABLE_ASM)
 		if ((blockCount >= 4)
 			&& IsHwSupportAvailable())
 		{
@@ -246,7 +263,7 @@ namespace VeraCrypt
 		if (!Initialized)
 			throw NotInitialized (SRC_POS);
 
-#if CRYPTOPP_BOOL_SSE2_INTRINSICS_AVAILABLE
+#if CRYPTOPP_BOOL_SSE2_INTRINSICS_AVAILABLE && !defined(CRYPTOPP_DISABLE_ASM)
 		if ((blockCount >= 4)
 			&& IsHwSupportAvailable())
 		{
@@ -301,7 +318,7 @@ namespace VeraCrypt
 		if (!Initialized)
 			throw NotInitialized (SRC_POS);
 
-#if CRYPTOPP_BOOL_X64
+#if CRYPTOPP_BOOL_X64 && !defined(CRYPTOPP_DISABLE_ASM)
 		twofish_encrypt_blocks ( (TwofishInstance *) ScheduledKey.Ptr(), data, data, blockCount);
 #else
 		Cipher::EncryptBlocks (data, blockCount);
@@ -313,7 +330,7 @@ namespace VeraCrypt
 		if (!Initialized)
 			throw NotInitialized (SRC_POS);
 
-#if CRYPTOPP_BOOL_X64
+#if CRYPTOPP_BOOL_X64 && !defined(CRYPTOPP_DISABLE_ASM)
 		twofish_decrypt_blocks ( (TwofishInstance *) ScheduledKey.Ptr(), data, data, blockCount);
 #else
 		Cipher::DecryptBlocks (data, blockCount);
@@ -322,7 +339,7 @@ namespace VeraCrypt
 	
 	bool CipherTwofish::IsHwSupportAvailable () const
 	{
-#if CRYPTOPP_BOOL_X64
+#if CRYPTOPP_BOOL_X64 && !defined(CRYPTOPP_DISABLE_ASM)
 		return true;
 #else
 		return false;
@@ -348,6 +365,39 @@ namespace VeraCrypt
 	void CipherCamellia::SetCipherKey (const byte *key)
 	{
 		camellia_set_key (key, ScheduledKey.Ptr());
+	}
+	
+	void CipherCamellia::EncryptBlocks (byte *data, size_t blockCount) const
+	{
+		if (!Initialized)
+			throw NotInitialized (SRC_POS);
+
+#if CRYPTOPP_BOOL_X64 && !defined(CRYPTOPP_DISABLE_ASM)
+		camellia_encrypt_blocks ( ScheduledKey.Ptr(), data, data, blockCount);
+#else
+		Cipher::EncryptBlocks (data, blockCount);
+#endif
+	}
+	
+	void CipherCamellia::DecryptBlocks (byte *data, size_t blockCount) const
+	{
+		if (!Initialized)
+			throw NotInitialized (SRC_POS);
+
+#if CRYPTOPP_BOOL_X64 && !defined(CRYPTOPP_DISABLE_ASM)
+		camellia_decrypt_blocks ( ScheduledKey.Ptr(), data, data, blockCount);
+#else
+		Cipher::DecryptBlocks (data, blockCount);
+#endif
+	}
+	
+	bool CipherCamellia::IsHwSupportAvailable () const
+	{
+#if CRYPTOPP_BOOL_X64 && !defined(CRYPTOPP_DISABLE_ASM)
+		return true;
+#else
+		return false;
+#endif
 	}
 
 	// GOST89
@@ -411,6 +461,54 @@ namespace VeraCrypt
 	void CipherKuznyechik::SetCipherKey (const byte *key)
 	{
 		kuznyechik_set_key (key, (kuznyechik_kds *) ScheduledKey.Ptr());
+	}
+	void CipherKuznyechik::EncryptBlocks (byte *data, size_t blockCount) const
+	{
+		if (!Initialized)
+			throw NotInitialized (SRC_POS);
+
+#if CRYPTOPP_BOOL_SSE2_INTRINSICS_AVAILABLE
+		if ((blockCount >= 4)
+			&& IsHwSupportAvailable())
+		{
+			kuznyechik_encrypt_blocks (data, data, blockCount, (kuznyechik_kds *) ScheduledKey.Ptr());
+		}
+		else
+#endif
+			Cipher::EncryptBlocks (data, blockCount);
+	}
+	
+	void CipherKuznyechik::DecryptBlocks (byte *data, size_t blockCount) const
+	{
+		if (!Initialized)
+			throw NotInitialized (SRC_POS);
+
+#if CRYPTOPP_BOOL_SSE2_INTRINSICS_AVAILABLE
+		if ((blockCount >= 4)
+			&& IsHwSupportAvailable())
+		{
+			kuznyechik_decrypt_blocks (data, data, blockCount, (kuznyechik_kds *) ScheduledKey.Ptr());
+		}
+		else
+#endif
+			Cipher::DecryptBlocks (data, blockCount);
+	}
+	
+	bool CipherKuznyechik::IsHwSupportAvailable () const
+	{
+#if CRYPTOPP_BOOL_SSE2_INTRINSICS_AVAILABLE
+		static bool state = false;
+		static bool stateValid = false;
+
+		if (!stateValid)
+		{
+			state = HasSSE2() ? true : false;
+			stateValid = true;
+		}
+		return state;
+#else
+		return false;
+#endif
 	}
 	bool Cipher::HwSupportEnabled = true;
 }

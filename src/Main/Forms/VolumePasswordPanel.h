@@ -4,7 +4,7 @@
  by the TrueCrypt License 3.0.
 
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2017 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
@@ -27,7 +27,7 @@ namespace VeraCrypt
 
 		void AddKeyfile (shared_ptr <Keyfile> keyfile);
 		shared_ptr <KeyfileList> GetKeyfiles () const { return UseKeyfilesCheckBox->IsChecked() ? Keyfiles : shared_ptr <KeyfileList> (); }
-		shared_ptr <VolumePassword> GetPassword () const;
+		shared_ptr <VolumePassword> GetPassword (bool bForceLegacyPassword = false) const;
 		shared_ptr <Pkcs5Kdf> GetPkcs5Kdf (bool &bUnsupportedKdf) const;
 		shared_ptr <Pkcs5Kdf> GetPkcs5Kdf (bool bTrueCryptMode, bool &bUnsupportedKdf) const;
 		wstring GetSecurityTokenKeySpec () const;
@@ -51,7 +51,7 @@ namespace VeraCrypt
 	protected:
 		void SetPimValidator ();
 		void DisplayPassword (bool display, wxTextCtrl **textCtrl, int row);
-		shared_ptr <VolumePassword> GetPassword (wxTextCtrl *textCtrl) const;
+		shared_ptr <VolumePassword> GetPassword (wxTextCtrl *textCtrl, bool bLegacyPassword = false) const;
 		void OnAddKeyfileDirMenuItemSelected (wxCommandEvent& event);
 		void OnAddKeyfilesMenuItemSelected (wxCommandEvent& event);
 		void OnAddSecurityTokenSignatureMenuItemSelected (wxCommandEvent& event);

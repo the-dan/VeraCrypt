@@ -4,7 +4,7 @@
  by the TrueCrypt License 3.0.
 
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2017 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
@@ -30,11 +30,11 @@
 #	include <dlfcn.h>
 #endif
 
-#include "SecurityToken.h"
-
-#ifndef burn
-#	define burn Memory::Erase
+#ifdef TC_WINDOWS
+#define move_ptr	std::move
 #endif
+
+#include "SecurityToken.h"
 
 using namespace std;
 
@@ -750,9 +750,9 @@ namespace VeraCrypt
 	}
 
 #ifdef TC_WINDOWS
-	void SecurityToken::InitLibrary (const wstring &pkcs11LibraryPath, auto_ptr <GetPinFunctor> pinCallback, auto_ptr <SendExceptionFunctor> warningCallback)
+	void SecurityToken::InitLibrary (const wstring &pkcs11LibraryPath, unique_ptr <GetPinFunctor> pinCallback, unique_ptr <SendExceptionFunctor> warningCallback)
 #else
-	void SecurityToken::InitLibrary (const string &pkcs11LibraryPath, auto_ptr <GetPinFunctor> pinCallback, auto_ptr <SendExceptionFunctor> warningCallback)
+	void SecurityToken::InitLibrary (const string &pkcs11LibraryPath, unique_ptr <GetPinFunctor> pinCallback, unique_ptr <SendExceptionFunctor> warningCallback)
 #endif
 	{
 		if (Initialized)
@@ -785,8 +785,8 @@ namespace VeraCrypt
 		if (status != CKR_OK)
 			throw Pkcs11Exception (status);
 
-		PinCallback = pinCallback;
-		WarningCallback = warningCallback;
+		PinCallback = move_ptr(pinCallback);
+		WarningCallback = move_ptr(warningCallback);
 
 		Initialized = true;
 	}
@@ -965,8 +965,8 @@ namespace VeraCrypt
 	}
 #endif // TC_HEADER_Common_Exception
 
-	auto_ptr <GetPinFunctor> SecurityToken::PinCallback;
-	auto_ptr <SendExceptionFunctor> SecurityToken::WarningCallback;
+	unique_ptr <GetPinFunctor> SecurityToken::PinCallback;
+	unique_ptr <SendExceptionFunctor> SecurityToken::WarningCallback;
 
 	bool SecurityToken::Initialized;
 	CK_FUNCTION_LIST_PTR SecurityToken::Pkcs11Functions;

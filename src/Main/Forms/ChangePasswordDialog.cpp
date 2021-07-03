@@ -4,7 +4,7 @@
  by the TrueCrypt License 3.0.
 
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2017 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
@@ -18,6 +18,17 @@
 
 namespace VeraCrypt
 {
+#ifdef TC_MACOSX
+
+	bool ChangePasswordDialog::ProcessEvent(wxEvent& event)
+	{
+		if(GraphicUserInterface::HandlePasswordEntryCustomEvent (event))
+			return true;
+		else
+			return ChangePasswordDialogBase::ProcessEvent(event);
+	}
+#endif
+
 	ChangePasswordDialog::ChangePasswordDialog (wxWindow* parent, shared_ptr <VolumePath> volumePath, Mode::Enum mode, shared_ptr <VolumePassword> password, shared_ptr <KeyfileList> keyfiles, shared_ptr <VolumePassword> newPassword, shared_ptr <KeyfileList> newKeyfiles)
 		: ChangePasswordDialogBase (parent), DialogMode (mode), Path (volumePath)
 	{
@@ -37,26 +48,30 @@ namespace VeraCrypt
 			enableNewPassword = true;
 			enableNewKeyfiles = true;
 			enablePkcs5Prf = true;
-			SetTitle (_("Change Volume Password and Keyfiles"));
+			SetTitle (LangString["IDD_PASSWORDCHANGE_DLG"]);
 			break;
 
 		case Mode::ChangeKeyfiles:
 			enableNewKeyfiles = true;
-			SetTitle (_("Add/Remove Keyfiles to/from Volume"));
+			SetTitle (LangString["IDD_PCDM_ADD_REMOVE_VOL_KEYFILES"]);
 			break;
 
 		case Mode::RemoveAllKeyfiles:
-			SetTitle (_("Remove All Keyfiles from Volume"));
+			SetTitle (LangString["IDD_PCDM_REMOVE_ALL_KEYFILES_FROM_VOL"]);
 			break;
 
 		case Mode::ChangePkcs5Prf:
 			enablePkcs5Prf = true;
-			SetTitle (_("Change Header Key Derivation Algorithm"));
+			SetTitle (LangString["IDD_PCDM_CHANGE_PKCS5_PRF"]);
 			break;
 
 		default:
 			throw ParameterIncorrect (SRC_POS);
 		}
+		
+#ifdef TC_MACOSX
+		GraphicUserInterface::InstallPasswordEntryCustomKeyboardShortcuts (this);
+#endif
 
 		CurrentPasswordPanel = new VolumePasswordPanel (this, NULL, password, false, keyfiles, false, true, true, false, true, true);
 		CurrentPasswordPanel->UpdateEvent.Connect (EventConnector <ChangePasswordDialog> (this, &ChangePasswordDialog::OnPasswordPanelUpdate));

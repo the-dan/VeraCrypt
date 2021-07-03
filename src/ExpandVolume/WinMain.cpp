@@ -9,7 +9,7 @@
  or Copyright (c) 2012-2013 Josef Schneider <josef@netpage.dk>
 
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2017 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages. */
@@ -285,6 +285,7 @@ void LoadSettings (HWND hwndDlg)
 	bShowDisconnectedNetworkDrives = ConfigReadInt ("ShowDisconnectedNetworkDrives", FALSE);
 	bHideWaitingDialog = ConfigReadInt ("HideWaitingDialog", FALSE);
 	bUseSecureDesktop = ConfigReadInt ("UseSecureDesktop", FALSE);
+	bUseLegacyMaxPasswordLength = ConfigReadInt ("UseLegacyMaxPasswordLength", FALSE);
 	defaultMountOptions.Removable =	ConfigReadInt ("MountVolumesRemovable", FALSE);
 	defaultMountOptions.ReadOnly =	ConfigReadInt ("MountVolumesReadOnly", FALSE);
 	defaultMountOptions.ProtectHiddenVolume = FALSE;
@@ -440,7 +441,7 @@ BOOL CALLBACK ExtcvPasswordDlgProc (HWND hwndDlg, UINT msg, WPARAM wParam, LPARA
 			/* make autodetection the default */
 			SendMessage (hComboBox, CB_SETCURSEL, 0, 0);
 
-			SendMessage (GetDlgItem (hwndDlg, IDC_PASSWORD), EM_LIMITTEXT, MAX_PASSWORD, 0);
+			ToNormalPwdField (hwndDlg, IDC_PASSWORD);
 			SendMessage (GetDlgItem (hwndDlg, IDC_CACHE), BM_SETCHECK, bCacheInDriver ? BST_CHECKED:BST_UNCHECKED, 0);
 			SendMessage (GetDlgItem (hwndDlg, IDC_PIM), EM_LIMITTEXT, MAX_PIM, 0);
 
@@ -488,6 +489,17 @@ BOOL CALLBACK ExtcvPasswordDlgProc (HWND hwndDlg, UINT msg, WPARAM wParam, LPARA
 				FlashWindowEx (&flash);
 
 				SetWindowPos (hwndDlg, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+			}
+
+			if (!bSecureDesktopOngoing)
+			{
+				PasswordEditDropTarget* pTarget = new PasswordEditDropTarget ();
+				if (pTarget->Register (hwndDlg))
+				{
+					SetWindowLongPtr (hwndDlg, DWLP_USER, (LONG_PTR) pTarget);
+				}
+				else
+					delete pTarget;
 			}
 		}
 		return 0;
@@ -673,19 +685,21 @@ BOOL CALLBACK ExtcvPasswordDlgProc (HWND hwndDlg, UINT msg, WPARAM wParam, LPARA
 
 			if (lw == IDOK)
 			{
+				BOOL bTrueCryptMode = GetCheckBox (hwndDlg, IDC_TRUECRYPT_MODE);
+				int iMaxPasswordLength = (bUseLegacyMaxPasswordLength || bTrueCryptMode)? MAX_LEGACY_PASSWORD : MAX_PASSWORD;
 				if (mountOptions.ProtectHiddenVolume && hidVolProtKeyFilesParam.EnableKeyFiles)
 					KeyFilesApply (hwndDlg, &mountOptions.ProtectedHidVolPassword, hidVolProtKeyFilesParam.FirstKeyFile, PasswordDlgVolume);
 
-				if (GetPassword (hwndDlg, IDC_PASSWORD, (LPSTR) szXPwd->Text, MAX_PASSWORD + 1, TRUE))
+				if (GetPassword (hwndDlg, IDC_PASSWORD, (LPSTR) szXPwd->Text, iMaxPasswordLength + 1, bTrueCryptMode, TRUE))
 					szXPwd->Length = (unsigned __int32) (strlen ((char *) szXPwd->Text));
 				else
 					return 1;
 
 				bCacheInDriver = IsButtonChecked (GetDlgItem (hwndDlg, IDC_CACHE));
 				*pkcs5 = (int) SendMessage (GetDlgItem (hwndDlg, IDC_PKCS5_PRF_ID), CB_GETITEMDATA, SendMessage (GetDlgItem (hwndDlg, IDC_PKCS5_PRF_ID), CB_GETCURSEL, 0, 0), 0);
-				*truecryptMode = GetCheckBox (hwndDlg, IDC_TRUECRYPT_MODE);
+				*truecryptMode = bTrueCryptMode;
 
-				*pim = GetPim (hwndDlg, IDC_PIM);
+				*pim = GetPim (hwndDlg, IDC_PIM, 0);
 
 				/* check that PRF is supported in TrueCrypt Mode */
 				if (	(*truecryptMode)
@@ -779,6 +793,19 @@ BOOL CALLBACK ExtcvPasswordDlgProc (HWND hwndDlg, UINT msg, WPARAM wParam, LPARA
 			DragFinish (hdrop);
 		}
 		return 1;
+
+	case WM_NCDESTROY:
+		{
+			/* unregister drap-n-drop support */
+			PasswordEditDropTarget* pTarget = (PasswordEditDropTarget*) GetWindowLongPtr (hwndDlg, DWLP_USER);
+			if (pTarget)
+			{
+				SetWindowLongPtr (hwndDlg, DWLP_USER, (LONG_PTR) 0);
+				pTarget->Revoke ();
+				pTarget->Release();
+			}
+		}
+		return 0;
 	}
 
 	return 0;
@@ -863,6 +890,67 @@ static BOOL SelectPartition (HWND hwndDlg)
 	return FALSE;
 }
 
+void ExtractCommandLine (HWND hwndDlg, wchar_t *lpszCommandLine)
+{
+	wchar_t **lpszCommandLineArgs = NULL;	/* Array of command line arguments */
+	int nNoCommandLineArgs;	/* The number of arguments in the array */
+
+	/* Extract command line arguments */
+	nNoCommandLineArgs = Win32CommandLine (&lpszCommandLineArgs);
+	if (nNoCommandLineArgs > 0)
+	{
+		int i;
+
+		for (i = 0; i < nNoCommandLineArgs; i++)
+		{
+			enum
+			{
+				OptionEnableMemoryProtection,
+			};
+
+			argument args[]=
+			{
+				{ OptionEnableMemoryProtection,	L"/protectMemory",	NULL, FALSE },
+			};
+
+			argumentspec as;
+
+			int x;
+
+			if (lpszCommandLineArgs[i] == NULL)
+				continue;
+
+			as.args = args;
+			as.arg_cnt = sizeof(args)/ sizeof(args[0]);
+
+			x = GetArgumentID (&as, lpszCommandLineArgs[i]);
+
+			switch (x)
+			{
+
+			case OptionEnableMemoryProtection:
+				EnableMemoryProtection = TRUE;
+				break;
+
+			default:
+				DialogBoxParamW (hInst, MAKEINTRESOURCEW (IDD_COMMANDHELP_DLG), hwndDlg, (DLGPROC)
+						CommandHelpDlgProc, (LPARAM) &as);
+
+				exit(0);
+			}
+		}
+	}
+
+	/* Free up the command line arguments */
+	while (--nNoCommandLineArgs >= 0)
+	{
+		free (lpszCommandLineArgs[nNoCommandLineArgs]);
+	}
+
+	if (lpszCommandLineArgs)
+		free (lpszCommandLineArgs);
+}
+
 
 /* Except in response to the WM_INITDIALOG and WM_ENDSESSION messages, the dialog box procedure
    should return nonzero if it processes a message, and zero if it does not. */
@@ -885,6 +973,9 @@ BOOL CALLBACK MainDialogProc (HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 			bShowDisconnectedNetworkDrives = FALSE;
 			bHideWaitingDialog = FALSE;
 			bUseSecureDesktop = FALSE;
+			bUseLegacyMaxPasswordLength = FALSE;
+
+			VeraCryptExpander::ExtractCommandLine (hwndDlg, (wchar_t *) lParam);
 
 			if (UsePreferences)
 			{
@@ -894,6 +985,12 @@ BOOL CALLBACK MainDialogProc (HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 				// Keyfiles
 				LoadDefaultKeyFilesParam ();
 				RestoreDefaultKeyFilesParam ();
+			}
+
+			if (EnableMemoryProtection)
+			{
+				/* Protect this process memory from being accessed by non-admin users */
+				EnableProcessProtection ();
 			}
 
 			InitMainDialog (hwndDlg);
@@ -953,7 +1050,7 @@ BOOL CALLBACK MainDialogProc (HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lPa
 		if (lw == IDM_HOMEPAGE )
 		{
 			ArrowWaitCursor ();
-			ShellExecute (NULL, L"open", L"https://www.veracrypt.fr", NULL, NULL, SW_SHOWNORMAL);
+			SafeOpenURL (L"https://www.veracrypt.fr");
 			Sleep (200);
 			NormalCursor ();
 

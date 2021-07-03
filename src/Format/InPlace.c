@@ -4,7 +4,7 @@
  by the TrueCrypt License 3.0.
 
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2017 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
@@ -772,8 +772,11 @@ int EncryptPartitionInPlaceResume (HANDLE dev,
 	Password *password = volParams->password;
 	int pkcs5_prf = volParams->pkcs5;
 	int pim = volParams->pim;
-	DISK_GEOMETRY_EX driveGeometry;
+	DISK_GEOMETRY driveGeometry;
 	HWND hwndDlg = volParams->hwndDlg;
+#ifdef _WIN64
+	BOOL bIsRamEncryptionEnabled = IsRamEncryptionEnabled();
+#endif
 
 
 	bInPlaceEncNonSysResumed = TRUE;
@@ -855,13 +858,13 @@ int EncryptPartitionInPlaceResume (HANDLE dev,
 		NULL);
 
 
-	if (!DeviceIoControl (dev, IOCTL_DISK_GET_DRIVE_GEOMETRY_EX, NULL, 0, &driveGeometry, sizeof (driveGeometry), &dwResult, NULL))
+	if (!DeviceIoControl (dev, IOCTL_DISK_GET_DRIVE_GEOMETRY, NULL, 0, &driveGeometry, sizeof (driveGeometry), &dwResult, NULL))
 	{
 		nStatus = ERR_OS_ERROR;
 		goto closing_seq;
 	}
 
-	sectorSize = driveGeometry.Geometry.BytesPerSector;
+	sectorSize = driveGeometry.BytesPerSector;
 
 
 	nStatus = OpenBackupHeader (dev, devicePath, password, pkcs5_prf, pim, &masterCryptoInfo, headerCryptoInfo, deviceSize);
@@ -869,6 +872,13 @@ int EncryptPartitionInPlaceResume (HANDLE dev,
 	if (nStatus != ERR_SUCCESS)
 		goto closing_seq;
 
+#ifdef _WIN64
+	if (bIsRamEncryptionEnabled)
+	{
+		VcProtectKeys (masterCryptoInfo, VcGetEncryptionID (masterCryptoInfo));
+		VcProtectKeys (headerCryptoInfo, VcGetEncryptionID (headerCryptoInfo));
+	}
+#endif
 
 
     remainingBytes = masterCryptoInfo->VolumeSize.Value - masterCryptoInfo->EncryptedAreaLength.Value;
@@ -1090,6 +1100,19 @@ inplace_enc_read:
 		{
 			PCRYPTO_INFO dummyInfo = NULL;
 
+#ifdef _WIN64
+			CRYPTO_INFO tmpCI;
+			PCRYPTO_INFO cryptoInfoBackup = NULL;
+			if (bIsRamEncryptionEnabled)
+			{
+				VirtualLock (&tmpCI, sizeof(tmpCI));
+				memcpy (&tmpCI, masterCryptoInfo, sizeof (CRYPTO_INFO));
+				VcUnprotectKeys (&tmpCI, VcGetEncryptionID (masterCryptoInfo));
+				cryptoInfoBackup = masterCryptoInfo;
+				masterCryptoInfo = &tmpCI;
+			}
+#endif
+
 			nStatus = CreateVolumeHeaderInMemory (hwndDlg, FALSE,
 				header,
 				headerCryptoInfo->ea,
@@ -1108,6 +1131,15 @@ inplace_enc_read:
 				masterCryptoInfo->SectorSize,
 				wipeAlgorithm == TC_WIPE_NONE ? FALSE : (wipePass < PRAND_HEADER_WIPE_PASSES - 1));
 
+#ifdef _WIN64
+			if (bIsRamEncryptionEnabled)
+			{
+				masterCryptoInfo = cryptoInfoBackup;
+				burn (&tmpCI, sizeof (CRYPTO_INFO));
+				VirtualUnlock (&tmpCI, sizeof(tmpCI));
+			}
+#endif
+
 			if (nStatus != ERR_SUCCESS)
 				goto closing_seq;
 
@@ -1121,8 +1153,27 @@ inplace_enc_read:
 				goto closing_seq;
 			}
 
+#ifdef _WIN64
+			if (bIsRamEncryptionEnabled)
+			{
+				VirtualLock (&tmpCI, sizeof(tmpCI));
+				memcpy (&tmpCI, headerCryptoInfo, sizeof (CRYPTO_INFO));
+				VcUnprotectKeys (&tmpCI, VcGetEncryptionID (headerCryptoInfo));
+				cryptoInfoBackup = headerCryptoInfo;
+				headerCryptoInfo = &tmpCI;
+			}
+#endif
 			// Fill the reserved sectors of the header area with random data
 			nStatus = WriteRandomDataToReservedHeaderAreas (hwndDlg, dev, headerCryptoInfo, masterCryptoInfo->VolumeSize.Value, TRUE, FALSE);
+
+#ifdef _WIN64
+			if (bIsRamEncryptionEnabled)
+			{
+				headerCryptoInfo = cryptoInfoBackup;
+				burn (&tmpCI, sizeof (CRYPTO_INFO));
+				VirtualUnlock (&tmpCI, sizeof(tmpCI));
+			}
+#endif
 
 			if (nStatus != ERR_SUCCESS)
 				goto closing_seq;
@@ -1282,7 +1333,10 @@ int DecryptPartitionInPlace (volatile FORMAT_VOL_PARAMETERS *volParams, volatile
 	HWND hwndDlg = volParams->hwndDlg;
 	int pkcs5_prf = volParams->pkcs5;
 	int pim = volParams->pim;
-	DISK_GEOMETRY_EX driveGeometry;
+	DISK_GEOMETRY driveGeometry;
+#ifdef _WIN64
+	BOOL bIsRamEncryptionEnabled = IsRamEncryptionEnabled();
+#endif
 
 
 	buf = (char *) TCalloc (TC_MAX_NONSYS_INPLACE_ENC_WORK_CHUNK_SIZE);
@@ -1357,15 +1411,15 @@ int DecryptPartitionInPlace (volatile FORMAT_VOL_PARAMETERS *volParams, volatile
 		NULL);
 
 
-	if (!DeviceIoControl (dev, IOCTL_DISK_GET_DRIVE_GEOMETRY_EX, NULL, 0, &driveGeometry, sizeof (driveGeometry), &dwResult, NULL))
+	if (!DeviceIoControl (dev, IOCTL_DISK_GET_DRIVE_GEOMETRY, NULL, 0, &driveGeometry, sizeof (driveGeometry), &dwResult, NULL))
 	{
 		nStatus = ERR_OS_ERROR;
 		goto closing_seq;
 	}
 
-	if (	(driveGeometry.Geometry.BytesPerSector == 0)
-		||	(driveGeometry.Geometry.BytesPerSector > TC_MAX_VOLUME_SECTOR_SIZE)
-		|| (driveGeometry.Geometry.BytesPerSector % ENCRYPTION_DATA_UNIT_SIZE != 0)
+	if (	(driveGeometry.BytesPerSector == 0)
+		||	(driveGeometry.BytesPerSector > TC_MAX_VOLUME_SECTOR_SIZE)
+		|| (driveGeometry.BytesPerSector % ENCRYPTION_DATA_UNIT_SIZE != 0)
 		)
 	{
 		Error ("SECTOR_SIZE_UNSUPPORTED", hwndDlg);
@@ -1373,7 +1427,7 @@ int DecryptPartitionInPlace (volatile FORMAT_VOL_PARAMETERS *volParams, volatile
 		goto closing_seq;
 	}
 
-	sectorSize = driveGeometry.Geometry.BytesPerSector;
+	sectorSize = driveGeometry.BytesPerSector;
 
 
 	tmpSectorBuf = (byte *) TCalloc (sectorSize);
@@ -1389,6 +1443,13 @@ int DecryptPartitionInPlace (volatile FORMAT_VOL_PARAMETERS *volParams, volatile
 	if (nStatus != ERR_SUCCESS)
 		goto closing_seq;
 
+#ifdef _WIN64
+	if (bIsRamEncryptionEnabled)
+	{
+		VcProtectKeys (masterCryptoInfo, VcGetEncryptionID (masterCryptoInfo));
+		VcProtectKeys (headerCryptoInfo, VcGetEncryptionID (headerCryptoInfo));
+	}
+#endif
 
 	if (masterCryptoInfo->LegacyVolume)
 	{
@@ -1784,6 +1845,10 @@ int FastVolumeHeaderUpdate (HANDLE dev, CRYPTO_INFO *headerCryptoInfo, CRYPTO_IN
 	DWORD dwError;
 	uint32 headerCrc32;
 	byte *fieldPos;
+	PCRYPTO_INFO pCryptoInfo = headerCryptoInfo;
+#ifdef _WIN64
+	BOOL bIsRamEncryptionEnabled = IsRamEncryptionEnabled();
+#endif
 
 	header = (byte *) TCalloc (TC_VOLUME_HEADER_EFFECTIVE_SIZE);
 
@@ -1804,8 +1869,23 @@ int FastVolumeHeaderUpdate (HANDLE dev, CRYPTO_INFO *headerCryptoInfo, CRYPTO_IN
 		goto closing_seq;
 	}
 
+#ifdef _WIN64
+	if (bIsRamEncryptionEnabled)
+	{
+		pCryptoInfo = crypto_open();
+		if (!pCryptoInfo)
+		{
+			nStatus = ERR_OUTOFMEMORY;
+			goto closing_seq;
+		}
 
-	DecryptBuffer (header + HEADER_ENCRYPTED_DATA_OFFSET, HEADER_ENCRYPTED_DATA_SIZE, headerCryptoInfo);
+		memcpy (pCryptoInfo, headerCryptoInfo, sizeof (CRYPTO_INFO));
+		VcUnprotectKeys (pCryptoInfo, VcGetEncryptionID (headerCryptoInfo));
+	}
+#endif
+
+
+	DecryptBuffer (header + HEADER_ENCRYPTED_DATA_OFFSET, HEADER_ENCRYPTED_DATA_SIZE, pCryptoInfo);
 
 	if (GetHeaderField32 (header, TC_HEADER_OFFSET_MAGIC) != 0x56455241)
 	{
@@ -1828,7 +1908,7 @@ int FastVolumeHeaderUpdate (HANDLE dev, CRYPTO_INFO *headerCryptoInfo, CRYPTO_IN
 	fieldPos = (byte *) header + TC_HEADER_OFFSET_HEADER_CRC;
 	mputLong (fieldPos, headerCrc32);
 
-	EncryptBuffer (header + HEADER_ENCRYPTED_DATA_OFFSET, HEADER_ENCRYPTED_DATA_SIZE, headerCryptoInfo);
+	EncryptBuffer (header + HEADER_ENCRYPTED_DATA_OFFSET, HEADER_ENCRYPTED_DATA_SIZE, pCryptoInfo);
 
 
 	if (SetFilePointerEx (dev, offset, NULL, FILE_BEGIN) == 0
@@ -1842,6 +1922,13 @@ int FastVolumeHeaderUpdate (HANDLE dev, CRYPTO_INFO *headerCryptoInfo, CRYPTO_IN
 closing_seq:
 
 	dwError = GetLastError();
+
+#ifdef _WIN64
+	if (bIsRamEncryptionEnabled && pCryptoInfo)
+	{
+		crypto_close(pCryptoInfo);
+	}
+#endif
 
 	burn (header, TC_VOLUME_HEADER_EFFECTIVE_SIZE);
 	VirtualUnlock (header, TC_VOLUME_HEADER_EFFECTIVE_SIZE);

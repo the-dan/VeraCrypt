@@ -4,7 +4,7 @@
  by the TrueCrypt License 3.0.
 
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2017 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
@@ -21,7 +21,8 @@ namespace VeraCrypt
 		MaxVolumeSize (0),
 		MaxVolumeSizeValid (false),
 		MinVolumeSize (1),
-		SectorSize (sectorSize)
+		SectorSize (sectorSize),
+		AvailableDiskSpace (0)
 	{
 		VolumeSizePrefixChoice->Append (LangString["KB"], reinterpret_cast <void *> (1024));
 		VolumeSizePrefixChoice->Append (LangString["MB"], reinterpret_cast <void *> (1024 * 1024));
@@ -33,6 +34,10 @@ namespace VeraCrypt
 		{
 			VolumeSizeTextCtrl->Disable();
 			VolumeSizeTextCtrl->SetValue (L"");
+		}
+		else
+		{
+			AvailableDiskSpace = (uint64) diskSpace.GetValue ();
 		}
 
 		FreeSpaceStaticText->SetFont (Gui->GetDefaultBoldFont (this));
@@ -47,13 +52,13 @@ namespace VeraCrypt
 			wxString drive = wxFileName (wstring (volumePath)).GetVolume();
 			if (!drive.empty())
 			{
-				FreeSpaceStaticText->SetLabel (StringFormatter (_("Free space on drive {0}: is {1}."),
+				FreeSpaceStaticText->SetLabel (StringFormatter (LangString["LINUX_FREE_SPACE_ON_DRIVE"],
 					drive, Gui->SizeToString (diskSpace.GetValue())));
 			}
 			else
 #endif
 			{
-				FreeSpaceStaticText->SetLabel (StringFormatter (_("Free space available: {0}"),
+				FreeSpaceStaticText->SetLabel (StringFormatter (LangString["DISK_FREE"],
 					Gui->SizeToString (diskSpace.GetValue())));
 			}
 		}
@@ -97,7 +102,8 @@ namespace VeraCrypt
 		{
 			try
 			{
-				if (GetVolumeSize() >= MinVolumeSize && (!MaxVolumeSizeValid || GetVolumeSize() <= MaxVolumeSize))
+				uint64 uiVolumeSize = GetVolumeSize();
+				if (uiVolumeSize >= MinVolumeSize && (!MaxVolumeSizeValid || uiVolumeSize <= MaxVolumeSize) && (MaxVolumeSizeValid || CmdLine->ArgDisableFileSizeCheck || !AvailableDiskSpace || uiVolumeSize <= AvailableDiskSpace))
 					return true;
 			}
 			catch (...) { }

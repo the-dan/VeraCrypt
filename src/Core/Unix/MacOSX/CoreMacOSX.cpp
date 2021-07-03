@@ -4,7 +4,7 @@
  by the TrueCrypt License 3.0.
 
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2017 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
@@ -123,13 +123,17 @@ namespace VeraCrypt
 			fuseVersionStringLength = MAXHOSTNAMELEN;
 			if ((status = sysctlbyname ("vfs.generic.osxfuse.version.number", fuseVersionString, &fuseVersionStringLength, NULL, 0)) != 0)
 			{
-				throw HigherFuseVersionRequired (SRC_POS);
+				fuseVersionStringLength = MAXHOSTNAMELEN;
+				if ((status = sysctlbyname ("vfs.generic.macfuse.version.number", fuseVersionString, &fuseVersionStringLength, NULL, 0)) != 0)
+				{
+					throw HigherFuseVersionRequired (SRC_POS);
+				}
 			}
 		}
 
 		// look for OSXFuse dynamic library
 		struct stat sb;
-		if (0 != stat("/usr/local/lib/libosxfuse_i64.2.dylib", &sb))
+		if (0 != stat("/usr/local/lib/libosxfuse_i64.2.dylib", &sb) && 0 != stat("/usr/local/lib/libfuse.dylib", &sb))
 		{
 			throw HigherFuseVersionRequired (SRC_POS);
 		}
@@ -229,6 +233,6 @@ namespace VeraCrypt
 		}
 	}
 
-	auto_ptr <CoreBase> Core (new CoreServiceProxy <CoreMacOSX>);
-	auto_ptr <CoreBase> CoreDirect (new CoreMacOSX);
+	unique_ptr <CoreBase> Core (new CoreServiceProxy <CoreMacOSX>);
+	unique_ptr <CoreBase> CoreDirect (new CoreMacOSX);
 }

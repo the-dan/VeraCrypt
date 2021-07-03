@@ -4,7 +4,7 @@
  by the TrueCrypt License 3.0.
 
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2017 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
@@ -17,6 +17,17 @@
 
 namespace VeraCrypt
 {
+#ifdef TC_MACOSX
+
+	bool MountOptionsDialog::ProcessEvent(wxEvent& event)
+	{
+		if(GraphicUserInterface::HandlePasswordEntryCustomEvent (event))
+			return true;
+		else
+			return MountOptionsDialogBase::ProcessEvent(event);
+	}
+#endif
+
 	MountOptionsDialog::MountOptionsDialog (wxWindow *parent, MountOptions &options, const wxString &title, bool disableMountOptions)
 		: MountOptionsDialogBase (parent, wxID_ANY, wxString()
 #ifdef __WXGTK__ // GTK apparently needs wxRESIZE_BORDER to support dynamic resizing
@@ -33,6 +44,11 @@ namespace VeraCrypt
 
 		if (disableMountOptions)
 			OptionsButton->Show (false);
+			
+
+#ifdef TC_MACOSX
+		GraphicUserInterface::InstallPasswordEntryCustomKeyboardShortcuts (this);
+#endif
 
 		PasswordPanel = new VolumePasswordPanel (this, &options, options.Password, disableMountOptions, options.Keyfiles, !disableMountOptions, true, true, false, true, true);
 		PasswordPanel->SetCacheCheckBoxValidator (wxGenericValidator (&Options.CachePassword));
@@ -65,13 +81,14 @@ namespace VeraCrypt
 		FilesystemOptionsTextCtrl->SetValue (Options.FilesystemOptions);
 
 		ReadOnlyCheckBox->SetValue (Options.Protection == VolumeProtection::ReadOnly);
+		BackupHeaderCheckBox->SetValidator (wxGenericValidator (&Options.UseBackupHeaders));
 		ProtectionCheckBox->SetValue (Options.Protection == VolumeProtection::HiddenVolumeReadOnly);
 
 		OptionsButtonLabel = OptionsButton->GetLabel();
 		OptionsButton->SetLabel (OptionsButtonLabel + L" >");
 		OptionsPanel->Show (false);
 
-		ProtectionPasswordPanel = new VolumePasswordPanel (OptionsPanel, &options, options.ProtectionPassword, true, options.ProtectionKeyfiles, false, true, true, false, true, true, _("P&assword to hidden volume:"));
+		ProtectionPasswordPanel = new VolumePasswordPanel (OptionsPanel, &options, options.ProtectionPassword, true, options.ProtectionKeyfiles, false, true, true, false, true, true, LangString["IDT_HIDDEN_PROT_PASSWD"]);
 		ProtectionPasswordSizer->Add (ProtectionPasswordPanel, 1, wxALL | wxEXPAND);
 
 		UpdateDialog();
@@ -116,13 +133,20 @@ namespace VeraCrypt
 
 		try
 		{
-			Options.Password = PasswordPanel->GetPassword();
+			Options.Password = PasswordPanel->GetPassword(Options.PartitionInSystemEncryptionScope);
 		}
 		catch (PasswordException& e)
 		{
 			Gui->ShowWarning (e);
 			return;
 		}
+		
+		if (Options.PartitionInSystemEncryptionScope && Options.Password->Size() > VolumePassword::MaxLegacySize)
+		{
+			Gui->ShowWarning (StringFormatter (LangString["LINUX_SYSTEM_ENC_PW_LENGTH_NOTE"], (int) VolumePassword::MaxLegacySize));
+			return;
+		}
+		
 		Options.Pim = Pim;
 		Options.Kdf = PasswordPanel->GetPkcs5Kdf(bUnsupportedKdf);
 		if (bUnsupportedKdf)
@@ -142,7 +166,7 @@ namespace VeraCrypt
 		{
 			try
 			{
-				Options.ProtectionPassword = ProtectionPasswordPanel->GetPassword();
+				Options.ProtectionPassword = ProtectionPasswordPanel->GetPassword(Options.TrueCryptMode);
 			}
 			catch (PasswordException& e)
 			{

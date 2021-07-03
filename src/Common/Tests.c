@@ -6,7 +6,7 @@
  Encryption for the Masses 2.02a, which is Copyright (c) 1998-2000 Paul Le Roux
  and which is governed by the 'License Agreement for Encryption for the Masses'
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2017 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages. */
@@ -275,9 +275,7 @@ BOOL XTSAesTest (PCRYPTO_INFO ci)
 		if (EAInit (ci->ea, XTS_vectors[i].key1, ci->ks) != ERR_SUCCESS)
 			return FALSE;
 
-		memcpy (&ci->k2, XTS_vectors[i].key2, sizeof (XTS_vectors[i].key2));
-
-		if (!EAInitMode (ci))
+		if (!EAInitMode (ci, XTS_vectors[i].key2))
 			return FALSE;
 
 		memcpy (p, XTS_vectors[i].plaintext, sizeof (p));
@@ -583,8 +581,8 @@ BOOL RunHashTest (HashFunction fn, HashTestVector* vector, BOOL bUseSSE)
 	BOOL bRet = TRUE;
 #if defined (DEVICE_DRIVER) && !defined (_WIN64)
 	KFLOATING_SAVE floatingPointState;
-	NTSTATUS saveStatus = STATUS_SUCCESS;
-	if (bUseSSE && (HasSSE2() || HasSSE41()))
+	NTSTATUS saveStatus = STATUS_INVALID_PARAMETER;
+	if (bUseSSE)
 		saveStatus = KeSaveFloatingPointState (&floatingPointState);
 #endif
 	while (vector[i].hexInput && vector[i].hexOutput)
@@ -601,7 +599,7 @@ BOOL RunHashTest (HashFunction fn, HashTestVector* vector, BOOL bUseSSE)
 	}
 
 #if defined (DEVICE_DRIVER) && !defined (_WIN64)
-	if (NT_SUCCESS (saveStatus) && bUseSSE && (HasSSE2() || HasSSE41()))
+	if (NT_SUCCESS (saveStatus))
 		KeRestoreFloatingPointState (&floatingPointState);
 #endif
 
@@ -685,6 +683,7 @@ BOOL TestSectorBufEncryption (PCRYPTO_INFO ci)
 		0x31, 0x41, 0x59, 0x26, 0x53, 0x58, 0x97, 0x93, 0x23, 0x84, 0x62, 0x64, 0x33, 0x83, 0x27, 0x95, 0x02, 0x88, 0x41, 0x97, 0x16, 0x93, 0x99, 0x37, 0x51, 0x05, 0x82, 0x09, 0x74, 0x94, 0x45, 0x92,
 		0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13
 	};
+	CRYPTOPP_ALIGN_DATA(16) unsigned __int8 key2[MASTER_KEYDATA_SIZE];
 
 
 	/* Encryption/decryption of data units (typically, volume data sectors) */
@@ -713,13 +712,18 @@ BOOL TestSectorBufEncryption (PCRYPTO_INFO ci)
 			if (EAInit (ci->ea, key1, ci->ks) != ERR_SUCCESS)
 				return FALSE;
 
-			for (i = 0; i < sizeof (ci->k2); i++)
-				ci->k2[i] = (unsigned char) i;
+			for (i = 0; i < sizeof (key2); i++)
+				key2[i] = (unsigned char) i;
 
-			memcpy (&ci->k2, XTS_vectors[XTS_TEST_COUNT-1].key2, sizeof (XTS_vectors[XTS_TEST_COUNT-1].key2));
+			memcpy (key2, XTS_vectors[XTS_TEST_COUNT-1].key2, sizeof (XTS_vectors[XTS_TEST_COUNT-1].key2));
 
-			if (!EAInitMode (ci))
+			if (!EAInitMode (ci, key2))
 				return FALSE;
+
+#ifdef _WIN64
+			if (IsRamEncryptionEnabled ())
+				VcProtectKeys (ci, VcGetEncryptionID (ci));
+#endif
 
 			// Each data unit will contain the same plaintext
 			for (i = 0; i < nbrUnits; i++)
@@ -1030,6 +1034,136 @@ BOOL TestSectorBufEncryption (PCRYPTO_INFO ci)
 					break;
 				}
 			}
+			else if (wcscmp (name, L"Camellia-Kuznyechik") == 0)
+			{
+				switch (testCase)
+				{
+				case 0:
+					if (crc != 0x4ea34e89)
+						return FALSE;
+					nTestsPerformed++;
+					break;
+				case 1:
+					if (crc != 0xb3ad8559)
+						return FALSE;
+					nTestsPerformed++;
+					break;
+				case 2:
+					if (crc != 0xde361313)
+						return FALSE;
+					nTestsPerformed++;
+					break;
+				case 3:
+					if (crc != 0x519d2bf9)
+						return FALSE;
+					nTestsPerformed++;
+					break;
+				}
+			}
+			else if (wcscmp (name, L"Kuznyechik-Twofish") == 0)
+			{
+				switch (testCase)
+				{
+				case 0:
+					if (crc != 0x748f8631)
+						return FALSE;
+					nTestsPerformed++;
+					break;
+				case 1:
+					if (crc != 0x8a4b0888)
+						return FALSE;
+					nTestsPerformed++;
+					break;
+				case 2:
+					if (crc != 0xe0310188)
+						return FALSE;
+					nTestsPerformed++;
+					break;
+				case 3:
+					if (crc != 0xfc2b6b45)
+						return FALSE;
+					nTestsPerformed++;
+					break;
+				}
+			}
+			else if (wcscmp (name, L"Camellia-Serpent") == 0)
+			{
+				switch (testCase)
+				{
+				case 0:
+					if (crc != 0x10569a42)
+						return FALSE;
+					nTestsPerformed++;
+					break;
+				case 1:
+					if (crc != 0x4de95152)
+						return FALSE;
+					nTestsPerformed++;
+					break;
+				case 2:
+					if (crc != 0xe17b5fe7)
+						return FALSE;
+					nTestsPerformed++;
+					break;
+				case 3:
+					if (crc != 0xdbf993fa)
+						return FALSE;
+					nTestsPerformed++;
+					break;
+				}
+			}
+			else if (wcscmp (name, L"Kuznyechik-AES") == 0)
+			{
+				switch (testCase)
+				{
+				case 0:
+					if (crc != 0xc479f95d)
+						return FALSE;
+					nTestsPerformed++;
+					break;
+				case 1:
+					if (crc != 0x58eaf88d)
+						return FALSE;
+					nTestsPerformed++;
+					break;
+				case 2:
+					if (crc != 0xbe300cc2)
+						return FALSE;
+					nTestsPerformed++;
+					break;
+				case 3:
+					if (crc != 0x9b681c2e)
+						return FALSE;
+					nTestsPerformed++;
+					break;
+				}
+			}
+			else if (wcscmp (name, L"Kuznyechik-Serpent-Camellia") == 0)
+			{
+				switch (testCase)
+				{
+				case 0:
+					if (crc != 0x9d8ac7ee)
+						return FALSE;
+					nTestsPerformed++;
+					break;
+				case 1:
+					if (crc != 0x5d7d347f)
+						return FALSE;
+					nTestsPerformed++;
+					break;
+				case 2:
+					if (crc != 0x884b62ee)
+						return FALSE;
+					nTestsPerformed++;
+					break;
+				case 3:
+					if (crc != 0x5c6c3997)
+						return FALSE;
+					nTestsPerformed++;
+					break;
+				}
+			}
 
 			if (crc == 0x9f5edd58)
 				return FALSE;
@@ -1059,9 +1193,9 @@ BOOL TestSectorBufEncryption (PCRYPTO_INFO ci)
 		if (EAInit (ci->ea, key1, ci->ks) != ERR_SUCCESS)
 			return FALSE;
 
-		memcpy (&ci->k2, XTS_vectors[XTS_TEST_COUNT-1].key2, sizeof (XTS_vectors[XTS_TEST_COUNT-1].key2));
+		memcpy (key2, XTS_vectors[XTS_TEST_COUNT-1].key2, sizeof (XTS_vectors[XTS_TEST_COUNT-1].key2));
 
-		if (!EAInitMode (ci))
+		if (!EAInitMode (ci, key2))
 			return FALSE;
 
 		// Each data unit will contain the same plaintext
@@ -1144,6 +1278,36 @@ BOOL TestSectorBufEncryption (PCRYPTO_INFO ci)
 				return FALSE;
 			nTestsPerformed++;
 		}
+		else if (wcscmp (name, L"Camellia-Kuznyechik") == 0)
+		{
+			if (crc != 0xe69d680d)
+				return FALSE;
+			nTestsPerformed++;
+		}
+		else if (wcscmp (name, L"Kuznyechik-Twofish") == 0)
+		{
+			if (crc != 0xe0aef0d1)
+				return FALSE;
+			nTestsPerformed++;
+		}
+		else if (wcscmp (name, L"Camellia-Serpent") == 0)
+		{
+			if (crc != 0x58aad727)
+				return FALSE;
+			nTestsPerformed++;
+		}
+		else if (wcscmp (name, L"Kuznyechik-AES") == 0)
+		{
+			if (crc != 0x4641234a)
+				return FALSE;
+			nTestsPerformed++;
+		}
+		else if (wcscmp (name, L"Kuznyechik-Serpent-Camellia") == 0)
+		{
+			if (crc != 0x755dad72)
+				return FALSE;
+			nTestsPerformed++;
+		}
 
 		if (crc == 0x9f5edd58)
 			return FALSE;
@@ -1156,9 +1320,9 @@ BOOL TestSectorBufEncryption (PCRYPTO_INFO ci)
 		nTestsPerformed++;
 	}
 #if defined(CIPHER_GOST89)
-	return (nTestsPerformed == 110);
+	return (nTestsPerformed == 160);
 #else
-	return (nTestsPerformed == 105);
+	return (nTestsPerformed == 155);
 #endif
 }
 
@@ -1355,18 +1519,45 @@ BOOL AutoTestAlgorithms (void)
 {
 	BOOL result = TRUE;
 	BOOL hwEncryptionEnabled = IsHwEncryptionEnabled();
+#if defined (_MSC_VER) && !defined (_UEFI)
+	BOOL exceptionCatched = FALSE;
+	__try
+	{
+#endif
+		EnableHwEncryption (FALSE);
 
-	EnableHwEncryption (FALSE);
+		if (!DoAutoTestAlgorithms())
+			result = FALSE;
 
-	if (!DoAutoTestAlgorithms())
-		result = FALSE;
+		EnableHwEncryption (TRUE);
 
-	EnableHwEncryption (TRUE);
+		if (!DoAutoTestAlgorithms())
+			result = FALSE;
 
-	if (!DoAutoTestAlgorithms())
-		result = FALSE;
+		EnableHwEncryption (hwEncryptionEnabled);
+#if defined (_MSC_VER) && !defined (_UEFI)
+	}
+    __except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		exceptionCatched = TRUE;
+	}
 
-	EnableHwEncryption (hwEncryptionEnabled);
+	if (exceptionCatched)
+	{
+		/* unexepected exception raised. Disable all CPU extended feature and try again */
+		EnableHwEncryption (hwEncryptionEnabled);
+		DisableCPUExtendedFeatures ();
+		__try
+		{
+			result = DoAutoTestAlgorithms();
+		}
+	    __except (EXCEPTION_EXECUTE_HANDLER)
+		{
+			/* exception still occuring. Report failure. */
+			result = FALSE;
+		}
+	}
+#endif
 	return result;
 }
 
@@ -1508,7 +1699,7 @@ BOOL test_pkcs5 ()
 		return FALSE;
 
 	/* STREEBOG hash tests */
-	if (RunHashTest (StreebogHash, Streebog512TestVectors, TRUE) == FALSE)
+	if (RunHashTest (StreebogHash, Streebog512TestVectors, (HasSSE2() || HasSSE41())? TRUE : FALSE) == FALSE)
 		return FALSE;
 
 	/* PKCS-5 test 1 with HMAC-SHA-256 used as the PRF (https://tools.ietf.org/html/draft-josefsson-scrypt-kdf-00) */

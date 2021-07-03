@@ -35,13 +35,15 @@ extern "C"
 #endif
 typedef struct
 {
-#if CRYPTOPP_BOOL_X64
+#if CRYPTOPP_BOOL_X64 && !defined(CRYPTOPP_DISABLE_ASM)
    u4byte mk_tab[4][256], w[8], k[32];
 #else
 	u4byte l_key[40];
 #ifdef TC_MINIMIZE_CODE_SIZE
 	u4byte s_key[4];
+#ifdef TC_WINDOWS_BOOT_TWOFISH
 	u4byte mk_tab[4 * 256];
+#endif
 #else
    u4byte mk_tab[4][256];
 #endif
@@ -52,7 +54,7 @@ typedef struct
 
 /* in_key must be 32-bytes long */
 void twofish_set_key(TwofishInstance *instance, const u4byte in_key[]);
-#if CRYPTOPP_BOOL_X64
+#if CRYPTOPP_BOOL_X64 && !defined(CRYPTOPP_DISABLE_ASM)
 void twofish_encrypt_blocks(TwofishInstance *instance, const byte* in_blk, byte* out_blk, uint32 blockCount);
 void twofish_decrypt_blocks(TwofishInstance *instance, const byte* in_blk, byte* out_blk, uint32 blockCount);
 #define twofish_encrypt(instance,in_blk,out_blk)   twofish_encrypt_blocks(instance, (const byte*) in_blk, (byte*) out_blk, 1)

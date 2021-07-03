@@ -4,7 +4,7 @@
  by the TrueCrypt License 3.0.
 
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2016 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2017 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
@@ -20,6 +20,7 @@
 #include "Platform/Unix/Process.h"
 #endif
 
+#include <wx/platinfo.h>
 #include "Common/SecurityToken.h"
 #include "Core/RandomNumberGenerator.h"
 #include "Application.h"
@@ -40,7 +41,9 @@ namespace VeraCrypt
 #endif
 		{
 			FInputStream.reset (new wxFFileInputStream (stdin));
-			TextInputStream.reset (new wxTextInputStream (*FInputStream));
+			// Set fallback encoding of the stream converter to UTF-8
+			// to make sure we interpret multibyte symbols properly
+			TextInputStream.reset (new wxTextInputStream (*FInputStream, wxT(" \t"), wxConvAuto(wxFONTENCODING_UTF8)));
 		}
 	}
 
@@ -124,7 +127,7 @@ namespace VeraCrypt
 
 			if (verify && verPhase)
 			{
-				shared_ptr <VolumePassword> verPassword = ToUTF8Password (passwordBuf, length);
+				shared_ptr <VolumePassword> verPassword = ToUTF8Password (passwordBuf, length, CmdLine->ArgUseLegacyPassword? VolumePassword::MaxLegacySize : VolumePassword::MaxSize);
 
 				if (*password != *verPassword)
 				{
@@ -135,7 +138,7 @@ namespace VeraCrypt
 				}
 			}
 
-			password = ToUTF8Password (passwordBuf, length);
+			password = ToUTF8Password (passwordBuf, length, CmdLine->ArgUseLegacyPassword? VolumePassword::MaxLegacySize : VolumePassword::MaxSize);
 
 			if (!verPhase)
 			{
@@ -235,7 +238,7 @@ namespace VeraCrypt
 		while (true)
 		{
 			wxString s = AskString (StringFormatter (L"{0} (y={1}/n={2}) [{3}]: ",
-				message, LangString["YES"], LangString["NO"], LangString[defaultYes ? "YES" : "NO"]));
+				message, LangString["UISTR_YES"], LangString["UISTR_NO"], LangString[defaultYes ? "UISTR_YES" : "UISTR_NO"]));
 
 			if (s.IsSameAs (L'n', false) || s.IsSameAs (L"no", false) || (!defaultYes && s.empty()))
 				return false;
@@ -317,7 +320,40 @@ namespace VeraCrypt
 				}
 				catch (PasswordException &e)
 				{
-					ShowInfo (e);
+					bool bFailed = true;
+					if (!options->UseBackupHeaders)
+					{
+						try
+						{
+							volume = Core->OpenVolume (
+								options->Path,
+								options->PreserveTimestamps,
+								options->Password,
+								options->Pim,
+								kdf,
+								false,
+								options->Keyfiles,
+								options->Protection,
+								options->ProtectionPassword,
+								options->ProtectionPim,
+								options->ProtectionKdf,
+								options->ProtectionKeyfiles,
+								true,
+								volumeType,
+								true
+								);
+							
+							bFailed = false;
+						}
+						catch (...)
+						{
+						}
+					}
+					
+					if (bFailed)
+						ShowInfo (e);
+					else
+						ShowInfo ("HEADER_DAMAGED_AUTO_USED_HEADER_BAK");
 				}
 			}
 
@@ -749,9 +785,14 @@ namespace VeraCrypt
 				ShowInfo (L" 5) Linux Ext4"); filesystems.push_back (VolumeCreationOptions::FilesystemType::Ext4);
 				ShowInfo (L" 6) NTFS");       filesystems.push_back (VolumeCreationOptions::FilesystemType::NTFS);
 				ShowInfo (L" 7) exFAT");      filesystems.push_back (VolumeCreationOptions::FilesystemType::exFAT);
+				ShowInfo (L" 8) Btrfs");      filesystems.push_back (VolumeCreationOptions::FilesystemType::Btrfs);
 #elif defined (TC_MACOSX)
 				ShowInfo (L" 3) Mac OS Extended"); filesystems.push_back (VolumeCreationOptions::FilesystemType::MacOsExt);
 				ShowInfo (L" 4) exFAT");      filesystems.push_back (VolumeCreationOptions::FilesystemType::exFAT);
+				if (wxPlatformInfo::Get().CheckOSVersion (10, 13))
+				{
+					ShowInfo (L" 5) APFS");      filesystems.push_back (VolumeCreationOptions::FilesystemType::APFS);
+				}
 #elif defined (TC_FREEBSD) || defined (TC_SOLARIS)
 				ShowInfo (L" 3) UFS"); filesystems.push_back (VolumeCreationOptions::FilesystemType::UFS);
 #endif
@@ -766,6 +807,12 @@ namespace VeraCrypt
 			&& (filesystemSize < TC_MIN_FAT_FS_SIZE || filesystemSize > TC_MAX_FAT_SECTOR_COUNT * options->SectorSize))
 		{
 			throw_err (_("Specified volume size cannot be used with FAT filesystem."));
+		}
+
+		if (options->Filesystem == VolumeCreationOptions::FilesystemType::Btrfs
+			&& (filesystemSize < VC_MIN_SMALL_BTRFS_VOLUME_SIZE))
+		{
+			throw_err (_("Specified volume size is too small to be used with Btrfs filesystem."));
 		}
 
 		// Password
@@ -835,24 +882,9 @@ namespace VeraCrypt
 		if (options->Filesystem != VolumeCreationOptions::FilesystemType::None
 			&& options->Filesystem != VolumeCreationOptions::FilesystemType::FAT)
 		{
-			const char *fsFormatter = nullptr;
-
-			switch (options->Filesystem)
-			{
-#if defined (TC_LINUX)
-			case VolumeCreationOptions::FilesystemType::Ext2:		fsFormatter = "mkfs.ext2"; break;
-			case VolumeCreationOptions::FilesystemType::Ext3:		fsFormatter = "mkfs.ext3"; break;
-			case VolumeCreationOptions::FilesystemType::Ext4:		fsFormatter = "mkfs.ext4"; break;
-			case VolumeCreationOptions::FilesystemType::NTFS:		fsFormatter = "mkfs.ntfs"; break;
-			case VolumeCreationOptions::FilesystemType::exFAT:		fsFormatter = "mkfs.exfat"; break;
-#elif defined (TC_MACOSX)
-			case VolumeCreationOptions::FilesystemType::MacOsExt:	fsFormatter = "newfs_hfs"; break;
-			case VolumeCreationOptions::FilesystemType::exFAT:		fsFormatter = "newfs_exfat"; break;
-#elif defined (TC_FREEBSD) || defined (TC_SOLARIS)
-			case VolumeCreationOptions::FilesystemType::UFS:		fsFormatter = "newfs" ; break;
-#endif
-			default: throw ParameterIncorrect (SRC_POS);
-			}
+			const char *fsFormatter = VolumeCreationOptions::FilesystemType::GetFsFormatter (options->Filesystem);
+			if (!fsFormatter)
+				throw ParameterIncorrect (SRC_POS);
 
 			MountOptions mountOptions (GetPreferences().DefaultMountOptions);
 			mountOptions.Path = make_shared <VolumePath> (options->Path);
@@ -905,6 +937,16 @@ namespace VeraCrypt
 			// Perform a quick NTFS formatting
 			if (options->Filesystem == VolumeCreationOptions::FilesystemType::NTFS)
 				args.push_back ("-f");
+
+			if (options->Filesystem == VolumeCreationOptions::FilesystemType::Btrfs)
+			{
+				args.push_back ("-f");
+				if (filesystemSize < VC_MIN_LARGE_BTRFS_VOLUME_SIZE)
+				{
+					// use mixed mode for small BTRFS volumes
+					args.push_back ("-M");
+				}
+			}
 
 			args.push_back (string (virtualDevice));
 
@@ -1023,9 +1065,18 @@ namespace VeraCrypt
 			slotId = (CK_SLOT_ID) AskSelection (tokens.back().SlotId, tokens.front().SlotId);
 		}
 
-		shared_ptr <KeyfileList> keyfiles = AskKeyfiles();
-		if (keyfiles->empty())
-			throw UserAbort();
+		shared_ptr <KeyfileList> keyfiles;
+
+		if (CmdLine->ArgKeyfiles.get() && !CmdLine->ArgKeyfiles->empty())
+			keyfiles = CmdLine->ArgKeyfiles;
+		else if (!Preferences.NonInteractive)
+		{
+			keyfiles = AskKeyfiles();
+			if (keyfiles->empty())
+				throw UserAbort();
+		}
+		else
+			throw MissingArgument (SRC_POS);
 
 		foreach_ref (const Keyfile &keyfilePath, *keyfiles)
 		{
@@ -1106,7 +1157,7 @@ namespace VeraCrypt
 
 		try
 		{
-			SecurityToken::InitLibrary (Preferences.SecurityTokenModule, auto_ptr <GetPinFunctor> (new PinRequestHandler (this)), auto_ptr <SendExceptionFunctor> (new WarningHandler (this)));
+			SecurityToken::InitLibrary (Preferences.SecurityTokenModule, unique_ptr <GetPinFunctor> (new PinRequestHandler (this)), unique_ptr <SendExceptionFunctor> (new WarningHandler (this)));
 		}
 		catch (Exception &e)
 		{
