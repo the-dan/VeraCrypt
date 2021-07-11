@@ -7,6 +7,7 @@
     <font lang="en" class="fixed" size="12" face="Lucida Console" />
     <font lang="en" class="title" size="21" face="Times New Roman" />
     <entry lang="en" key="IDCANCEL">Cancel</entry>
+    <entry lang="en" key="VeraCrypt">VeraCrypt</entry>
     <entry lang="en" key="IDC_ALL_USERS">Install &amp;for all users</entry>
     <entry lang="en" key="IDC_BROWSE">Bro&amp;wse...</entry>
     <entry lang="en" key="IDC_DESKTOP_ICON">Add VeraCrypt icon to &amp;desktop</entry>

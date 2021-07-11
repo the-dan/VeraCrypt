@@ -23,7 +23,7 @@ namespace VeraCrypt
 		: SecurityTokenKeysDialogBase (parent)
 	{
 		if (selectionMode)
-			SetTitle (_["SELECT_TOKEN_KEYS"]);
+			SetTitle (_("SELECT_TOKEN_KEYS"));
 
 		list <int> colPermilles;
 
