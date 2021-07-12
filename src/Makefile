@@ -187,11 +187,16 @@ ifeq "$(shell uname -s)" "Darwin"
 	APPNAME := VeraCrypt
 	
 	export VC_OSX_TARGET ?= 10.7
+	
+	ifneq "$(origin VC_OSX_SDK_PATH)" "command line"
 
-	#check to see if XCode 3 path exists.Otherwise, use XCode 4 path
-	VC_OSX_SDK  := /Developer/SDKs/MacOSX$(VC_OSX_TARGET).sdk
-	ifeq ($(wildcard $(VC_OSX_SDK)/SDKSettings.plist),)
-		VC_OSX_SDK := /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX$(VC_OSX_TARGET).sdk
+		#check to see if XCode 3 path exists.Otherwise, use XCode 4 path
+		VC_OSX_SDK  := /Developer/SDKs/MacOSX$(VC_OSX_TARGET).sdk
+		ifeq ($(wildcard $(VC_OSX_SDK)/SDKSettings.plist),)
+			VC_OSX_SDK := /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX$(VC_OSX_TARGET).sdk
+		endif
+	else
+		VC_OSX_SDK := $(VC_OSX_SDK_PATH)
 	endif
 
 	CC := gcc
@@ -277,10 +282,6 @@ WX_CONFIGURE_FLAGS += --enable-unicode -disable-shared --disable-dependency-trac
 	--disable-graphics_ctx --disable-sound --disable-mediactrl --disable-joystick --disable-apple_ieee \
 	--disable-gif --disable-pcx --disable-tga --disable-iff --disable-gif --disable-pnm --disable-svg \
 	--without-expat --without-libtiff --without-libjpeg --without-libpng -without-regex --without-zlib
-
-ifeq "$(PLATFORM)" "MacOSX"
-WX_CONFIGURE_FLAGS += --with-macosx-sdk=$(VC_OSX_SDK)
-endif
 
 ifeq "$(PLATFORM)" "Linux"	
 WX_CONFIGURE_FLAGS += --disable-tooltips
