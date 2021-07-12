@@ -52,8 +52,12 @@ jobs:
       - name: Build wxWidgets
         if: steps.cache-wxwidgets.outputs.cache-hit != 'true'
         run: |
-          cd src && mkdir -p ${{ env.WX_BUILD_DIR }} && make --debug=v WXSTATIC=FULL VC_OSX_SDK_PATH=$MD_APPLE_SDK_ROOT WX_ROOT=${{env.WX_ROOT}} WX_BUILD_DIR=${{env.WX_BUILD_DIR}} wxbuild
-          cat ${{ env.WX_BUILD_DIR }}/config.log
+          ls -l ${{env.WX_ROOT}}
+          cd src && make --debug=v WXSTATIC=FULL VC_OSX_SDK_PATH=$MD_APPLE_SDK_ROOT WX_ROOT=${{env.WX_ROOT}} WX_BUILD_DIR=${{env.WX_BUILD_DIR}} wxbuild
+
+      - name: Inspect config.log
+        if: steps.cache-wxwidgets.outputs.cache-hit != 'true'
+        run: cat ${{ env.WX_BUILD_DIR }}/config.log
       
 
 
