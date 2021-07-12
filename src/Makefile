@@ -278,6 +278,10 @@ WX_CONFIGURE_FLAGS += --enable-unicode -disable-shared --disable-dependency-trac
 	--disable-gif --disable-pcx --disable-tga --disable-iff --disable-gif --disable-pnm --disable-svg \
 	--without-expat --without-libtiff --without-libjpeg --without-libpng -without-regex --without-zlib
 
+ifeq "$(PLATFORM)" "MacOSX"
+WX_CONFIGURE_FLAGS += --with-macosx-sdk=$(VC_OSX_SDK)
+endif
+
 ifeq "$(PLATFORM)" "Linux"	
 WX_CONFIGURE_FLAGS += --disable-tooltips
 endif
