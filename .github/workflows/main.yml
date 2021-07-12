@@ -14,8 +14,8 @@ on:
   workflow_dispatch:
 
 env:
-  WX_BUILD_DIR: ${{ env.GITHUB_WORKSPACE }}/wxbuild
-  WX_ROOT: $ {{ env.GITHUB_WORKSPACE }}/wxsrc
+  WX_BUILD_DIR: ${{ github.workspace }}/wxbuild
+  WX_ROOT: ${{ github.workspace }}/wxsrc
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
