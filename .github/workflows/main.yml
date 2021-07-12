@@ -52,7 +52,7 @@ jobs:
       - name: Build wxWidgets
         if: steps.cache-wxwidgets.outputs.cache-hit != 'true'
         run: |
-          cd ${{ env.WX_ROOT }} && git submodule update --init 3rdparty/catch
+          (cd ${{ env.WX_ROOT }} && git submodule update --init 3rdparty/catch)
           ls -l ${{env.WX_ROOT}}
           (cd src && make --debug=v WXSTATIC=FULL VC_OSX_SDK_PATH=${{ env.MD_APPLE_SDK_ROOT }} WX_ROOT=${{env.WX_ROOT}} WX_BUILD_DIR=${{env.WX_BUILD_DIR}} wxbuild) || cat ${{ env.WX_BUILD_DIR }}/config.log
 
