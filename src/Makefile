@@ -19,11 +19,12 @@
 # NOTEST:		Do not test release binary
 # RESOURCEDIR:	Run-time resource directory
 # VERBOSE:		Enable verbose messages
-# WXSTATIC:		Use static wxWidgets library
+# WXSTATIC:		Use static wxWidgets library. If FULL, builds everything. If other value, builds only bare essentials.
 # SSSE3:		Enable SSSE3 support in compiler
 # SSE41:		Enable SSE4.1 support in compiler
 # NOSSE2:		Disable SEE2 support in compiler
 # WITHGTK3:		Build wxWidgets against GTK3
+# VC_OSX_SDK_PATH:	Path to macOS SDK. If not specified, we are trying to find out ourselves. If specified, but empty, rely on OS/compiler default configuration.
 
 #------ Targets ------
 # all
@@ -44,7 +45,7 @@ export AS := yasm
 export RANLIB ?= ranlib
 
 export CFLAGS := -Wall
-export CXXFLAGS := -Wall -Wno-unused-parameter
+export CXXFLAGS := -Wall -Wno-unused-parameter -std=c++11
 C_CXX_FLAGS := -MMD -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_LARGE_FILES -I$(BASE_DIR) -I$(BASE_DIR)/Crypto
 export ASFLAGS := -D __GNUC__ -D __YASM__
 export LFLAGS :=
@@ -244,23 +245,31 @@ ifeq "$(shell uname -s)" "Darwin"
 	export VC_OSX_TARGET ?= 10.7
 	export VC_OSX_SDK ?= $(VC_OSX_TARGET)
 
-	#check to see if XCode 3 path exists.Otherwise, use XCode 4 path
-	VC_OSX_SDK_PATH  := /Developer/SDKs/MacOSX$(VC_OSX_SDK).sdk
-	ifeq ($(wildcard $(VC_OSX_SDK_PATH)/SDKSettings.plist),)
-		VC_OSX_SDK_PATH := /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX$(VC_OSX_SDK).sdk
-	endif
-	
-	#----- Legacy build if OSX <= 10.8: we build both 32-bit and 64-bit ----
-	ifneq (,$(filter 10.6 10.7 10.8,$(VC_OSX_TARGET)))
-		export VC_LEGACY_BUILD := 1
+	ifneq "$(origin VC_OSX_SDK_PATH)" "command line"
+		#check to see if XCode 3 path exists.Otherwise, use XCode 4 path
+		VC_OSX_SDK_PATH  := /Developer/SDKs/MacOSX$(VC_OSX_SDK).sdk
+		ifeq ($(wildcard $(VC_OSX_SDK_PATH)/SDKSettings.plist),)
+			VC_OSX_SDK_PATH := /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX$(VC_OSX_SDK).sdk
+		endif
+		
+		#----- Legacy build if OSX <= 10.8: we build both 32-bit and 64-bit ----
+		ifneq (,$(filter 10.6 10.7 10.8,$(VC_OSX_TARGET)))
+			export VC_LEGACY_BUILD := 1
+		endif
 	endif
 
 	CC := gcc
 	CXX := g++
 
-	C_CXX_FLAGS += -DTC_UNIX -DTC_BSD -DTC_MACOSX -mmacosx-version-min=$(VC_OSX_TARGET) -isysroot $(VC_OSX_SDK_PATH)
-	LFLAGS += -mmacosx-version-min=$(VC_OSX_TARGET) -Wl,-syslibroot $(VC_OSX_SDK_PATH)
-	WX_CONFIGURE_FLAGS += --with-macosx-version-min=$(VC_OSX_TARGET) --with-macosx-sdk=$(VC_OSX_SDK_PATH)
+	# default build defines
+	C_CXX_FLAGS += -DTC_UNIX -DTC_BSD -DTC_MACOSX
+
+	# if we decided not to rely on default macOS SDK path
+	ifneq ($(VC_OSX_SDK_PATH),)
+		C_CXX_FLAGS += -DTC_UNIX -DTC_BSD -DTC_MACOSX -mmacosx-version-min=$(VC_OSX_TARGET) -isysroot $(VC_OSX_SDK_PATH)
+		LFLAGS += -mmacosx-version-min=$(VC_OSX_TARGET) -Wl,-syslibroot $(VC_OSX_SDK_PATH)
+		WX_CONFIGURE_FLAGS += --with-macosx-version-min=$(VC_OSX_TARGET) --with-macosx-sdk=$(VC_OSX_SDK_PATH)
+	endif
 
 	ifeq "$(CPU_ARCH)" "x64"
 		CPU_ARCH = x86
@@ -389,7 +398,9 @@ WX_CONFIGURE_FLAGS += --disable-protocol --disable-protocols --disable-url --dis
 	--disable-xrc --disable-aui --disable-postscript --disable-printarch \
 	--disable-arcstream --disable-fs_archive --disable-fs_zip --disable-tarstream --disable-zipstream \
 	--disable-animatectrl --disable-bmpcombobox --disable-calendar --disable-caret --disable-checklst --disable-collpane --disable-colourpicker --disable-comboctrl \
-	--disable-datepick --disable-display --disable-dirpicker --disable-filepicker --disable-fontpicker --disable-grid  --disable-dataviewctrl \
+	--disable-datepick --disable-display --disable-dirpicker \
+	--disable-timepick \
+	--disable-filepicker --disable-fontpicker --disable-grid  --disable-dataviewctrl \
 	--disable-listbook --disable-odcombobox --disable-sash  --disable-searchctrl --disable-slider --disable-splitter --disable-togglebtn \
 	--disable-toolbar --disable-tbarnative --disable-treebook --disable-toolbook --disable-tipwindow --disable-popupwin \
 	--disable-commondlg --disable-aboutdlg --disable-coldlg --disable-finddlg --disable-fontdlg --disable-numberdlg --disable-splash \

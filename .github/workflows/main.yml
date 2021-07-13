@@ -1,0 +1,69 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the master branch
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+env:
+  WX_BUILD_DIR: ${{ github.workspace }}/wxbuild
+  WX_ROOT: ${{ github.workspace }}/wxsrc
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: macos-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+      
+      - uses: actions/cache@v2
+        name: Cache/restore wxWidgets
+        id: cache-wxwidgets
+        with:
+          path: |
+            ${{ env.WX_ROOT }}
+            ${{ env.WX_BUILD_DIR }}
+          key: wxwidgets
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      
+      - uses: actions/checkout@v2
+        name: Checkout wxWidgets
+        with:
+          repository: 'wxWidgets/wxWidgets'
+          ref: 'v3.1.5'
+          path: ${{ env.WX_ROOT }}
+          
+      - name: Build wxWidgets
+        if: steps.cache-wxwidgets.outputs.cache-hit != 'true'
+        run: |
+          (cd ${{ env.WX_ROOT }} && git submodule update --init 3rdparty/catch)
+          ls -l ${{env.WX_ROOT}}
+          (cd src && make WXSTATIC=FULL VC_OSX_SDK_PATH=${{ env.MD_APPLE_SDK_ROOT }} WX_ROOT=${{env.WX_ROOT}} WX_BUILD_DIR=${{env.WX_BUILD_DIR}} wxbuild) || cat ${{ env.WX_BUILD_DIR }}/config.log
+
+      # Runs a single command using the runners shell
+      #- name: Run a one-line script
+      #  run: ./src/Build/build_veracrypt_macosx.sh
+      - name: Build Veracrypt
+        run: cd src && make WXSTATIC=FULL VC_OSX_SDK_PATH=${{ env.MD_APPLE_SDK_ROOT }} WX_ROOT=${{env.WX_ROOT}} WX_BUILD_DIR=${{env.WX_BUILD_DIR}} && make WXSTATIC=FULL package
+
+      # Runs a set of commands using the runners shell
+      - name: Run a multi-line script
+        run: |
+          echo Add other actions to build,
+          echo test, and deploy your project.
