@@ -54,13 +54,13 @@ jobs:
         run: |
           (cd ${{ env.WX_ROOT }} && git submodule update --init 3rdparty/catch)
           ls -l ${{env.WX_ROOT}}
-          (cd src && make WXSTATIC=FULL VC_OSX_SDK_PATH=${{ env.MD_APPLE_SDK_ROOT }} WX_ROOT=${{env.WX_ROOT}} WX_BUILD_DIR=${{env.WX_BUILD_DIR}} wxbuild) || cat ${{ env.WX_BUILD_DIR }}/config.log
+          (cd src && make WXSTATIC=FULL VC_OSX_SDK_PATH= WX_ROOT=${{env.WX_ROOT}} WX_BUILD_DIR=${{env.WX_BUILD_DIR}} wxbuild) || cat ${{ env.WX_BUILD_DIR }}/config.log
 
       # Runs a single command using the runners shell
       #- name: Run a one-line script
       #  run: ./src/Build/build_veracrypt_macosx.sh
       - name: Build Veracrypt
-        run: cd src && make WXSTATIC=FULL VC_OSX_SDK_PATH=${{ env.MD_APPLE_SDK_ROOT }} WX_ROOT=${{env.WX_ROOT}} WX_BUILD_DIR=${{env.WX_BUILD_DIR}} && make WXSTATIC=FULL package
+        run: cd src && make WXSTATIC=FULL VC_OSX_SDK_PATH= WX_ROOT=${{env.WX_ROOT}} WX_BUILD_DIR=${{env.WX_BUILD_DIR}} && make WXSTATIC=FULL package
 
       # Runs a set of commands using the runners shell
       - name: Run a multi-line script
