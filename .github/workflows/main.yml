@@ -29,6 +29,28 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
       
+      - name: Download macFUSE
+        uses: carlosperate/download-file-action@v1.0.3
+        id: download-macfuse
+        with:
+          file-url: 'https://github.com/osxfuse/osxfuse/releases/download/macfuse-4.1.2/macfuse-4.1.2.dmg'
+          file-name: 'macfuse-4.1.2.dmg'
+          location: '.'
+      
+      - name: Install macFUSE
+        run: sudo hdiutil attach macfuse-4.1.2.dmg && sudo installer -pkg "/Volumes/macFUSE/Install macFUSE.pkg" -target /
+        
+      - name: Download pkg-config
+        uses: carlosperate/download-file-action@v1.0.3
+        id: download-pkg-config
+        with:
+          file-url: 'https://pkgconfig.freedesktop.org/releases/pkg-config-0.28.tar.gz'
+          file-name: pkg-config-0.28.tar.gz
+          location: '.'
+          
+      - name: Build and install pkg-config
+        run: tar xvf pkg-config-0.28.tar.gz && cd pkg-config-0.28 && ./configure && make && make install
+      
       - uses: actions/cache@v2
         name: Cache/restore wxWidgets
         id: cache-wxwidgets
