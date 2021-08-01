@@ -163,7 +163,7 @@ namespace VeraCrypt
 				// dump read but unused chunk first
 				if (appendBytesCount < readLength) {
 					string ss(keyfileBuf.Ptr() + appendBytesCount, keyfileBuf.Ptr() + readLength);
-					trace_msgw("Appending the rest of keyfile" << L">"  << ss << L"<"));
+					trace_msgw("Appending the rest of keyfile" << L">" << ss << L"<");
 					encryptedKeyfile.Write(ConstBufferPtr(&keyfileBuf[appendBytesCount], readLength-appendBytesCount));
 				}
 			}
