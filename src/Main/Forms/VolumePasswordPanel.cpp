@@ -15,12 +15,12 @@
 #include "KeyfilesDialog.h"
 #include "VolumePasswordPanel.h"
 #include "SecurityTokenKeyfilesDialog.h"
- #include "SecurityTokenKeysDialog.h"
+#include "SecurityTokenKeysDialog.h"
 
 namespace VeraCrypt
 {
-	VolumePasswordPanel::VolumePasswordPanel (wxWindow* parent, MountOptions* options, shared_ptr <VolumePassword> password, bool disableTruecryptMode, shared_ptr <KeyfileList> keyfiles, bool enableCache, bool enablePassword, bool enableKeyfiles, bool enableConfirmation, bool enablePkcs5Prf, bool isMountPassword, const wxString &passwordLabel)
-		: VolumePasswordPanelBase (parent), Keyfiles (new KeyfileList), EnablePimEntry (true)
+	VolumePasswordPanel::VolumePasswordPanel (wxWindow* parent, MountOptions* options, shared_ptr <VolumePassword> password, bool disableTruecryptMode, shared_ptr <KeyfileList> keyfiles, ApplyMode applyMode, bool enableCache, bool enablePassword, bool enableKeyfiles, bool enableConfirmation, bool enablePkcs5Prf, bool isMountPassword, const wxString &passwordLabel)
+		: VolumePasswordPanelBase (parent), Keyfiles (new KeyfileList), EnablePimEntry (true), applyMode(applyMode)
 	{
 		size_t maxPasswordLength = CmdLine->ArgUseLegacyPassword? VolumePassword::MaxLegacySize : VolumePassword::MaxSize;
 		if (keyfiles)
@@ -387,7 +387,7 @@ namespace VeraCrypt
 	{
 		try
 		{
-			SecurityTokenKeysDialog dialog (this);
+			SecurityTokenKeysDialog dialog (this, applyMode);
 			if (dialog.ShowModal() == wxID_OK)
 			{
 				wxString keySpec( dialog.GetSelectedSecurityTokenKeySpec() );

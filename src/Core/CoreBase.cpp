@@ -30,7 +30,7 @@ namespace VeraCrypt
 	{
 	}
 
-	void CoreBase::ChangePassword (shared_ptr <Volume> openVolume, shared_ptr <VolumePassword> newPassword, int newPim, shared_ptr <KeyfileList> newKeyfiles, shared_ptr <Pkcs5Kdf> newPkcs5Kdf, int wipeCount) const
+	void CoreBase::ChangePassword (shared_ptr <Volume> openVolume, shared_ptr <VolumePassword> newPassword, int newPim, shared_ptr <KeyfileList> newKeyfiles, wstring newSecurityTokenKeySpec, shared_ptr <Pkcs5Kdf> newPkcs5Kdf, int wipeCount) const
 	{
 		if ((!newPassword || newPassword->Size() < 1) && (!newKeyfiles || newKeyfiles->empty()))
 			throw PasswordEmpty (SRC_POS);
@@ -58,8 +58,7 @@ namespace VeraCrypt
 		SecureBuffer newSalt (openVolume->GetSaltSize());
 		SecureBuffer newHeaderKey (VolumeHeader::GetLargestSerializedKeySize());
 
-		// TODO: apply token key here
-		shared_ptr <VolumePassword> password (Keyfile::ApplyListToPassword (newKeyfiles, newPassword));
+		shared_ptr <VolumePassword> password (Keyfile::ApplyListToPassword (newKeyfiles, newPassword, newSecurityTokenKeySpec, ApplyMode::CREATE));
 
 		bool backupHeader = false;
 		while (true)
@@ -84,10 +83,12 @@ namespace VeraCrypt
 		}
 	}
 
-	void CoreBase::ChangePassword (shared_ptr <VolumePath> volumePath, bool preserveTimestamps, shared_ptr <VolumePassword> password, int pim, shared_ptr <Pkcs5Kdf> kdf, bool truecryptMode, shared_ptr <KeyfileList> keyfiles, shared_ptr <VolumePassword> newPassword, int newPim, shared_ptr <KeyfileList> newKeyfiles, shared_ptr <Pkcs5Kdf> newPkcs5Kdf, int wipeCount) const
+	void CoreBase::ChangePassword (shared_ptr <VolumePath> volumePath, bool preserveTimestamps, shared_ptr <VolumePassword> password, int pim, shared_ptr <Pkcs5Kdf> kdf, bool truecryptMode, shared_ptr <KeyfileList> keyfiles, wstring securityTokenKeySpec, shared_ptr <VolumePassword> newPassword, int newPim, shared_ptr <KeyfileList> newKeyfiles, wstring newSecurityTokenKeySpec, shared_ptr <Pkcs5Kdf> newPkcs5Kdf, int wipeCount) const
 	{
-		shared_ptr <Volume> volume = OpenVolume (volumePath, preserveTimestamps, password, pim, kdf, truecryptMode, keyfiles);
-		ChangePassword (volume, newPassword, newPim, newKeyfiles, newPkcs5Kdf, wipeCount);
+		shared_ptr <Volume> volume = OpenVolume (volumePath, preserveTimestamps, password, pim, kdf, truecryptMode, keyfiles, 
+		VolumeProtection::None, shared_ptr <VolumePassword> (), 0, shared_ptr<Pkcs5Kdf> (), shared_ptr <KeyfileList> (), false, VolumeType::Unknown, false, false, securityTokenKeySpec
+		);
+		ChangePassword (volume, newPassword, newPim, newKeyfiles, newSecurityTokenKeySpec, newPkcs5Kdf, wipeCount);
 	}
 
 	void CoreBase::CoalesceSlotNumberAndMountPoint (MountOptions &options) const
@@ -280,7 +281,7 @@ namespace VeraCrypt
 		encryptionAlgorithm->GetMode()->SetKey (modeKey);
 	}
 
-	void CoreBase::ReEncryptVolumeHeaderWithNewSalt (const BufferPtr &newHeaderBuffer, shared_ptr <VolumeHeader> header, shared_ptr <VolumePassword> password, int pim, shared_ptr <KeyfileList> keyfiles) const
+	void CoreBase::ReEncryptVolumeHeaderWithNewSalt (const BufferPtr &newHeaderBuffer, shared_ptr <VolumeHeader> header, shared_ptr <VolumePassword> password, int pim, shared_ptr <KeyfileList> keyfiles, wstring tokenDescriptor) const
 	{
 		shared_ptr <Pkcs5Kdf> pkcs5Kdf = header->GetPkcs5Kdf();
 
@@ -290,7 +291,7 @@ namespace VeraCrypt
 		SecureBuffer newHeaderKey (VolumeHeader::GetLargestSerializedKeySize());
 
 		// TODO: apply token key here
-		shared_ptr <VolumePassword> passwordKey (Keyfile::ApplyListToPassword (keyfiles, password));
+		shared_ptr <VolumePassword> passwordKey (Keyfile::ApplyListToPassword (keyfiles, password, tokenDescriptor, ApplyMode::CREATE));
 
 		RandomNumberGenerator::GetData (newSalt);
 		pkcs5Kdf->DeriveKey (newHeaderKey, *passwordKey, pim, newSalt);

@@ -18,7 +18,7 @@
 
 namespace VeraCrypt
 {
-	void Keyfile::Apply (const BufferPtr &pool, wstring tokenKeyDescriptor) const
+	void Keyfile::Apply (const BufferPtr &pool, wstring tokenKeyDescriptor, ApplyMode applyMode) const
 	{
 		if (Path.IsDirectory())
 			throw ParameterIncorrect (SRC_POS);
@@ -31,6 +31,7 @@ namespace VeraCrypt
 		uint64 readLength;
 
 		SecureBuffer keyfileBuf (File::GetOptimalReadSize());
+		File encryptedKeyfile;
 
 
 		if (SecurityToken::IsKeyfilePathValid (Path))
@@ -66,51 +67,82 @@ namespace VeraCrypt
 
 
 		file.Open (Path, File::OpenRead, File::ShareRead);
-		trace_msg("opened file");
-		trace_msgw(tokenKeyDescriptor);
+		trace_msg("Opened keyfile");
+		trace_msgw("Using security token key :" << tokenKeyDescriptor);
+
+		
 
 		if (!tokenKeyDescriptor.empty()) {
-			trace_msg("using token key to decrypt keyfiles");
-			// if token is specified, treat first part of the file as encrypted
-			// TODO: get token slot and key from descriptor
-			vector <byte> tokenDataToDecrypt;
+			// if token is specified, first part of the file is/should be encrypted
+
+			if (applyMode == ApplyMode::CREATE) {
+				trace_msg("Using token key to encrypt keyfiles");
+			} else {
+				trace_msg("Using token key to decrypt keyfiles");
+			}
 			
-			// TODO: set proper vector size based on key length
-			
+			// get token slot and key from descriptor
 			SecurityTokenKey key;
-			SecurityToken::GetSecurityTokenKey(tokenKeyDescriptor, key);
-			size_t maxEncryptBufferSize = key.maxEncryptBufferSize;
+			SecurityToken::GetSecurityTokenKey(tokenKeyDescriptor, key, applyMode);
+
+			
+			// set proper vector size based on key length
+			// and mode (encryption/decryption)
+			size_t inputBufferSize = key.maxEncryptBufferSize;
+			size_t outputBufferSize = key.maxDecryptBufferSize;
+			if (applyMode == ApplyMode::CREATE) {
+				inputBufferSize = key.maxDecryptBufferSize;
+				outputBufferSize = key.maxEncryptBufferSize;
+			}
 			uint64 appendBytesCount;
+
+			vector<byte> tokenDataToProcess;
+			vector<byte> processedData(outputBufferSize);
 
 
 			while ((readLength = file.Read (keyfileBuf)) > 0)
 			{
-				trace_msg("read");
-				trace_msg(readLength);
-
-				if (tokenDataToDecrypt.size() < maxEncryptBufferSize) {
+				if (tokenDataToProcess.size() < inputBufferSize) {
 					appendBytesCount = readLength;
-					if (tokenDataToDecrypt.size() + appendBytesCount > maxEncryptBufferSize) {
-						appendBytesCount = maxEncryptBufferSize - tokenDataToDecrypt.size();
-						tokenDataToDecrypt.insert(tokenDataToDecrypt.end(), keyfileBuf.Ptr(), keyfileBuf.Ptr() + appendBytesCount);
-						trace_msg("last append of");
-						trace_msg(appendBytesCount);
+					if (tokenDataToProcess.size() + appendBytesCount > inputBufferSize) {
+						appendBytesCount = inputBufferSize - tokenDataToProcess.size();
+						tokenDataToProcess.insert(tokenDataToProcess.end(), keyfileBuf.Ptr(), keyfileBuf.Ptr() + appendBytesCount);
 						break;
 					}
-					//TODO: how many bytes will be appended? appendBytesCount or appendBytesCount - 1
-					tokenDataToDecrypt.insert(tokenDataToDecrypt.end(), keyfileBuf.Ptr(), keyfileBuf.Ptr() + appendBytesCount);
+					tokenDataToProcess.insert(tokenDataToProcess.end(), keyfileBuf.Ptr(), keyfileBuf.Ptr() + appendBytesCount);
 				}
 			}
-			trace_msg(tokenDataToDecrypt.size());
 
-			vector<byte> decryptedData(key.maxDecryptBufferSize);
-			trace_msg(decryptedData.size());
+			string s(tokenDataToProcess.begin(), tokenDataToProcess.end());
+			trace_msgw("Keyfile data to be processed by token. Size: " << tokenDataToProcess.size() << L">" << s << L"<");
 
-			SecurityToken::GetDecryptedData(key, tokenDataToDecrypt, decryptedData);
+			switch (applyMode) {
+				case ApplyMode::CREATE:
+					SecurityToken::GetEncryptedData(key, tokenDataToProcess, processedData);
 
-			for (size_t i = 0; i < decryptedData.size(); i++)
+					// save encrypted data to a new file
+					{
+						FilesystemPath encryptedKeyfilePath = FilesystemPath(((wstring)Path) + L".vc");
+
+						encryptedKeyfile.Open (encryptedKeyfilePath, File::CreateWrite, File::ShareReadWriteIgnoreLock);
+						encryptedKeyfile.Write(ConstBufferPtr(processedData.data(), processedData.size()));
+
+						// When creating we just need to apply original file's data
+						processedData = tokenDataToProcess;
+					}
+					break;
+				case ApplyMode::MOUNT:
+					SecurityToken::GetDecryptedData(key, tokenDataToProcess, processedData);
+					break;
+				default:
+					throw ParameterIncorrect (SRC_POS);
+					break;
+			}
+			
+
+			for (size_t i = 0; i < processedData.size(); i++)
 			{
-				uint32 crc = crc32.Process (decryptedData[i]);
+				uint32 crc = crc32.Process (processedData[i]);
 
 				pool[poolPos++] += (byte) (crc >> 24);
 				pool[poolPos++] += (byte) (crc >> 16);
@@ -124,13 +156,20 @@ namespace VeraCrypt
 					break;
 			}
 
-			// process the rest of the buffer as ordinary(non-encrypted) data
-			// otherwise we get non-deterministic behavior, because Read() could produce buffers
-			// of different sizes
+			// process the rest of the buffer as an ordinary (non-encrypted) data
+			// otherwise we'd get non-deterministic behavior, because Read() could produce buffers of different sizes
 
-			// TODO: if vector::insert() doesn't push last byte, we don't need to start from appendBytesCount + 1
-			for (size_t i = appendBytesCount + 1; i < readLength; i++)
+			if (encryptedKeyfile.IsOpen()) {
+				// dump read but unused chunk first
+				if (appendBytesCount < readLength) {
+					string ss(keyfileBuf.Ptr() + appendBytesCount, keyfileBuf.Ptr() + readLength);
+					trace_msgw("Appending the rest of keyfile" << L">"  << ss << L"<"));
+					encryptedKeyfile.Write(ConstBufferPtr(&keyfileBuf[appendBytesCount], readLength-appendBytesCount));
+				}
+			}
+			for (size_t i = appendBytesCount; i < readLength; i++)
 			{
+				// apply the same chunk to produce key
 				uint32 crc = crc32.Process (keyfileBuf[i]);
 
 				pool[poolPos++] += (byte) (crc >> 24);
@@ -146,11 +185,14 @@ namespace VeraCrypt
 			}
 		}
 
-		trace_msg("reading keyfile");
+		trace_msg("Reading keyfile further");
 
 
 		while ((readLength = file.Read (keyfileBuf)) > 0)
 		{
+			if (encryptedKeyfile.IsOpen()) {
+				encryptedKeyfile.Write(ConstBufferPtr(keyfileBuf));
+			}
 			for (size_t i = 0; i < readLength; i++)
 			{
 				uint32 crc = crc32.Process (keyfileBuf[i]);
@@ -168,12 +210,15 @@ namespace VeraCrypt
 			}
 		}
 done:
+		if (encryptedKeyfile.IsOpen()) {
+			encryptedKeyfile.Close();
+		}
 		if (totalLength < MinProcessedLength)
 			throw InsufficientData (SRC_POS, Path);
 	}
 
 	shared_ptr <VolumePassword> Keyfile::ApplyListToPassword (shared_ptr <KeyfileList> keyfiles, shared_ptr <VolumePassword> password,
-		wstring tokenDescriptor)
+		wstring tokenDescriptor, ApplyMode applyMode)
 	{
 		if (!password)
 			password.reset (new VolumePassword);
@@ -230,7 +275,7 @@ done:
 			// Apply all keyfiles
 			foreach_ref (const Keyfile &k, keyfilesExp)
 			{
-				k.Apply (keyfilePool, tokenDescriptor);
+				k.Apply (keyfilePool, tokenDescriptor, applyMode);
 			}
 
 			newPassword->Set (keyfilePool);

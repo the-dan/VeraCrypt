@@ -771,6 +771,7 @@ namespace VeraCrypt
 
 				Kdf = page->GetPkcs5Kdf();
 				Keyfiles = page->GetKeyfiles();
+				SecurityTokenKeySpec = page->GetSecurityTokenKeySpec();
 
 				if (forward && Password && !Password->IsEmpty())
 				{
@@ -795,7 +796,7 @@ namespace VeraCrypt
 						shared_ptr <VolumePassword> hiddenPassword;
 						try
 						{
-							hiddenPassword = Keyfile::ApplyListToPassword (Keyfiles, Password);
+							hiddenPassword = Keyfile::ApplyListToPassword (Keyfiles, Password, SecurityTokenKeySpec, ApplyMode::CREATE);
 						}
 						catch (...)
 						{
@@ -846,7 +847,7 @@ namespace VeraCrypt
 					shared_ptr <VolumePassword> hiddenPassword;
 					try
 					{
-						hiddenPassword = Keyfile::ApplyListToPassword (Keyfiles, Password);
+						hiddenPassword = Keyfile::ApplyListToPassword (Keyfiles, Password, SecurityTokenKeySpec, ApplyMode::CREATE);
 					}
 					catch (...)
 					{
@@ -1027,6 +1028,7 @@ namespace VeraCrypt
 						options->Password = Password;
 						options->Pim = Pim;
 						options->Keyfiles = Keyfiles;
+						options->SecurityTokenKeySpec = SecurityTokenKeySpec;
 						options->Path = SelectedVolumePath;
 						options->Quick = QuickFormatEnabled;
 						options->Size = VolumeSize;
@@ -1160,7 +1162,7 @@ namespace VeraCrypt
 				// remember Outer password and keyfiles in order to be able to compare it with those of Hidden volume
 				try
 				{
-					OuterPassword = Keyfile::ApplyListToPassword (Keyfiles, Password);
+					OuterPassword = Keyfile::ApplyListToPassword (Keyfiles, Password, SecurityTokenKeySpec, ApplyMode::CREATE);
 				}
 				catch (...)
 				{

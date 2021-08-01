@@ -89,6 +89,11 @@ namespace VeraCrypt
 
 		ConstBufferPtr salt (encryptedData.GetRange (SaltOffset, SaltSize));
 		SecureBuffer header (EncryptedHeaderDataSize);
+
+		trace_msgw("Encrypted header data size: " << EncryptedHeaderDataSize);
+		trace_msgw("Largest key size: " << GetLargestSerializedKeySize());
+		// TODO: decrypt using Security Token
+
 		SecureBuffer headerKey (GetLargestSerializedKeySize());
 
 		foreach (shared_ptr <Pkcs5Kdf> pkcs5, keyDerivationFunctions)
@@ -96,6 +101,7 @@ namespace VeraCrypt
 			if (kdf && (kdf->GetName() != pkcs5->GetName()))
 				continue;
 
+			trace_msgw("Trying kdf " << pkcs5->GetName());
 			pkcs5->DeriveKey (headerKey, password, pim, salt);
 
 			foreach (shared_ptr <EncryptionMode> mode, encryptionModes)

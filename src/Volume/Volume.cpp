@@ -126,7 +126,7 @@ namespace VeraCrypt
 			VolumeHostSize = VolumeFile->Length();
 			trace_msg("opening volume");
 			// NOTE: here we derive master key from password and keyfiles
-			shared_ptr <VolumePassword> passwordKey = Keyfile::ApplyListToPassword (keyfiles, password, securityTokenKeySpec);
+			shared_ptr <VolumePassword> passwordKey = Keyfile::ApplyListToPassword (keyfiles, password, securityTokenKeySpec, ApplyMode::MOUNT);
 
 			bool skipLayoutV1Normal = false;
 

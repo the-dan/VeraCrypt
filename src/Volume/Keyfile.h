@@ -16,6 +16,7 @@
 #include "Platform/Platform.h"
 #include "Platform/Stream.h"
 #include "VolumePassword.h"
+#include "Common/SecurityToken.h"
 
 namespace VeraCrypt
 {
@@ -30,7 +31,7 @@ namespace VeraCrypt
 
 		operator FilesystemPath () const { return Path; }
 		static shared_ptr <VolumePassword> ApplyListToPassword (shared_ptr <KeyfileList> keyfiles, shared_ptr <VolumePassword> password,
-			wstring tokenDescriptor = wstring());
+			wstring tokenDescriptor, ApplyMode applyMode);
 		static shared_ptr <KeyfileList> DeserializeList (shared_ptr <Stream> stream, const string &name);
 		static void SerializeList (shared_ptr <Stream> stream, const string &name, shared_ptr <KeyfileList> keyfiles);
 		static bool WasHiddenFilePresentInKeyfilePath() { bool r = HiddenFileWasPresentInKeyfilePath; HiddenFileWasPresentInKeyfilePath = false; return r; }
@@ -39,7 +40,7 @@ namespace VeraCrypt
 		static const size_t MaxProcessedLength = 1024 * 1024;
 
 	protected:
-		void Apply (const BufferPtr &pool, wstring tokenKeyDescriptor = wstring()) const;
+		void Apply (const BufferPtr &pool, wstring tokenKeyDescriptor = wstring(), ApplyMode applyMode = ApplyMode::MOUNT) const;
 
 		static bool HiddenFileWasPresentInKeyfilePath;
 

@@ -73,12 +73,12 @@ namespace VeraCrypt
 		GraphicUserInterface::InstallPasswordEntryCustomKeyboardShortcuts (this);
 #endif
 
-		CurrentPasswordPanel = new VolumePasswordPanel (this, NULL, password, false, keyfiles, false, true, true, false, true, true);
+		CurrentPasswordPanel = new VolumePasswordPanel (this, NULL, password, false, keyfiles, ApplyMode::MOUNT, false, true, true, false, true, true);
 		CurrentPasswordPanel->UpdateEvent.Connect (EventConnector <ChangePasswordDialog> (this, &ChangePasswordDialog::OnPasswordPanelUpdate));
 		CurrentPasswordPanel->SetTrueCryptMode (isTrueCryptFile);
 		CurrentPasswordPanelSizer->Add (CurrentPasswordPanel, 1, wxALL | wxEXPAND);
 
-		NewPasswordPanel = new VolumePasswordPanel (this, NULL, newPassword, true, newKeyfiles, false, enableNewPassword, enableNewKeyfiles, enableNewPassword, enablePkcs5Prf);
+		NewPasswordPanel = new VolumePasswordPanel (this, NULL, newPassword, true, newKeyfiles, ApplyMode::CREATE, false, enableNewPassword, enableNewKeyfiles, enableNewPassword, enablePkcs5Prf);
 		NewPasswordPanel->UpdateEvent.Connect (EventConnector <ChangePasswordDialog> (this, &ChangePasswordDialog::OnPasswordPanelUpdate));
 		NewPasswordPanelSizer->Add (NewPasswordPanel, 1, wxALL | wxEXPAND);
 
@@ -123,6 +123,7 @@ namespace VeraCrypt
 
 			shared_ptr <VolumePassword> newPassword;
 			int newPim = 0;
+			wstring newSecurityTokenSpec = wstring();
 			if (DialogMode == Mode::ChangePasswordAndKeyfiles)
 			{
 				try
@@ -141,6 +142,7 @@ namespace VeraCrypt
 					NewPasswordPanel->SetFocusToPimTextCtrl();
 					return;
 				}
+				newSecurityTokenSpec = NewPasswordPanel->GetSecurityTokenKeySpec();
 
 				if (newPassword->Size() > 0)
 				{
@@ -172,13 +174,18 @@ namespace VeraCrypt
 			{
 				newPassword = CurrentPasswordPanel->GetPassword();
 				newPim = CurrentPasswordPanel->GetVolumePim();
+				newSecurityTokenSpec = CurrentPasswordPanel->GetSecurityTokenKeySpec();
 			}
 
 			shared_ptr <KeyfileList> newKeyfiles;
-			if (DialogMode == Mode::ChangePasswordAndKeyfiles || DialogMode == Mode::ChangeKeyfiles)
+			if (DialogMode == Mode::ChangePasswordAndKeyfiles || DialogMode == Mode::ChangeKeyfiles) {
 				newKeyfiles = NewPasswordPanel->GetKeyfiles();
-			else if (DialogMode != Mode::RemoveAllKeyfiles)
+				newSecurityTokenSpec = NewPasswordPanel->GetSecurityTokenKeySpec();
+			}
+			else if (DialogMode != Mode::RemoveAllKeyfiles) {
 				newKeyfiles = CurrentPasswordPanel->GetKeyfiles();
+				newSecurityTokenSpec = CurrentPasswordPanel->GetSecurityTokenKeySpec();
+			}
 
 			/* force the display of the random enriching interface */
 			RandomNumberGenerator::SetEnrichedByUserStatus (false);
@@ -204,7 +211,11 @@ namespace VeraCrypt
 				wxBusyCursor busy;
 				ChangePasswordThreadRoutine routine(Path,	Gui->GetPreferences().DefaultMountOptions.PreserveTimestamps,
 					CurrentPasswordPanel->GetPassword(), CurrentPasswordPanel->GetVolumePim(), CurrentPasswordPanel->GetPkcs5Kdf(bUnsupportedKdf), CurrentPasswordPanel->GetTrueCryptMode(),CurrentPasswordPanel->GetKeyfiles(),
-					newPassword, newPim, newKeyfiles, NewPasswordPanel->GetPkcs5Kdf(bUnsupportedKdf), NewPasswordPanel->GetHeaderWipeCount());
+					CurrentPasswordPanel->GetSecurityTokenKeySpec(),
+					newPassword, newPim, newKeyfiles, newSecurityTokenSpec,
+					NewPasswordPanel->GetPkcs5Kdf(bUnsupportedKdf), 
+					NewPasswordPanel->GetHeaderWipeCount()
+					);
 				Gui->ExecuteWaitThreadRoutine (this, &routine);
 			}
 

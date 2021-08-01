@@ -19,10 +19,16 @@
 
 namespace VeraCrypt
 {
+
+	enum KeyType {
+		PRIVATE,
+		PUBLIC
+	};
+
 	class SecurityTokenKeysDialog : public SecurityTokenKeysDialogBase
 	{
 	public:
-		SecurityTokenKeysDialog (wxWindow* parent, bool selectionMode = true);
+		SecurityTokenKeysDialog (wxWindow* parent, ApplyMode applyMode, bool selectionMode = true);
 		wstring GetSelectedSecurityTokenKeySpec() const { return SelectedSecurityTokenKeySpec; }
 
 	protected:
@@ -33,7 +39,7 @@ namespace VeraCrypt
 			ColumnSecurityTokenKeyLabel,
 		};
 
-		void FillSecurityTokenKeyListCtrl ();
+		void FillSecurityTokenKeyListCtrl (KeyType keyType);
 		void OnListItemActivated (wxListEvent& event) { OnOKButtonClick(); }
 		void OnListItemDeselected (wxListEvent& event);
 		void OnListItemSelected (wxListEvent& event);

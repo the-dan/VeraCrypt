@@ -19,7 +19,7 @@
 
 namespace VeraCrypt
 {
-	SecurityTokenKeysDialog::SecurityTokenKeysDialog (wxWindow* parent, bool selectionMode)
+	SecurityTokenKeysDialog::SecurityTokenKeysDialog (wxWindow* parent, ApplyMode applyMode, bool selectionMode)
 		: SecurityTokenKeysDialogBase (parent)
 	{
 		if (selectionMode)
@@ -34,7 +34,11 @@ namespace VeraCrypt
 		SecurityTokenKeyListCtrl->InsertColumn (ColumnSecurityTokenKeyLabel, _("TOKEN_KEY_LABEL"), wxLIST_FORMAT_LEFT, 1);
 		colPermilles.push_back (529);
 
-		FillSecurityTokenKeyListCtrl();
+		KeyType keyType = KeyType::PRIVATE;
+		if (applyMode == ApplyMode::CREATE) {
+			keyType = KeyType::PUBLIC;
+		}
+		FillSecurityTokenKeyListCtrl(keyType);
 
 		Gui->SetListCtrlWidth (SecurityTokenKeyListCtrl, 65);
 		Gui->SetListCtrlHeight (SecurityTokenKeyListCtrl, 16);
@@ -48,12 +52,21 @@ namespace VeraCrypt
 		OKButton->SetDefault();
 	}
 
-	void SecurityTokenKeysDialog::FillSecurityTokenKeyListCtrl ()
+	void SecurityTokenKeysDialog::FillSecurityTokenKeyListCtrl (KeyType keyType)
 	{
 		wxBusyCursor busy;
 
 		SecurityTokenKeyListCtrl->DeleteAllItems();
-		SecurityTokenKeyList = SecurityToken::GetAvailableKeys();
+		switch (keyType) {
+			case KeyType::PRIVATE:
+				SecurityTokenKeyList = SecurityToken::GetAvailablePrivateKeys();
+				break;
+			case KeyType::PUBLIC:
+				SecurityTokenKeyList = SecurityToken::GetAvailablePublicKeys();
+				break;
+			default:
+				throw_err("Unknown key type");
+		}
 
 		size_t i = 0;
 		foreach (const SecurityTokenKey &key, SecurityTokenKeyList)

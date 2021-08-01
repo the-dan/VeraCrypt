@@ -55,6 +55,12 @@
 
 namespace VeraCrypt
 {
+
+	enum ApplyMode {
+		MOUNT,
+		CREATE
+	};
+
 	struct SecurityTokenInfo
 	{
 		CK_SLOT_ID SlotId;
@@ -201,9 +207,11 @@ namespace VeraCrypt
 		static void DeleteKeyfile (const SecurityTokenKeyfile &keyfile);
 		static vector <SecurityTokenKeyfile> GetAvailableKeyfiles (CK_SLOT_ID *slotIdFilter = nullptr, const wstring keyfileIdFilter = wstring());
 
-		static vector <SecurityTokenKey> GetAvailableKeys(CK_SLOT_ID *slotIdFilterm = nullptr, const wstring keyIdFilter = wstring());
-		static void GetSecurityTokenKey(wstring tokenKeyDescriptor, SecurityTokenKey &key);
+		static vector <SecurityTokenKey> GetAvailablePrivateKeys(CK_SLOT_ID *slotIdFilterm = nullptr, const wstring keyIdFilter = wstring());
+		static vector <SecurityTokenKey> GetAvailablePublicKeys(CK_SLOT_ID *slotIdFilterm = nullptr, const wstring keyIdFilter = wstring());
+		static void GetSecurityTokenKey(wstring tokenKeyDescriptor, SecurityTokenKey &key, ApplyMode applyMode);
 		static void GetDecryptedData(SecurityTokenKey key, vector<byte> tokenDataToDecrypt, vector<byte> &decryptedData);
+		static void GetEncryptedData(SecurityTokenKey key, vector<byte> plaintext, vector<byte> &ciphertext);
 
 
 		static void GetKeyfileData (const SecurityTokenKeyfile &keyfile, vector <byte> &keyfileData);
@@ -223,6 +231,7 @@ namespace VeraCrypt
 		static void CloseSession (CK_SLOT_ID slotId);
 		static vector <CK_OBJECT_HANDLE> GetObjects (CK_SLOT_ID slotId, CK_ATTRIBUTE_TYPE objectClass);
 		static void GetDecryptedData (CK_SLOT_ID slotId, CK_OBJECT_HANDLE tokenObject, vector<byte> edata, vector <byte> &keyfiledata);
+		static void GetEncryptedData (CK_SLOT_ID slotId, CK_OBJECT_HANDLE tokenObject, vector <byte> plaintext, vector <byte> &ciphertext);
 		static void GetObjectAttribute (CK_SLOT_ID slotId, CK_OBJECT_HANDLE tokenObject, CK_ATTRIBUTE_TYPE attributeType, vector <byte> &attributeValue);
 		static list <CK_SLOT_ID> GetTokenSlots ();
 		static void Login (CK_SLOT_ID slotId, const char* pin);
@@ -243,6 +252,11 @@ namespace VeraCrypt
 
 	
 		static CK_RV PKCS11Decrypt(
+			CK_SESSION_HANDLE hSession,
+			vector<unsigned char> inEncryptedData,
+			vector<unsigned char> &outData
+		);
+		static CK_RV PKCS11Encrypt(
 			CK_SESSION_HANDLE hSession,
 			vector<unsigned char> inEncryptedData,
 			vector<unsigned char> &outData

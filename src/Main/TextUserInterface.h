@@ -27,6 +27,7 @@ namespace VeraCrypt
 
 		virtual FilePath AskFilePath (const wxString &message = wxEmptyString) const;
 		virtual shared_ptr <KeyfileList> AskKeyfiles (const wxString &message = L"") const;
+		virtual wstring AskSecurityTokenKeySpec(const wxString &message = L"") const;
 		virtual shared_ptr <VolumePassword> AskPassword (const wxString &message = L"", bool verify = false) const;
 		virtual int AskPim (const wxString &message = L"") const;
 		virtual ssize_t AskSelection (ssize_t optionCount, ssize_t defaultOption = -1) const;
