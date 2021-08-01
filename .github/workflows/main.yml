@@ -29,6 +29,17 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
       
+      - name: Download Packages
+        uses: carlosperate/download-file-action@v1.0.3
+        id: download-packages
+        with:
+          file-url: 'http://s.sudre.free.fr/Software/files/Packages.dmg'
+          file-name: 'Packages.dmg'
+          location: '.'
+          
+      - name: Install Packages
+        run: sudo hdiutil attach Packages.dmg && sudo installer -pkg "/Volumes/Packages 1.2.9/Install Packages.pkg" -target /
+      
       - name: Download macFUSE
         uses: carlosperate/download-file-action@v1.0.3
         id: download-macfuse
