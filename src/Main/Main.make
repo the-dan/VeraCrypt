@@ -220,12 +220,16 @@ ifdef VC_LEGACY_BUILD
 	/usr/local/bin/packagesbuild $(BASE_DIR)/Setup/MacOSX/veracrypt_Legacy.pkgproj
 ifdef $(VC_OSX_DEVELOPER_ID)
 	productsign --sign "Developer ID Installer: $(VC_OSX_DEVELOPER_ID)" --timestamp "$(BASE_DIR)/Setup/MacOSX/VeraCrypt Legacy $(TC_VERSION).pkg" $(BASE_DIR)/Setup/MacOSX/VeraCrypt_$(TC_VERSION).pkg
+else
+	cp "$(BASE_DIR)/Setup/MacOSX/VeraCrypt Legacy $(TC_VERSION).pkg" $(BASE_DIR)/Setup/MacOSX/VeraCrypt_$(TC_VERSION).pkg
 endif
 	rm -f $(APPNAME)_Legacy_$(TC_VERSION).dmg
 else
 	/usr/local/bin/packagesbuild $(BASE_DIR)/Setup/MacOSX/veracrypt.pkgproj
 ifdef $(VC_OSX_DEVELOPER_ID)
 	productsign --sign "Developer ID Installer: $(VC_OSX_DEVELOPER_ID)" --timestamp "$(BASE_DIR)/Setup/MacOSX/VeraCrypt $(TC_VERSION).pkg" $(BASE_DIR)/Setup/MacOSX/VeraCrypt_$(TC_VERSION).pkg
+else
+	cp "$(BASE_DIR)/Setup/MacOSX/VeraCrypt $(TC_VERSION).pkg" $(BASE_DIR)/Setup/MacOSX/VeraCrypt_$(TC_VERSION).pkg
 endif
 	rm -f $(APPNAME)_$(TC_VERSION).dmg
 endif
