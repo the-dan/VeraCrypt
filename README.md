@@ -1,3 +1,5 @@
+![build](https://github.com/the-dan/VeraCrypt/actions/workflows/main.yml/badge.svg)
+
 This archive contains the source code of VeraCrypt.
 It is based on original TrueCrypt 7.1a with security enhancements and modifications.
 
