@@ -39,6 +39,9 @@ jobs:
           file-url: 'http://s.sudre.free.fr/Software/files/Packages.dmg'
           file-name: 'Packages.dmg'
           location: '.'
+
+      - name: List Volumes directory context
+        run: ls -latr /Volumes
           
       - name: Install Packages
         run: sudo hdiutil attach Packages.dmg && sudo installer -pkg "/Volumes/Packages 1.2.9/Install Packages.pkg" -target /
