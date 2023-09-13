@@ -63,7 +63,8 @@ jobs:
         run: sudo hdiutil attach macfuse-4.1.2.dmg 
 
       - name: List Volumes directory context
-        run: ls |
+        run: |
+          - ls
           - -latr
           - /Volumes
 
