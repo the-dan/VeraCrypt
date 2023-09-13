@@ -40,12 +40,6 @@ jobs:
           file-name: 'Packages.dmg'
           location: '.'
 
-      - name: List Volumes directory context
-        run: ls -latr /Volumes
-          
-      - name: Install Packages
-        run: sudo hdiutil attach Packages.dmg && sudo installer -pkg "/Volumes/Packages 1.2.9/Install Packages.pkg" -target /
-      
       - name: Download macFUSE
         uses: carlosperate/download-file-action@v1.0.3
         id: download-macfuse
@@ -53,10 +47,7 @@ jobs:
           file-url: 'https://github.com/osxfuse/osxfuse/releases/download/macfuse-4.1.2/macfuse-4.1.2.dmg'
           file-name: 'macfuse-4.1.2.dmg'
           location: '.'
-      
-      - name: Install macFUSE
-        run: sudo hdiutil attach macfuse-4.1.2.dmg && sudo installer -pkg "/Volumes/macFUSE/Install macFUSE.pkg" -target /
-        
+
       - name: Download pkg-config
         uses: carlosperate/download-file-action@v1.0.3
         id: download-pkg-config
@@ -64,6 +55,23 @@ jobs:
           file-url: 'https://pkgconfig.freedesktop.org/releases/pkg-config-0.28.tar.gz'
           file-name: pkg-config-0.28.tar.gz
           location: '.'
+          
+      - name: Mount Packages
+        run: sudo hdiutil attach Packages.dmg
+
+      - name: Mount macFUSE
+        run: sudo hdiutil attach macfuse-4.1.2.dmg 
+
+      - name: List Volumes directory context
+        run: ls |
+          - -latr
+          - /Volumes
+
+      - name: Install Packages
+        run: sudo installer -pkg "/Volumes/Packages 1.2.9/Install Packages.pkg" -target /
+      
+      - name: Install macFUSE
+        run: sudo installer -pkg "/Volumes/macFUSE/Install macFUSE.pkg" -target /     
           
       - name: Build and install pkg-config
         run: tar xvf pkg-config-0.28.tar.gz && cd pkg-config-0.28 && ./configure && make && make install
