@@ -66,7 +66,7 @@ jobs:
         run: ls -latr /Volumes || true
 
       - name: Install Packages
-        run: sudo installer -pkg "/Volumes/Packages 1.2.9/Install Packages.pkg" -target /
+        run: sudo installer -pkg "/Volumes/Packages 1.2.10/Install Packages.pkg" -target /
       
       - name: Install macFUSE
         run: sudo installer -pkg "/Volumes/macFUSE/Install macFUSE.pkg" -target /     
