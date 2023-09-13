@@ -63,10 +63,7 @@ jobs:
         run: sudo hdiutil attach macfuse-4.1.2.dmg 
 
       - name: List Volumes directory context
-        run: |
-          - ls
-          - -latr
-          - /Volumes
+        run: ls -latr /Volumes || true
 
       - name: Install Packages
         run: sudo installer -pkg "/Volumes/Packages 1.2.9/Install Packages.pkg" -target /
@@ -111,7 +108,7 @@ jobs:
         run: cd src && make WXSTATIC=FULL VC_OSX_SDK_PATH= WX_ROOT=${{env.WX_ROOT}} WX_BUILD_DIR=${{env.WX_BUILD_DIR}} && make WXSTATIC=FULL package
 
       # Runs a set of commands using the runners shell
-      - name: Show directiry structure
+      - name: Show directory structure
         run: |
           ls -R .
           ls -l src || true
