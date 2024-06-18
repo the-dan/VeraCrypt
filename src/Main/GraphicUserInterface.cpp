@@ -25,6 +25,7 @@
 #endif
 
 #include "Common/SecurityToken.h"
+#include "Volume/Keyfile.h"
 #include "Application.h"
 #include "GraphicUserInterface.h"
 #include "FatalErrorHandler.h"
@@ -34,6 +35,7 @@
 #include "Forms/MountOptionsDialog.h"
 #include "Forms/RandomPoolEnrichmentDialog.h"
 #include "Forms/SecurityTokenKeyfilesDialog.h"
+#include "Forms/SecurityTokenKeysDialog.h"
 
 namespace VeraCrypt
 {
@@ -118,6 +120,45 @@ namespace VeraCrypt
 			OnVolumesAutoDismounted();
 	}
 
+	void GraphicUserInterface::RevealRedkey (shared_ptr <VolumePath> volumePath) const
+	{
+		wxWindow *parent = GetActiveWindow();
+
+		ShowInfo ("REVEAL_REDKEY_INFO");
+
+		// choose blue key file
+		FilePathList files = SelectFiles (parent, wxEmptyString, false, false);
+		if (files.empty())
+			return;
+
+		DirectoryPath blueKey = *files.front();
+
+		// choose security key
+		SecurityTokenKeysDialog dialog (parent, SecurityTokenKeyOperation::DECRYPT);
+		if (dialog.ShowModal() != wxID_OK) {
+			return;
+		}
+
+		
+		wxString keySpec( dialog.GetSelectedSecurityTokenKeySpec() );
+				
+
+		// choose red key filepath
+		files = SelectFiles (parent, wxString(LangString["REVEAL_REDKEY_PATH"]), true, false);
+		if (files.empty())
+			return;
+
+		DirectoryPath redKeyPath = *files.front();		
+
+		// apply security key to blue key file in decryption mode
+		Keyfile kf(blueKey);
+		
+		// save result to red key file
+		kf.RevealRedkey(redKeyPath, keySpec.ToStdWstring());
+
+		ShowWarning ("REVEAL_REDKEY_DONE");
+	} 
+
 	void GraphicUserInterface::BackupVolumeHeaders (shared_ptr <VolumePath> volumePath) const
 	{
 		wxWindow *parent = GetActiveWindow();
@@ -199,6 +240,7 @@ namespace VeraCrypt
 						options->ProtectionPim,
 						options->ProtectionKdf,
 						options->ProtectionKeyfiles,
+						options->ProtectionSecurityTokenKeySpec,
 						true,
 						volumeType,
 						options->UseBackupHeaders
@@ -228,6 +270,7 @@ namespace VeraCrypt
 								options->ProtectionPim,
 								options->ProtectionKdf,
 								options->ProtectionKeyfiles,
+								options->ProtectionSecurityTokenKeySpec,
 								true,
 								volumeType,
 								true
@@ -1457,6 +1500,7 @@ namespace VeraCrypt
 						options.ProtectionPim,
 						options.ProtectionKdf,
 						options.ProtectionKeyfiles,
+						options.ProtectionSecurityTokenKeySpec,
 						options.SharedAccessAllowed,
 						VolumeType::Unknown,
 						true
@@ -1565,8 +1609,7 @@ namespace VeraCrypt
 						backupFile.ReadAt (headerBuffer, layout->GetType() == VolumeType::Hidden ? layout->GetHeaderSize() : 0);
 
 						// Decrypt header
-						// NOTE: token key have to be passwed here if specified
-						shared_ptr <VolumePassword> passwordKey = Keyfile::ApplyListToPassword (options.Keyfiles, options.Password, options.SecurityTokenKeySpec, ApplyMode::MOUNT);
+						shared_ptr <VolumePassword> passwordKey = Keyfile::ApplyListToPassword (options.Keyfiles, options.Password, options.SecurityTokenKeySpec);
 						Pkcs5KdfList keyDerivationFunctions = layout->GetSupportedKeyDerivationFunctions(options.TrueCryptMode);
 						EncryptionAlgorithmList encryptionAlgorithms = layout->GetSupportedEncryptionAlgorithms();
 						EncryptionModeList encryptionModes = layout->GetSupportedEncryptionModes();

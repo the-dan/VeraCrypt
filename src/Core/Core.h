@@ -106,20 +106,21 @@ namespace VeraCrypt
 		int m_protectionPim;
 		shared_ptr<Pkcs5Kdf> m_protectionKdf;
 		shared_ptr <KeyfileList> m_protectionKeyfiles;
+		wstring m_protectionSecurityTokenKeySpec;
 		bool m_sharedAccessAllowed;
 		VolumeType::Enum m_volumeType;
 		bool m_useBackupHeaders;
 		bool m_partitionInSystemEncryptionScope;
 		shared_ptr <Volume> m_pVolume;
 
-		OpenVolumeThreadRoutine(shared_ptr <VolumePath> volumePath, bool preserveTimestamps, shared_ptr <VolumePassword> password, int pim, shared_ptr<Pkcs5Kdf> Kdf, bool truecryptMode, shared_ptr <KeyfileList> keyfiles, wstring securityTokenKeySpec = wstring(), VolumeProtection::Enum protection = VolumeProtection::None, shared_ptr <VolumePassword> protectionPassword = shared_ptr <VolumePassword> (), int protectionPim = 0, shared_ptr<Pkcs5Kdf> protectionKdf = shared_ptr<Pkcs5Kdf> (), shared_ptr <KeyfileList> protectionKeyfiles = shared_ptr <KeyfileList> (), bool sharedAccessAllowed = false, VolumeType::Enum volumeType = VolumeType::Unknown, bool useBackupHeaders = false, bool partitionInSystemEncryptionScope = false):
+		OpenVolumeThreadRoutine(shared_ptr <VolumePath> volumePath, bool preserveTimestamps, shared_ptr <VolumePassword> password, int pim, shared_ptr<Pkcs5Kdf> Kdf, bool truecryptMode, shared_ptr <KeyfileList> keyfiles, wstring securityTokenKeySpec = wstring(), VolumeProtection::Enum protection = VolumeProtection::None, shared_ptr <VolumePassword> protectionPassword = shared_ptr <VolumePassword> (), int protectionPim = 0, shared_ptr<Pkcs5Kdf> protectionKdf = shared_ptr<Pkcs5Kdf> (), shared_ptr <KeyfileList> protectionKeyfiles = shared_ptr <KeyfileList> (), wstring protectionSecurityTokenKeySpec = wstring(), bool sharedAccessAllowed = false, VolumeType::Enum volumeType = VolumeType::Unknown, bool useBackupHeaders = false, bool partitionInSystemEncryptionScope = false):
 		m_volumePath(volumePath), m_preserveTimestamps(preserveTimestamps), m_password(password), m_pim(pim), m_Kdf(Kdf), m_truecryptMode(truecryptMode), m_keyfiles(keyfiles), m_securityTokenKeySpec(securityTokenKeySpec),
-		m_protection(protection), m_protectionPassword(protectionPassword), m_protectionPim(protectionPim), m_protectionKdf(protectionKdf), m_protectionKeyfiles(protectionKeyfiles), m_sharedAccessAllowed(sharedAccessAllowed), m_volumeType(volumeType),m_useBackupHeaders(useBackupHeaders),
+		m_protection(protection), m_protectionPassword(protectionPassword), m_protectionPim(protectionPim), m_protectionKdf(protectionKdf), m_protectionKeyfiles(protectionKeyfiles), m_protectionSecurityTokenKeySpec(protectionSecurityTokenKeySpec), m_sharedAccessAllowed(sharedAccessAllowed), m_volumeType(volumeType),m_useBackupHeaders(useBackupHeaders),
 		m_partitionInSystemEncryptionScope(partitionInSystemEncryptionScope) {}
 
 		~OpenVolumeThreadRoutine() {}
 
-		virtual void ExecutionCode(void) { m_pVolume = Core->OpenVolume(m_volumePath,m_preserveTimestamps,m_password,m_pim,m_Kdf,m_truecryptMode,m_keyfiles, m_protection,m_protectionPassword,m_protectionPim,m_protectionKdf, m_protectionKeyfiles,m_sharedAccessAllowed,m_volumeType,m_useBackupHeaders, m_partitionInSystemEncryptionScope, m_securityTokenKeySpec); }
+		virtual void ExecutionCode(void) { m_pVolume = Core->OpenVolume(m_volumePath,m_preserveTimestamps,m_password,m_pim,m_Kdf,m_truecryptMode,m_keyfiles, m_protection,m_protectionPassword,m_protectionPim,m_protectionKdf, m_protectionKeyfiles, m_protectionSecurityTokenKeySpec, m_sharedAccessAllowed, m_volumeType,m_useBackupHeaders, m_partitionInSystemEncryptionScope, m_securityTokenKeySpec); }
 
 	};
 

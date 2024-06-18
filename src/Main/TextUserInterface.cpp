@@ -319,6 +319,7 @@ namespace VeraCrypt
 						options->ProtectionPim,
 						options->ProtectionKdf,
 						options->ProtectionKeyfiles,
+						options->ProtectionSecurityTokenKeySpec,
 						true,
 						volumeType,
 						options->UseBackupHeaders
@@ -344,6 +345,7 @@ namespace VeraCrypt
 								options->ProtectionPim,
 								options->ProtectionKdf,
 								options->ProtectionKeyfiles,
+								options->ProtectionSecurityTokenKeySpec,
 								true,
 								volumeType,
 								true
@@ -1281,6 +1283,8 @@ namespace VeraCrypt
 					options.ProtectionPim = AskPim (_("Enter PIM for hidden volume"));
 				if (!options.ProtectionKeyfiles)
 					options.ProtectionKeyfiles = AskKeyfiles (_("Enter keyfile for hidden volume"));
+				if (!options.ProtectionSecurityTokenKeySpec.empty())
+					options.ProtectionSecurityTokenKeySpec = AskSecurityTokenKeySpec(_("Enter security token key spec"));
 			}
 
 			try
@@ -1476,6 +1480,7 @@ namespace VeraCrypt
 						options.ProtectionPim,
 						options.ProtectionKdf,
 						options.ProtectionKeyfiles,
+						options.ProtectionSecurityTokenKeySpec,
 						options.SharedAccessAllowed,
 						VolumeType::Unknown,
 						true
@@ -1575,8 +1580,7 @@ namespace VeraCrypt
 						backupFile.ReadAt (headerBuffer, layout->GetType() == VolumeType::Hidden ? layout->GetHeaderSize() : 0);
 
 						// Decrypt header
-						// NOTE: pass token key here
-						shared_ptr <VolumePassword> passwordKey = Keyfile::ApplyListToPassword (options.Keyfiles, options.Password, options.SecurityTokenKeySpec, ApplyMode::MOUNT);
+						shared_ptr <VolumePassword> passwordKey = Keyfile::ApplyListToPassword (options.Keyfiles, options.Password, options.SecurityTokenKeySpec);
 						if (layout->GetHeader()->Decrypt (headerBuffer, *passwordKey, options.Pim, kdf, false, layout->GetSupportedKeyDerivationFunctions(false), layout->GetSupportedEncryptionAlgorithms(), layout->GetSupportedEncryptionModes()))
 						{
 							decryptedLayout = layout;

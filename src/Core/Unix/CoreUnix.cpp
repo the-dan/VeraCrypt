@@ -447,6 +447,7 @@ namespace VeraCrypt
 					options.ProtectionPim,
 					options.ProtectionKdf,
 					options.ProtectionKeyfiles,
+					options.ProtectionSecurityTokenKeySpec,
 					options.SharedAccessAllowed,
 					VolumeType::Unknown,
 					options.UseBackupHeaders,

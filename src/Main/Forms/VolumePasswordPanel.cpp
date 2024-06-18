@@ -19,19 +19,24 @@
 
 namespace VeraCrypt
 {
-	VolumePasswordPanel::VolumePasswordPanel (wxWindow* parent, MountOptions* options, shared_ptr <VolumePassword> password, bool disableTruecryptMode, shared_ptr <KeyfileList> keyfiles, ApplyMode applyMode, bool enableCache, bool enablePassword, bool enableKeyfiles, bool enableConfirmation, bool enablePkcs5Prf, bool isMountPassword, const wxString &passwordLabel)
-		: VolumePasswordPanelBase (parent), Keyfiles (new KeyfileList), EnablePimEntry (true), applyMode(applyMode)
+	VolumePasswordPanel::VolumePasswordPanel (wxWindow* parent, MountOptions* options, shared_ptr <VolumePassword> password, bool disableTruecryptMode, shared_ptr <KeyfileList> keyfiles, wstring securityTokenKeySpec, SecurityTokenKeyOperation mode, bool enableCache, bool enablePassword, bool enableKeyfiles, bool enableConfirmation, bool enablePkcs5Prf, bool isMountPassword, const wxString &passwordLabel)
+		: VolumePasswordPanelBase (parent), Keyfiles (new KeyfileList), EnablePimEntry (true), mode(mode)
 	{
 		size_t maxPasswordLength = CmdLine->ArgUseLegacyPassword? VolumePassword::MaxLegacySize : VolumePassword::MaxSize;
 		if (keyfiles)
 		{
 			*Keyfiles = *keyfiles;
 			UseKeyfilesCheckBox->SetValue (!Keyfiles->empty());
+			SecurityTokenKeySpecButton->Enable(!keyfiles->empty());
+			SecurityTokenKeySpecText->Enable(!keyfiles->empty());
 		}
 		else
 		{
 			*Keyfiles = Gui->GetPreferences().DefaultKeyfiles;
-			UseKeyfilesCheckBox->SetValue (Gui->GetPreferences().UseKeyfiles && !Keyfiles->empty());
+			auto show = Gui->GetPreferences().UseKeyfiles && !Keyfiles->empty();
+			UseKeyfilesCheckBox->SetValue (show);
+			SecurityTokenKeySpecButton->Enable(show);
+			SecurityTokenKeySpecText->Enable(show);
 		}
 
 		PasswordTextCtrl->SetMaxLength (maxPasswordLength);
@@ -76,6 +81,10 @@ namespace VeraCrypt
 
 		UseKeyfilesCheckBox->Show (enableKeyfiles);
 		KeyfilesButton->Show (enableKeyfiles);
+		SecurityTokenKeySpecText->Show (enableKeyfiles);
+		SecurityTokenKeySpecButton->Show (enableKeyfiles);
+		SecurityTokenKeySpecText->SetValue(securityTokenKeySpec);
+		
 
 		Pkcs5PrfStaticText->Show (enablePkcs5Prf);
 		Pkcs5PrfChoice->Show (enablePkcs5Prf);
@@ -374,6 +383,8 @@ namespace VeraCrypt
 					Keyfiles->push_back (make_shared <Keyfile> (f));
 
 				UseKeyfilesCheckBox->SetValue (!Keyfiles->empty());
+				SecurityTokenKeySpecText->Enable(!Keyfiles->empty());
+				SecurityTokenKeySpecButton->Enable(!Keyfiles->empty());
 				OnUpdate();
 			}
 		}
@@ -387,23 +398,12 @@ namespace VeraCrypt
 	{
 		try
 		{
-			SecurityTokenKeysDialog dialog (this, applyMode);
+			SecurityTokenKeysDialog dialog (this, mode);
 			if (dialog.ShowModal() == wxID_OK)
 			{
 				wxString keySpec( dialog.GetSelectedSecurityTokenKeySpec() );
 				SecurityTokenKeySpecText->SetValue(keySpec);
 				OnUpdate();
-				/*foreach (const SecurityTokenKeyfilePath &path, dialog.GetSelectedSecurityTokenKeyfilePaths())
-				{
-					Keyfiles->push_back (make_shared <Keyfile> (wstring (path)));
-				}
-
-				if (!dialog.GetSelectedSecurityTokenKeyfilePaths().empty())
-				{
-					UseKeyfilesCheckBox->SetValue (!Keyfiles->empty());
-					OnUpdate();
-				}
-				*/
 			}
 		}
 		catch (exception &e)
@@ -459,6 +459,8 @@ namespace VeraCrypt
 			Keyfiles = dialog.GetKeyfiles();
 
 			UseKeyfilesCheckBox->SetValue (!Keyfiles->empty());
+			SecurityTokenKeySpecText->Enable(!Keyfiles->empty());
+			SecurityTokenKeySpecButton->Enable(!Keyfiles->empty());
 			OnUpdate();
 		}
 	}

@@ -110,7 +110,12 @@ else
 #------ Debug configuration ------
 
 	C_CXX_FLAGS += -DDEBUG
-	CXXFLAGS += -fno-default-inline -Wno-unused-function -Wno-unused-variable
+	ifeq '' '$(findstring clang++,$(CXX))'
+  		C_CXX_FLAGS += 
+	else
+  		C_CXX_FLAGS += -fno-default-inline
+	endif
+	CXXFLAGS += -Wno-unused-function -Wno-unused-variable
 	export WX_BUILD_DIR ?= $(BASE_DIR)/wxdebug
 	WX_CONFIGURE_FLAGS += --enable-debug_flag --disable-debug_gdb --disable-debug_info
 
@@ -425,7 +430,7 @@ endif
 
 #------ Project build ------
 
-PROJ_DIRS := Platform Volume Driver/Fuse Core Main
+PROJ_DIRS := Testing Platform Volume Driver/Fuse Core Main
 
 .PHONY: all clean wxbuild
 
@@ -434,8 +439,14 @@ all clean:
 
 	@for DIR in $(PROJ_DIRS); do \
 		PROJ=$$(echo $$DIR | cut -d/ -f1); \
+		echo "Building $$PROJ"; \
 		$(MAKE) -C $$DIR -f $$PROJ.make NAME=$$PROJ $(MAKECMDGOALS) || exit $?; \
-		export LIBS="$(BASE_DIR)/$$DIR/$$PROJ.a $$LIBS"; \
+		if [[ -e $(BASE_DIR)/$$DIR/$$PROJ.a ]]; then \
+			export LIBS="$(BASE_DIR)/$$DIR/$$PROJ.a $$LIBS"; \
+		fi; \
+		if [[ -e $(BASE_DIR)/$$DIR/$${PROJ}Test.a ]]; then \
+			export TEST_LIBS="$(BASE_DIR)/$$DIR/$${PROJ}Test.a $$TEST_LIBS"; \
+		fi; \
 	done
 
 install:

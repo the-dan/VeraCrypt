@@ -90,7 +90,10 @@ OBJS += ../Common/GfMul.o
 OBJS += ../Common/Pkcs5.o
 OBJS += ../Common/SecurityToken.o
 
-VolumeLibrary: Volume.a
+TEST_OBJS :=
+TEST_OBJS += ../Common/MockSecurityToken.o
+
+VolumeLibrary: Volume.a VolumeTest.a
 
 ifeq "$(PLATFORM)" "MacOSX"
 ../Crypto/Aes_asm.oo: ../Crypto/Aes_x86.asm ../Crypto/Aes_x64.asm

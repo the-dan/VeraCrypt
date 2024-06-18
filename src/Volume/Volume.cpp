@@ -71,10 +71,9 @@ namespace VeraCrypt
 		return EA->GetMode();
 	}
 
-	void Volume::Open (const VolumePath &volumePath, bool preserveTimestamps, shared_ptr <VolumePassword> password, int pim, shared_ptr <Pkcs5Kdf> kdf, bool truecryptMode, shared_ptr <KeyfileList> keyfiles, VolumeProtection::Enum protection, shared_ptr <VolumePassword> protectionPassword, int protectionPim, shared_ptr <Pkcs5Kdf> protectionKdf, shared_ptr <KeyfileList> protectionKeyfiles, bool sharedAccessAllowed, VolumeType::Enum volumeType, bool useBackupHeaders, bool partitionInSystemEncryptionScope,
+	void Volume::Open (const VolumePath &volumePath, bool preserveTimestamps, shared_ptr <VolumePassword> password, int pim, shared_ptr <Pkcs5Kdf> kdf, bool truecryptMode, shared_ptr <KeyfileList> keyfiles, VolumeProtection::Enum protection, shared_ptr <VolumePassword> protectionPassword, int protectionPim, shared_ptr <Pkcs5Kdf> protectionKdf, shared_ptr <KeyfileList> protectionKeyfiles, wstring protectionSecurityTokenKeySpec, bool sharedAccessAllowed, VolumeType::Enum volumeType, bool useBackupHeaders, bool partitionInSystemEncryptionScope,
 		wstring securityTokenKeySpec)
 	{
-		// TODO: what is a keyfile? Do we get different types of Keyfiles here, SecurityTokenKeyfile one of them?
 		make_shared_auto (File, file);
 
 		File::FileOpenFlags flags = (preserveTimestamps ? File::PreserveTimestamps : File::FlagsNone);
@@ -104,10 +103,10 @@ namespace VeraCrypt
 				throw;
 		}
 
-		return Open (file, password, pim, kdf, truecryptMode, keyfiles, protection, protectionPassword, protectionPim, protectionKdf,protectionKeyfiles, volumeType, useBackupHeaders, partitionInSystemEncryptionScope, securityTokenKeySpec);
+		return Open (file, password, pim, kdf, truecryptMode, keyfiles, protection, protectionPassword, protectionPim, protectionKdf,protectionKeyfiles, protectionSecurityTokenKeySpec, volumeType, useBackupHeaders, partitionInSystemEncryptionScope, securityTokenKeySpec);
 	}
 
-	void Volume::Open (shared_ptr <File> volumeFile, shared_ptr <VolumePassword> password, int pim, shared_ptr <Pkcs5Kdf> kdf, bool truecryptMode, shared_ptr <KeyfileList> keyfiles, VolumeProtection::Enum protection, shared_ptr <VolumePassword> protectionPassword, int protectionPim, shared_ptr <Pkcs5Kdf> protectionKdf,shared_ptr <KeyfileList> protectionKeyfiles, VolumeType::Enum volumeType, bool useBackupHeaders, bool partitionInSystemEncryptionScope,
+	void Volume::Open (shared_ptr <File> volumeFile, shared_ptr <VolumePassword> password, int pim, shared_ptr <Pkcs5Kdf> kdf, bool truecryptMode, shared_ptr <KeyfileList> keyfiles, VolumeProtection::Enum protection, shared_ptr <VolumePassword> protectionPassword, int protectionPim, shared_ptr <Pkcs5Kdf> protectionKdf,shared_ptr <KeyfileList> protectionKeyfiles, wstring protectionSecurityTokenKeySpec, VolumeType::Enum volumeType, bool useBackupHeaders, bool partitionInSystemEncryptionScope,
 		wstring securityTokenKeySpec)
 	{
 		if (!volumeFile)
@@ -124,9 +123,7 @@ namespace VeraCrypt
 		try
 		{
 			VolumeHostSize = VolumeFile->Length();
-			trace_msg("opening volume");
-			// NOTE: here we derive master key from password and keyfiles
-			shared_ptr <VolumePassword> passwordKey = Keyfile::ApplyListToPassword (keyfiles, password, securityTokenKeySpec, ApplyMode::MOUNT);
+			shared_ptr <VolumePassword> passwordKey = Keyfile::ApplyListToPassword (keyfiles, password, securityTokenKeySpec);
 
 			bool skipLayoutV1Normal = false;
 
@@ -255,9 +252,9 @@ namespace VeraCrypt
 								protectedVolume.Open (VolumeFile,
 									protectionPassword, protectionPim, protectionKdf, truecryptMode, protectionKeyfiles,
 									VolumeProtection::ReadOnly,
-									shared_ptr <VolumePassword> (), 0, shared_ptr <Pkcs5Kdf> (),shared_ptr <KeyfileList> (),
+									shared_ptr <VolumePassword> (), 0, shared_ptr <Pkcs5Kdf> (),shared_ptr <KeyfileList> (), wstring(),
 									VolumeType::Hidden,
-									useBackupHeaders);
+									useBackupHeaders, false, protectionSecurityTokenKeySpec);
 
 								if (protectedVolume.GetType() != VolumeType::Hidden)
 									ParameterIncorrect (SRC_POS);

@@ -15,6 +15,7 @@ OBJS += Exception.o
 OBJS += Event.o
 OBJS += FileCommon.o
 OBJS += MemoryStream.o
+OBJS += PipelineStream.o
 OBJS += Memory.o
 OBJS += PlatformTest.o
 OBJS += Serializable.o
@@ -35,5 +36,7 @@ OBJS += Unix/SystemInfo.o
 OBJS += Unix/SystemLog.o
 OBJS += Unix/Thread.o
 OBJS += Unix/Time.o
+
+TEST_OBJS := PipelineStreamTest.o
 
 include $(BUILD_INC)/Makefile.inc

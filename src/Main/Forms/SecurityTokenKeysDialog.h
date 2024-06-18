@@ -28,7 +28,7 @@ namespace VeraCrypt
 	class SecurityTokenKeysDialog : public SecurityTokenKeysDialogBase
 	{
 	public:
-		SecurityTokenKeysDialog (wxWindow* parent, ApplyMode applyMode, bool selectionMode = true);
+		SecurityTokenKeysDialog (wxWindow* parent, SecurityTokenKeyOperation mode, bool selectionMode = true);
 		wstring GetSelectedSecurityTokenKeySpec() const { return SelectedSecurityTokenKeySpec; }
 
 	protected:

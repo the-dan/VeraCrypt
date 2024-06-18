@@ -544,10 +544,12 @@ namespace VeraCrypt
 
 		if (parser.Found (L"security-token-key", &str))
 		{
-			trace_msgw(L"found security token key option in command line");
-
 			ArgMountOptions.SecurityTokenKeySpec = wstring (str);
-			trace_msgw(ArgMountOptions.SecurityTokenKeySpec);
+		}
+
+		if (parser.Found(L"protection-security-token-key", &str))
+		{
+			ArgMountOptions.ProtectionSecurityTokenKeySpec = wstring (str);
 		}
 
 		ArgQuick = parser.Found (L"quick");

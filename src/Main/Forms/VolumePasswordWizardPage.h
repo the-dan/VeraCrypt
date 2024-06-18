@@ -21,7 +21,7 @@ namespace VeraCrypt
 	class VolumePasswordWizardPage : public VolumePasswordWizardPageBase
 	{
 	public:
-		VolumePasswordWizardPage (wxPanel* parent, shared_ptr <VolumePassword> password, shared_ptr <KeyfileList> keyfiles, bool enableConfirmation = true);
+		VolumePasswordWizardPage (wxPanel* parent, shared_ptr <VolumePassword> password, shared_ptr <KeyfileList> keyfiles, wstring securityTokenKeySpec, bool enableConfirmation = true);
 		~VolumePasswordWizardPage ();
 
 		wstring GetSecurityTokenKeySpec () const { return

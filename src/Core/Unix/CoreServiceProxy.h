@@ -97,13 +97,11 @@ namespace VeraCrypt
 			else
 			{
 				MountOptions newOptions = options;
-				trace_msg("core service proxy called to mount");
-				trace_msgw(options.SecurityTokenKeySpec);
-				newOptions.Password = Keyfile::ApplyListToPassword (options.Keyfiles, options.Password, options.SecurityTokenKeySpec, ApplyMode::MOUNT);
+				newOptions.Password = Keyfile::ApplyListToPassword (options.Keyfiles, options.Password, options.SecurityTokenKeySpec);
 				if (newOptions.Keyfiles)
 					newOptions.Keyfiles->clear();
 
-				newOptions.ProtectionPassword = Keyfile::ApplyListToPassword (options.ProtectionKeyfiles, options.ProtectionPassword, options.SecurityTokenKeySpec, ApplyMode::MOUNT);
+				newOptions.ProtectionPassword = Keyfile::ApplyListToPassword (options.ProtectionKeyfiles, options.ProtectionPassword, options.ProtectionSecurityTokenKeySpec);
 				if (newOptions.ProtectionKeyfiles)
 					newOptions.ProtectionKeyfiles->clear();
 
@@ -127,7 +125,7 @@ namespace VeraCrypt
 				if (options.CachePassword
 					&& ((options.Password && !options.Password->IsEmpty()) || (options.Keyfiles && !options.Keyfiles->empty())))
 				{
-					VolumePasswordCache::Store (*Keyfile::ApplyListToPassword (options.Keyfiles, options.Password, options.SecurityTokenKeySpec, ApplyMode::MOUNT));
+					VolumePasswordCache::Store (*Keyfile::ApplyListToPassword (options.Keyfiles, options.Password, options.SecurityTokenKeySpec));
 				}
 			}
 

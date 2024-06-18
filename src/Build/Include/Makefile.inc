@@ -10,7 +10,16 @@
 # code distribution packages.
 #
 
-$(NAME): $(NAME).a
+.PHONY: test-only lib $(NAME)
+
+ifeq "$(OBJS)" ""
+$(NAME): test-only
+else
+$(NAME): lib
+endif
+
+test-only: $(NAME)Testing $(NAME)Test.a
+lib: $(NAME).a $(NAME)Testing $(NAME)Test.a
 
 clean:
 	@echo Cleaning $(NAME)
@@ -24,6 +33,10 @@ clean:
 	@echo Compiling $(<F)
 	$(CC) $(CFLAGS) -O0 -c $< -o $@
 
+%Test.o: %Test.cpp
+	@echo Compiling test $(<F)
+	$(CXX) $(CXXFLAGS) -I$(BASE_DIR)/Testing -c $< -o $@
+
 %.o: %.cpp
 	@echo Compiling $(<F)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
@@ -32,9 +45,19 @@ clean:
 	@echo Compiling $(<F)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+%.o: %.mm
+	clang -framework Foundation -lc++ -c $< -o $@
+
+	
+%.o: %.S
+	@echo Compiling $(<F)
+	$(CC) $(CFLAGS) -c $< -o $@
+
 ifeq "$(PLATFORM)" "MacOSX"
 %.o: %.asm
 	@echo Assembling $(<F)
+	$(AS) $(ASFLAGS32) -f macho32 -o $@.32 $<
+	$(AS) $(ASFLAGS64) -f macho64 -o $@.64 $<
 	$(AS) $(ASFLAGS32) -f macho32 -o $@.32 $<
 	$(AS) $(ASFLAGS64) -f macho64 -o $@.64 $<
 	lipo -create $@.32 $@.64 -output $@
@@ -72,6 +95,21 @@ TR_SED_BIN := tr '\n' ' ' | tr -s ' ' ',' | sed -e 's/^,//g' -e 's/,$$/n/' | tr 
 
 
 $(NAME).a: $(OBJS) $(OBJSEX) $(OBJSNOOPT)
+ifneq "$(OBJS)" ""
 	@echo Updating library $@
 	$(AR) $(AFLAGS) -rcu $@ $(OBJS) $(OBJSEX) $(OBJSNOOPT)
 	$(RANLIB) $@
+endif
+
+$(NAME)Test.a: $(TEST_OBJS)
+ifneq "$(TEST_OBJS)" ""
+	@echo Updating test library $@
+	$(AR) $(AFLAGS) -rcu $@ $(TEST_OBJS)
+	$(RANLIB) $@
+endif
+
+$(NAME)Testing: $(TEST_OBJS) $(OBJS) $(OBJSEX) $(OBJSNOOPT) $(LIBS) $(TEST_LIBS)
+ifneq "$(TEST_OBJS)" ""
+	@echo Compiling $(NAME)Testing
+	$(CXX) -o $(NAME)Testing -framework Foundation $(TEST_OBJS) $(OBJS) $(LIBS) $(TEST_LIBS) $(TEST_EXT_LIBS) $(LFLAGS)
+endif

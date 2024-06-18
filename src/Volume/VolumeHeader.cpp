@@ -90,10 +90,6 @@ namespace VeraCrypt
 		ConstBufferPtr salt (encryptedData.GetRange (SaltOffset, SaltSize));
 		SecureBuffer header (EncryptedHeaderDataSize);
 
-		trace_msgw("Encrypted header data size: " << EncryptedHeaderDataSize);
-		trace_msgw("Largest key size: " << GetLargestSerializedKeySize());
-		// TODO: decrypt using Security Token
-
 		SecureBuffer headerKey (GetLargestSerializedKeySize());
 
 		foreach (shared_ptr <Pkcs5Kdf> pkcs5, keyDerivationFunctions)

@@ -115,6 +115,7 @@ namespace VeraCrypt
 			virtual void OnRestoreVolumeHeaderMenuItemSelected( wxCommandEvent& event ) { event.Skip(); }
 			virtual void OnCreateKeyfileMenuItemSelected( wxCommandEvent& event ) { event.Skip(); }
 			virtual void OnManageSecurityTokenKeyfilesMenuItemSelected( wxCommandEvent& event ) { event.Skip(); }
+			virtual void OnRevealRedkeyMenuItemSelected( wxCommandEvent& event ) { event.Skip(); }
 			virtual void OnCloseAllSecurityTokenSessionsMenuItemSelected( wxCommandEvent& event ) { event.Skip(); }
 			virtual void OnWipeCacheButtonClick( wxCommandEvent& event ) { event.Skip(); }
 			virtual void OnHotkeysMenuItemSelected( wxCommandEvent& event ) { event.Skip(); }
@@ -427,6 +428,10 @@ namespace VeraCrypt
 			wxCheckBox* RandomSizeCheckBox;
 			wxStaticText* m_staticText65;
 			wxTextCtrl* KeyfilesBaseName;
+			wxTextCtrl* SecurityTokenKeyDesc;
+			wxStaticText* m_staticText66;
+			wxPanel* m_panel20;
+			wxButton *ChooseSecurityTokenButton;
 			wxPanel* m_panel19;
 			wxButton* GenerateButton;
 			
@@ -436,6 +441,7 @@ namespace VeraCrypt
 			virtual void OnShowRandomPoolCheckBoxClicked( wxCommandEvent& event ) { event.Skip(); }
 			virtual void OnRandomSizeCheckBoxClicked( wxCommandEvent& event ) { event.Skip(); }
 			virtual void OnGenerateButtonClick( wxCommandEvent& event ) { event.Skip(); }
+			virtual void OnSelectSecurityTokenKeyClick( wxCommandEvent& event) { event.Skip(); }
 			
 		
 		public:

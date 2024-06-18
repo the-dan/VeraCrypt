@@ -19,7 +19,7 @@
 
 namespace VeraCrypt
 {
-	SecurityTokenKeysDialog::SecurityTokenKeysDialog (wxWindow* parent, ApplyMode applyMode, bool selectionMode)
+	SecurityTokenKeysDialog::SecurityTokenKeysDialog (wxWindow* parent, SecurityTokenKeyOperation mode, bool selectionMode)
 		: SecurityTokenKeysDialogBase (parent)
 	{
 		if (selectionMode)
@@ -34,9 +34,9 @@ namespace VeraCrypt
 		SecurityTokenKeyListCtrl->InsertColumn (ColumnSecurityTokenKeyLabel, _("TOKEN_KEY_LABEL"), wxLIST_FORMAT_LEFT, 1);
 		colPermilles.push_back (529);
 
-		KeyType keyType = KeyType::PRIVATE;
-		if (applyMode == ApplyMode::CREATE) {
-			keyType = KeyType::PUBLIC;
+		KeyType keyType = KeyType::PUBLIC;
+		if (mode == SecurityTokenKeyOperation::DECRYPT) {
+			keyType = KeyType::PRIVATE;
 		}
 		FillSecurityTokenKeyListCtrl(keyType);
 
@@ -48,7 +48,6 @@ namespace VeraCrypt
 		Layout();
 		Center();
 
-		OKButton->Disable();
 		OKButton->SetDefault();
 	}
 
@@ -85,18 +84,10 @@ namespace VeraCrypt
 	
 	void SecurityTokenKeysDialog::OnListItemDeselected (wxListEvent& event)
 	{
-		if (SecurityTokenKeyListCtrl->GetSelectedItemCount() == 0)
-		{
-			OKButton->Disable();
-		}
 	}
 
 	void SecurityTokenKeysDialog::OnListItemSelected (wxListEvent& event)
 	{
-		if (event.GetItem().GetData() != (wxUIntPtr) nullptr)
-		{
-			OKButton->Enable();
-		}
 	}
 
 	void SecurityTokenKeysDialog::OnOKButtonClick ()
@@ -104,8 +95,6 @@ namespace VeraCrypt
 		foreach (long item, Gui->GetListCtrlSelectedItems (SecurityTokenKeyListCtrl))
 		{
 			SecurityTokenKey *key = reinterpret_cast <SecurityTokenKey *> (SecurityTokenKeyListCtrl->GetItemData (item));
-			//key->SlotId;
-			//key->Id;
 			wstringstream ss;
 			ss << key->SlotId << ":" << key->Id;
 			SelectedSecurityTokenKeySpec = ss.str();

@@ -48,6 +48,7 @@ namespace VeraCrypt
 		else
 			ProtectionKdf.reset();
 		TC_CLONE_SHARED (KeyfileList, ProtectionKeyfiles);
+		TC_CLONE (ProtectionSecurityTokenKeySpec);
 		TC_CLONE (Removable);
 		TC_CLONE (SharedAccessAllowed);
 		TC_CLONE (SlotNumber);
@@ -97,6 +98,7 @@ namespace VeraCrypt
 			ProtectionPassword.reset();
 
 		ProtectionKeyfiles = Keyfile::DeserializeList (stream, "ProtectionKeyfiles");
+		sr.Deserialize ("ProtectionSecurityTokenKeySpec", ProtectionSecurityTokenKeySpec);
 		sr.Deserialize ("Removable", Removable);
 		sr.Deserialize ("SharedAccessAllowed", SharedAccessAllowed);
 		sr.Deserialize ("SlotNumber", SlotNumber);
@@ -164,6 +166,7 @@ namespace VeraCrypt
 			ProtectionPassword->Serialize (stream);
 
 		Keyfile::SerializeList (stream, "ProtectionKeyfiles", ProtectionKeyfiles);
+		sr.Serialize ("ProtectionSecurityTokenKeySpec", ProtectionSecurityTokenKeySpec);
 		sr.Serialize ("Removable", Removable);
 		sr.Serialize ("SharedAccessAllowed", SharedAccessAllowed);
 		sr.Serialize ("SlotNumber", SlotNumber);
