@@ -53,7 +53,7 @@ export LFLAGS :=
 export PKG_CONFIG_PATH ?= /usr/local/lib/pkgconfig
 
 export WX_CONFIG ?= wx-config
-export WX_CONFIG_ARGS := --unicode
+export WX_CONFIGURE_FLAGS := --unicode
 WX_CONFIGURE_FLAGS :=
 export WXCONFIG_CFLAGS :=
 export WXCONFIG_CXXFLAGS :=
@@ -90,7 +90,7 @@ endif
 ifeq "$(origin WXSTATIC)" "command line"
 	export VC_WX_STATIC := 1
 	WX_CONFIG = $(WX_BUILD_DIR)/wx-config
-	WX_CONFIG_ARGS += --static
+	WX_CONFIGURE_FLAGS += --disable-sys-libs --disable-shared
 	ifneq "$(WXSTATIC)" "FULL"
 		export VC_WX_MINIMAL := 1
 	endif
