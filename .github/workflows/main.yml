@@ -96,13 +96,13 @@ jobs:
           repository: 'wxWidgets/wxWidgets'
           ref: 'v3.1.5'
           path: ${{ env.WX_ROOT }}
+          submodules: 'recursive'
           
       - name: Build wxWidgets
         if: steps.cache-wxwidgets.outputs.cache-hit != 'true'
         run: |
-          (cd ${{ env.WX_ROOT }} && git submodule update --init 3rdparty/catch)
           ls -l ${{env.WX_ROOT}}
-          (cd src && make WXSTATIC=FULL VC_OSX_SDK_PATH= WX_ROOT=${{env.WX_ROOT}} WX_BUILD_DIR=${{env.WX_BUILD_DIR}} wxbuild) || cat ${{ env.WX_BUILD_DIR }}/config.log
+          (cd src && make WXSTATIC=FULL VC_OSX_SDK_PATH= WX_ROOT=${{env.WX_ROOT}} WX_BUILD_DIR=${{env.WX_BUILD_DIR}} wxbuild); cat ${{ env.WX_BUILD_DIR }}/config.log
 
       # Runs a single command using the runners shell
       #- name: Run a one-line script
