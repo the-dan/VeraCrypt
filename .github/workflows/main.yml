@@ -75,7 +75,7 @@ jobs:
         run: sudo installer -pkg "/Volumes/macFUSE/Install macFUSE.pkg" -target /     
           
       - name: Build and install pkg-config
-        run: tar xvf pkg-config-0.28.tar.gz && cd pkg-config-0.28 && ./configure && make && make install
+        run: tar xvf pkg-config-0.28.tar.gz && cd pkg-config-0.28 && ./configure && make && sudo make install
       
       - uses: actions/cache@v2
         name: Cache/restore wxWidgets
