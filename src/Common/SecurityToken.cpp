@@ -542,8 +542,6 @@ namespace VeraCrypt
 		if (status != CKR_OK)
 			throw Pkcs11Exception (status);
 
-		auto self = this;
-		// finally_do_arg (CK_SLOT_ID, slotId, { finally_class->Pkcs11Functions->C_FindObjectsFinal (self->Sessions[finally_arg].Handle); });
 		finally_do_member (SecurityTokenImpl, CK_SLOT_ID, slotId, { finally_obj->Pkcs11Functions->C_FindObjectsFinal (finally_obj->Sessions[finally_arg].Handle); });
 
 

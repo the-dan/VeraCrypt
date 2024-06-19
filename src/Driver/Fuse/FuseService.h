@@ -25,7 +25,7 @@ namespace VeraCrypt
 	class FuseService
 	{
 	protected:
-		struct ExecFunctor : public ProcessExecFunctor
+		class ExecFunctor : public ProcessExecFunctor
 		{
 			ExecFunctor (shared_ptr <Volume> openVolume, VolumeSlotNumber slotNumber)
 				: MountedVolume (openVolume), SlotNumber (slotNumber)
