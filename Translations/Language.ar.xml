@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <VeraCrypt>
-  <localization prog-version= "1.24-Update9">
+  <localization prog-version= "1.26.13">
     <language langid="ar" name="العربية" en-name="Arabic" version="0.2.0" translators="Ahmad Gharbeia, Khaled Hosny, Ali Khojah" />
     <font lang="ar" class="normal" size="11" face="default" />
     <font lang="ar" class="bold" size="13" face="Arial" />
@@ -98,7 +98,7 @@
     <entry lang="ar" key="IDT_STATUS">‮الحالة</entry>
     <entry lang="ar" key="IDT_SYSENC_KEYS_GEN_INFO">‮المفاتيح و البذرة و بيانات أخرى تم توليدها جميعا بنجاح. إن أردت توليد مفاتيح جديدة فانقر 'ارجع' ثم 'اللاحق'. و إلا فانقر 'اللاحق' للمواصلة.</entry>
     <entry lang="ar" key="IDT_SYS_DEVICE">‮يعمّي القسم\\السواقة المنصّب فيها ويندوز. من يريد تشغيل النظام و النفاذ إلى الملفات سيكون عليه إدخال كلمة السر في كل مرة قبل إقلاع ويندوز، كما يمكن اختياريا إنشاء نظام مخفي.</entry>
-    <entry lang="ar" key="IDT_SYS_PARTITION">استخدم هذا الخيار لتشفير جزء القرص حيث نظام التشغيل الحالي مثبت عليه</entry>                                          
+    <entry lang="ar" key="IDT_SYS_PARTITION">استخدم هذا الخيار لتشفير جزء القرص حيث نظام التشغيل الحالي مثبت عليه</entry>
     <entry lang="ar" key="IDT_VOLUME_LABEL">وسم القرص في ويندوز:</entry>
     <entry lang="ar" key="IDT_WIPE_MODE">‮طور المحو:</entry>
     <entry lang="ar" key="IDCLOSE">‮أغلق</entry>
@@ -131,7 +131,7 @@
     <entry lang="ar" key="IDC_FAVORITE_MOUNT_REMOVABLE">حمل القرص المعين كقرص ملحق</entry>
     <entry lang="ar" key="IDC_FAVORITE_MOVE_DOWN">حرك للأسفل</entry>
     <entry lang="ar" key="IDC_FAVORITE_MOVE_UP">حرك للأعلى</entry>
-    <entry lang="ar" key="IDC_FAVORITE_OPEN_EXPLORER_WIN_ON_MOUNT">افتح نافذة مستكشف الملفات للقرص المعين حين تحميله بنجاح</entry>                                         
+    <entry lang="ar" key="IDC_FAVORITE_OPEN_EXPLORER_WIN_ON_MOUNT">افتح نافذة مستكشف الملفات للقرص المعين حين تحميله بنجاح</entry>
     <entry lang="ar" key="IDC_FAVORITE_REMOVE">قم بإزالة</entry>
     <entry lang="ar" key="IDC_FAVORITE_USE_LABEL_IN_EXPLORER">استخدم الوسم المفضل كوسم لمستكشف الملفات</entry>
     <entry lang="ar" key="IDC_FAV_VOL_OPTIONS_GLOBAL_SETTINGS_BOX">إعدادات عامة</entry>
@@ -295,6 +295,7 @@
     <entry lang="ar" key="IDT_NEW_PKCS5_PRF">PKCS-5 PRF:</entry>
     <entry lang="ar" key="IDT_PW_CACHE_OPTIONS">‮ذاكرة كلمات السّر</entry>
     <entry lang="ar" key="IDT_SECURITY_OPTIONS">‮خيارات الأمان</entry>
+    <entry lang="en" key="IDT_EMV_OPTIONS">EMV Options</entry>
     <entry lang="ar" key="IDT_TASKBAR_ICON">‮مهمّة الخلفية لڤيراكربت</entry>
     <entry lang="ar" key="IDT_TRAVELER_MOUNT">‮مجلد ڤيراكربت لوصله (نسبة إلى جذر قرص الجوّال):</entry>
     <entry lang="ar" key="IDT_TRAVEL_INSERTION">‮عند إدخال قرص الجوال: </entry>
@@ -356,7 +357,7 @@
     <entry lang="ar" key="IDT_KEYFILE_WARNING">‮تحذير: إذا فَقدّت الملف المفتاح أو تغيرت أي بتة من أوّل ‪1024‬ كيلوبايت منه فسيكون من المستحيل وصل المجلدات التي تستخدم ذلك المفتاح!</entry>
     <entry lang="ar" key="IDT_KEY_UNIT">‮بتات</entry>
     <entry lang="ar" key="IDT_NUMBER_KEYFILES">عدد ملفات المفتاح</entry>
-    <entry lang="ar" key="IDT_KEYFILES_SIZE">حجم ملفات المفتاح (بايت):</entry>
+    <entry lang="ar" key="IDT_KEYFILES_SIZE">حجم ملفات المفتاح:</entry>
     <entry lang="ar" key="IDT_KEYFILES_BASE_NAME">اسم قاعدة ملفات المفتاح:</entry>
     <entry lang="ar" key="IDT_LANGPACK_AUTHORS">‮ترجمه:</entry>
     <entry lang="ar" key="IDT_PLAINTEXT">‮حجم النص الصريح:</entry>
@@ -389,6 +390,7 @@
     <entry lang="ar" key="ADMINISTRATOR">المستخدم المدير</entry>
     <entry lang="ar" key="ADMIN_PRIVILEGES_DRIVER">‮لتُحمّل مشغّل ڤيراكربت تحتاج للولوج إلى حساب له صلاحيات المدير.</entry>
     <entry lang="ar" key="ADMIN_PRIVILEGES_WARN_DEVICES">‮لاحظ أنه لكي تعمي/تُهيئ قسما/نبيطة فإنه يتوجب عليك الولوج إلى حساب له صلاحيات المدير. ‮ ‮ هذا لا ينطبق على المجلدات المستضافة في ملفات.</entry>
+    <entry lang="en" key="ADMIN_PRIVILEGES_WARN_MANAGE_VOLUME">Unable to activate fast file creation: Administrator privileges required.\nPlease relaunch the program as an Administrator to enable this feature.\n\nWould you like to proceed without fast file creation?</entry>
     <entry lang="ar" key="ADMIN_PRIVILEGES_WARN_HIDVOL">‮لإنشاء مجلد مخفي يجب الولوج إلى حساب له صلاحيات المدير. ‮ ‮أأتابع؟</entry>
     <entry lang="ar" key="ADMIN_PRIVILEGES_WARN_NTFS">‮رجاءً لاحظ أنه يجب عليك الولوج إلى حساب له صلاحيات المدير لتتمكّن من تهيئة المجلد بنظام‍ ‪NTFS‬. ‮ ‮ يمكنك أن تُهيء المجلد بنظام ‪FAT‬ دون صلاحيات المدير.</entry>
     <entry lang="ar" key="AES_HELP">‮شفرة مقبولة لدى ‪FIPS‬ (‪Rijndael‬ المنشورة في ‪1998‬) يمكن لوكالات و إدارات حكومة الولايات المتحدة الأمريكية استخدامها لحماية المعلومات المصنفة حتى مستوى 'سري للغاية'. ‮مفتاح بطول ‪256‬ بتة؛ كتلة ‪128‬ بتة؛ ‪14‬ دورة (‪AES‬ ‪256‬)؛ تعمل في طور ‪XTS‬.</entry>
@@ -458,7 +460,7 @@
     <entry lang="ar" key="ASK_DELETE_KERNEL_CRASH_DUMP">هل ترغب في حذف ملف انهيار النظام المصغر لتحرير مساحة على القرص?</entry>
     <entry lang="ar" key="ASK_DEBUGGER_INSTALL">كي يتمن فيرا كربت من فحص سبب انهيار النظام، يحتاج البرنامج إلى تثبيت أداة التصحيح من مايكروسوفت\n\nبعد الموافقة، سيقوم فيرا كربت بتنزيل أدوات الفحص من مايكروسوفت (سيقوم مثبت برامج مايكروسوفت بتثبيت الأدوات من خوادم مايكروسوفت.</entry>
     <entry lang="ar" key="SYSTEM_CRASH_ANALYSIS_INFO">بعد الموافقة، سيقوم فيرا كربت بتحليل ملف الانهيار وسوف يستغرق ذلك بضع دقائق</entry>
-    <entry lang="ar" key="DEBUGGER_NOT_FOUND">يرجى التأكد من المسار يتضمن الإشارة إلى برنامج التصحيح'kd.exe' </entry>   
+    <entry lang="ar" key="DEBUGGER_NOT_FOUND">يرجى التأكد من المسار يتضمن الإشارة إلى برنامج التصحيح'kd.exe' </entry>
     <entry lang="ar" key="SYSTEM_CRASH_NO_VERACRYPT">يبدو بوضوح أن فيرا كربت ليس هو سبب انهيار النظام. هناك عدة احتمالات أخرى يمكن أن تكون السبب( مثل فشل عتاد معين أو جزء منه،أو خلل في جزئية فيه... الخ)</entry>
     <entry lang="ar" key="SYSTEM_CRASH_UPDATE_DRIVER">تحليل نتيجة تصحيح النظام يبين أن المحرك التالي قد يكون هو السبب في الانهيار </entry>
     <entry lang="ar" key="SYSTEM_CRASH_REPORT">للمساعدة في تحديد إذا ما كان فيرا كربت هو سبب الانهيار، يمكنك إرسال التقرير التلقائي المصدر عقب الخطأ والمتضمن, :\n- إصدار البرنامج\n- نظام التشغيل وإصداره\n- نوع المعالج\n- اسم جزئية البرنامج المسببة للخطأ\n- رمز تفحص المجاميع النهائية لبرنامج فيرا كربت التشغيلي\n- اسم نافذة الرسالة\n- فصيلة الخطأ\n- عنوان الخطأ\n- إحالة الرصة لفيرا كربت\n\n إذا اخترت نعم، فالرابط الذي يحوي رسالة الخطأ سوف يفتح مستعرض الانترنت بجهازك\n\n%s\n\nهل تريد إرسال التقرير المشار إليه?</entry>
@@ -521,7 +523,7 @@
     <entry lang="ar" key="HIDDEN_VOL_WIZARD_MODE_DIRECT_HELP">‮إن اخترت هذا فستنشئ مجلدا مخفيا داخل مجلد ڤيراكربت قائم. سيفترض أنك قد أنشأت بالفعل مجلدا مناسبا لاستضافة المجلد المخفي.</entry>
     <entry lang="ar" key="HIDDEN_VOL_WIZARD_MODE_TITLE">‮طور إنشاء مجلد</entry>
     <entry lang="ar" key="HIDVOL_FORMAT_FINISHED_TITLE">‮أُنشئ المجلد المخفي</entry>
-    <entry lang="ar" key="HIDVOL_FORMAT_FINISHED_HELP">القرص المخفي لفيرا كربت تم إنشاؤه وجاهز للاستخدام. إذا تم اتباع التعليمات كلها كما ورد في دليل المستخدم لجزئية تعليمات وتنبيهات لعمل الجزء المخفي من فيرا كربت، فإنه يكاد يكون من المستحيل معرفة وجوده حتى لو تم تحميل الجزء الخارجي.\n\nتحذير: إذا لم تقم بحماية الجزء الخارجي من قرص فيرا كربت-راجع دليل المستخدم لمعرفة كيفية حماية الجزء الخارجي من قرص فيرا كربت-فلا تقم بتخزين أي معلومات عليه وإلا فسوف تدمر الجزء المخفي أو تكتب عليه</entry> 
+    <entry lang="ar" key="HIDVOL_FORMAT_FINISHED_HELP">القرص المخفي لفيرا كربت تم إنشاؤه وجاهز للاستخدام. إذا تم اتباع التعليمات كلها كما ورد في دليل المستخدم لجزئية تعليمات وتنبيهات لعمل الجزء المخفي من فيرا كربت، فإنه يكاد يكون من المستحيل معرفة وجوده حتى لو تم تحميل الجزء الخارجي.\n\nتحذير: إذا لم تقم بحماية الجزء الخارجي من قرص فيرا كربت-راجع دليل المستخدم لمعرفة كيفية حماية الجزء الخارجي من قرص فيرا كربت-فلا تقم بتخزين أي معلومات عليه وإلا فسوف تدمر الجزء المخفي أو تكتب عليه</entry>
     <entry lang="ar" key="FIRST_HIDDEN_OS_BOOT_INFO">‮لقد شغلت نظام التشغيل المخفي. و ربما لاحظت فإن نظام التشغيل المخفي يظهر كأنه منصب في ذات القسم المنصب فيه نظام التشغيل الأصلي. لكن الحقيقة هي أنه منصب في القسم الذي يليه (في المجلد المخفي). كل عمليات القراءة و الكتابة يجري تحويلها بشفافية من قسم نظام التشغيل الأصلي إلى المجلد المخفي. ‮ ‮لن يدرك كل من نظام التشغيل و لا التطبيقات أن البيانات المقروءة و المكتوبة في قسم النظام تكتب و تقرأ من القسم الذي يليه (من و إلى مجلد مخفي). كل تلك البيانات تُعمَّى و تُظهَّر لحظيا كالمعتاد (بمفتاح تعمية غير الذي يستخدم لنظام التشغيل التمويه). ‮ ‮انقر 'اللاحق' للمواصلة.</entry>
     <entry lang="ar" key="HIDVOL_HOST_FILLING_HELP_SYSENC">‮المجاد الخارجي تم إنشاؤه و وصله بحرف السواقة ‪%hc‬:‬، و ينبغي لك أن تنسخ إليه بعض الملفات التي تبدو هامة لكنك حقيقة لا تهتم لإخفاءها، ليعثر عليها من يرغمك على الإفصاح عن كلمة سر القسم الأول الذي يلي قسم النظام، و الذي سيوجد فيه كلا من المجلد الخارجي و المجلد المخفي (الذي يحوي نظام التشغيل المخفي). يمكنك عندها أن تفصح عن كلمة السر لهذا المجلد الخارجي و سيظل وجود المجلد المخفي (و نظام التشغيل المخفي) سرا. ‮ ‮هام: الملفات التس تنسخها إلى المجلد الخارجي ينبغي ألا تشغل ما يزيد على ‪%s‬. و إلا فإنه قد لا تبقى مساحة شاغرة كافية في المجلد الخارجي لإنشاء المجلد المخفي (و لن تمكن المواصلة). بعد أن تنهي النسخ انقر 'اللاحق' (لا تفصل المجلد).</entry>
     <entry lang="ar" key="HIDVOL_HOST_FILLING_HELP">‮لقد أنشئ المجلد الخارجي بنجاح و أوصل معرفا بالحرف ‪%hc‬:. يجب عليك الآن أن تنسخ إلى هذا المجلد بعض الملفات التي تبدو كأنها حساسة لكنك في الحقيقة لا تهتم بإخفائها. سيجد هذه الملفات من يجبرك على الإفصاح عن كلمة سرّك حيث يجب عليك عندئذ الإفصاح عن كلمة السر لهذا المجلد الخارجي و ليس المخفي. الملفات التي تهمك سريتها حقا ستظل محفوظة في المجلد المخفي الذي سيُنشأ لاحقًا. عندما تنتهي من نسخ الملفات، انقر 'اللاحق'. لا تفصل المجلد. ‮ ‮ملاحظة: بعد أن تنقر 'اللاحق' سيجري فحص خارطة عناقيد المجلد الخارجي لتحديد المساحة الشاغرة المتصلة التي تتماس نهايتها مع نهاية المجلد الخارجي. ستحوي هذه المساحة المجلد المخفي و ستحدد أقصى حجم ممكن له. يضمن فحص خارطة العناقيد أن لا يطمس المجلد المخفي أيا من البيانات على المجلد الخارجي لتبقى بنيته سليمة.</entry>
@@ -611,7 +613,7 @@
     <entry lang="ar" key="FAVORITE_PIM_CHANGED">هذا القرص تم تسجيله في مفضلات النظام وهويته تغيرت.\nهل ترغب أن يقوم فيراكربت بتحديث تهيئة مفضلات النظام تلقائيا (يتطلب صلاحيات مدير نظام)?\n\nالرجاء إذا تمت الإجابة بلا, أنه يتحتم عليك تحديث مفضلات النظام يدويا.</entry>
     <entry lang="ar" key="SYS_PASSWORD_CHANGED_ASK_RESCUE_DISK">‮هام: إذا لم تدمر قرص إنقاذ ڤيراكربت فإنه يمكن تظهير قسم\\نبيطة النظام باستخدام كلمة السر العتيقة (بإقلاع قرص إنقاذ ڤيراكربت و إدخال كلمة السر العتيقة). لذا ينبغي إنشاء قرص إنقاذ ڤيراكربت حديث ثم إتلاف العتيق. ‮ ‮أتريد إنشاء قرص ڤيراكربت حديث؟</entry>
     <entry lang="ar" key="SYS_HKD_ALGO_CHANGED_ASK_RESCUE_DISK">‮لاحظ أن قرص ڤيراكربت لازال يستخدم الخوارزمية السابقة. إن كنت تعد الخوارزمية السابقة غير آمنة فينبغي لك أن تنشئ قرص إنقاذ ڤيراكربت جديد ثم تدمر العتيق. ‮ ‮أتريد إنشاء قرص إنقاذ ڤيراكربت جديد؟</entry>
-    <entry lang="ar" key="KEYFILES_NOTE">أي نوع من هذه الملفات (for example, .mp3, .jpg, .zip, .avi) يمكن استخدامه لملف مفتاح في فيراكربت. لاحظ أن فيراكربت لا يقوم بتغيير محتوى ملف المفتاح. يمكنك اختيار أكثر من ملف مفتاح (التريتب غير مؤثر). إذا أضفت مجلدا, كل الملفات غير المخفية سيتم اعتبارها ملفات مفاتيح. اضغط 'Add Token Files' لاختيار ملفات مفاتيح مخزنة على كرت ذكي أو توكن آمن (أو قم باستيرادهما).</entry>
+    <entry lang="ar" key="KEYFILES_NOTE"> لاحظ أن فيراكربت لا يقوم بتغيير محتوى ملف المفتاح. يمكنك اختيار أكثر من ملف مفتاح (التريتب غير مؤثر). إذا أضفت مجلدا, كل الملفات غير المخفية سيتم اعتبارها ملفات مفاتيح. اضغط 'Add Token Files' لاختيار ملفات مفاتيح مخزنة على كرت ذكي أو توكن آمن (أو قم باستيرادهما).</entry>
     <entry lang="ar" key="KEYFILE_CHANGED">‮أضيفت/أزيلت الملفات المفاتيح بنجاح.</entry>
     <entry lang="ar" key="KEYFILE_EXPORTED">‮تم تصدير الملف المفتاح.</entry>
     <entry lang="ar" key="PKCS5_PRF_CHANGED">‮تم ضبط خوارزمية اشتقاق مفتاح الترويسة بنجاح.</entry>
@@ -938,7 +940,7 @@
     <entry lang="ar" key="ENTER_HEADER_BACKUP_PASSWORD">‮أدخل كلمة سر الترويسة المحفوظة في الملف</entry>
     <entry lang="ar" key="KEYFILE_CREATED">‮أُنشئ ملف المفتاح بنجاح.</entry>
     <entry lang="ar" key="KEYFILE_INCORRECT_NUMBER">عدد ملفات المفتاح المدخل غير صحيح.</entry>
-    <entry lang="ar" key="KEYFILE_INCORRECT_SIZE">حجم ملف المفتاح يجب أن يكون بين 64 و 1048576 بايت.</entry>
+    <entry lang="ar" key="KEYFILE_INCORRECT_SIZE">حجم ملف المفتاح يجب أن يكون على الأقل 64 بايت.</entry>
     <entry lang="ar" key="KEYFILE_EMPTY_BASE_NAME">الرجاء إدخال إسم لملف/ملفات المفاتيح المراد توليدها</entry>
     <entry lang="ar" key="KEYFILE_INVALID_BASE_NAME">إسم ملف/ملفات المفتاح غير صحيح</entry>
     <entry lang="ar" key="KEYFILE_ALREADY_EXISTS">ملف المفتاح '%s' موجود من قبل.\nهل تريد استبداله? عملية التوليد ستتوقف لو كانت الإجابة بلا.</entry>
@@ -1425,13 +1427,13 @@
     <entry lang="ar" key="PASSWORD_MAXLENGTH_REACHED">لقد وصلت كلمة السر إلى أقصى طول الذي هو %d خانة. لا يمكن إضافة أي خانة.</entry>
     <entry lang="ar" key="IDC_SELECT_LANGUAGE_LABEL">اختر اللغة التي ستستخدم أثناء التثبيت :</entry>
     <entry lang="ar" key="VOLUME_TOO_LARGE_FOR_HOST">خطأ: حجم ملف الحاوية أكبر من حجم المساحة المتاحة على القرص.</entry>
-    <entry lang="ar" key="IDC_ALLOW_WINDOWS_DEFRAG">اسمح لملغي تجزئة القرص من ويندوز أن يقوم بإلغاء تجزئة القرص أو القسم غي النظامي.</entry>    
+    <entry lang="ar" key="IDC_ALLOW_WINDOWS_DEFRAG">اسمح لملغي تجزئة القرص من ويندوز أن يقوم بإلغاء تجزئة القرص أو القسم غي النظامي.</entry>
     <entry lang="ar" key="CONFIRM_ALLOW_WINDOWS_DEFRAG">تحذير: إلغاء تجزئة قسم أو قرص غير نظامي يمكن أن يؤدي لتسريب بيانات وصفية عن الجزء أو القسم، أو يتسبب في مشكلات للقسم المخفي الموجود بهما.\n\nهل ترغب بالاستمرار؟</entry>
     <entry lang="en" key="VIRTUAL_DEVICE">Virtual Device</entry>
     <entry lang="en" key="MOUNTED_VOLUME_NOT_ASSOCIATED">The selected mounted volume is not associated with its drive letter in Windows and so it can not be opened in Windows Explorer.</entry>
     <entry lang="en" key="IDC_CLEAR_KEYS_ON_NEW_DEVICE_INSERTION">Clear encryption keys from memory if a new device is inserted</entry>
     <entry lang="en" key="CLEAR_KEYS_ON_DEVICE_INSERTION_WARNING">IMPORTANT NOTES:\n - Please keep in mind that this option will not persist after a shutdown/reboot so you will need to select it again next time the machine is started.\n\n - With this option enabled and after a new device is connected, the machine will freeze and it will eventually crash with a BSOD since Windows can not access the encrypted disk after its keys are cleared from memory.\n</entry>
-    <entry lang="en" key="STARTING">Starting</entry>
+    <entry lang="ar" key="STARTING">جاري البدأ</entry>
     <entry lang="en" key="IDC_ENABLE_CPU_RNG">Use CPU hardware random generator as an additional source of entropy</entry>
     <entry lang="en" key="IDC_USE_LEGACY_MAX_PASSWORD_LENGTH">Use legacy maximum password length (64 characters)</entry>
     <entry lang="en" key="IDC_ENABLE_RAM_ENCRYPTION">Activate encryption of keys and passwords stored in RAM</entry>
@@ -1455,12 +1457,12 @@
     <entry lang="en" key="DISK_FREE">Free space available: {0}</entry>
     <entry lang="en" key="VOLUME_SIZE_HELP">Please specify the size of the container to create. Note that the minimum possible size of a volume is 292 KiB.</entry>
     <entry lang="en" key="LINUX_CONFIRM_INNER_VOLUME_CALC">WARNING: You have selected a filesystem other than FAT for the outer volume.\nPlease Note that in this case VeraCrypt can't calculate the exact maximum allowed size for the hidden volume and it will use only an estimation that can be wrong.\nThus, it is your responsibility to use an adequate value for the size of the hidden volume so that it does not overlap the outer volume.\n\nDo you want to continue using the selected filesystem for the outer volume?</entry>
-    <entry lang="en" key="LINUX_PREF_TAB_SECURITY">Security</entry>
+    <entry lang="ar" key="LINUX_PREF_TAB_SECURITY">الأمان</entry>
     <entry lang="en" key="LINUX_PREF_TAB_MOUNT_OPTIONS">Mount Options</entry>
     <entry lang="en" key="LINUX_PREF_TAB_BACKGROUND_TASK">Background Task</entry>
     <entry lang="en" key="LINUX_PREF_TAB_SYSTEM_INTEGRATION">System Integration</entry>
     <entry lang="en" key="LINUX_PREF_TAB_SYSTEM_INTEGRATION_EXPLORER">Filesystem Explorer</entry>
-    <entry lang="en" key="LINUX_PREF_TAB_PERFORMANCE">Performance</entry>
+    <entry lang="ar" key="LINUX_PREF_TAB_PERFORMANCE">الأداء</entry>
     <entry lang="en" key="LINUX_PREF_TAB_KEYFILES">Keyfiles</entry>
     <entry lang="en" key="LINUX_PREF_TAB_TOKENS">Security Tokens</entry>
     <entry lang="en" key="LINUX_PREF_KERNEL_SERVICES">Kernel Services</entry>
@@ -1472,8 +1474,7 @@
     <entry lang="en" key="LINUX_CROSS_SUPPORT_OTHER_HELP">Choose this option if you need to use the volume on other platforms.</entry>
     <entry lang="en" key="LINUX_CROSS_SUPPORT_ONLY">I will mount the volume only on {0}</entry>
     <entry lang="en" key="LINUX_CROSS_SUPPORT_ONLY_HELP">Choose this option if you do not need to use the volume on other platforms.</entry>
-    <entry lang="en" key="LINUX_CROSS_SUPPORT_ONLY_HELP">Choose this option if you do not need to use the volume on other platforms.</entry>
-    <entry lang="en" key="LINUX_DESELECT">Deselect</entry>
+    <entry lang="ar" key="LINUX_DESELECT">الغاء الاختيار</entry>
     <entry lang="en" key="LINUX_ADMIN_PW_QUERY">Enter your user password or administrator password:</entry>
     <entry lang="en" key="LINUX_ADMIN_PW_QUERY_TITLE">Administrator privileges required</entry>
     <entry lang="en" key="LINUX_VC_RUNNING_ALREADY">VeraCrypt is already running.</entry>
@@ -1502,13 +1503,13 @@
     <entry lang="en" key="LINUX_ERROR_LOADING_CONFIG">Error while loading configuration files located in </entry>
     <entry lang="en" key="LINUX_SELECT_FREE_SLOT">Please select a free drive slot from the list.</entry>
     <entry lang="en" key="LINUX_MESSAGE_ON_MOUNT_AGAIN">\n\nDo you want to show this message next time you mount such a volume?</entry>
-    <entry lang="en" key="LINUX_WARNING">Warning</entry>
-    <entry lang="en" key="LINUX_ERROR">Error</entry>
+    <entry lang="ar" key="LINUX_WARNING">تحذير</entry>
+    <entry lang="ar" key="LINUX_ERROR">خطأ</entry>
     <entry lang="en" key="LINUX_ONLY_TEXTMODE">This feature is currently supported only in text mode.</entry>
     <entry lang="en" key="LINUX_FREE_SPACE_ON_DRIVE">Free space on drive {0}: is {1}.</entry>
     <entry lang="en" key="LINUX_DYNAMIC_NOTICE">Please note that if your operating system does not allocate files from the beginning of the free space, the maximum possible hidden volume size may be much smaller than the size of the free space on the outer volume. This is not a bug in VeraCrypt but a limitation of the operating system.</entry>
     <entry lang="en" key="LINUX_MAX_HIDDEN_SIZE">Maximum possible hidden volume size for this volume is {0}.</entry>
-    <entry lang="en" key="LINUX_OPEN_OUTER_VOL">Open Outer Volume</entry>
+    <entry lang="ar" key="LINUX_OPEN_OUTER_VOL">‮أوصل مجلدا خارجيا</entry>
     <entry lang="en" key="LINUX_OUTER_VOL_IS_MOUNTED">Outer volume has been successfully created and mounted as '{0}'. To this volume you should now copy some sensitive-looking files that you actually do NOT want to hide. The files will be there for anyone forcing you to disclose your password. You will reveal only the password for this outer volume, not for the hidden one. The files that you really care about will be stored in the hidden volume, which will be created later on. When you finish copying, click Next. Do not dismount the volume.\n\nNote: After you click Next, the outer volume will be analyzed to determine the size of uninterrupted area of free space whose end is aligned with the end of the volume. This area will accommodate the hidden volume, so it will limit its maximum possible size. The procedure ensures no data on the outer volume are overwritten by the hidden volume.</entry>
     <entry lang="en" key="LINUX_ERROR_TRY_ENCRYPT_SYSTEM_DRIVE">Error: You are trying to encrypt a system drive.\n\nVeraCrypt can encrypt a system drive only under Windows.</entry>
     <entry lang="en" key="LINUX_ERROR_TRY_ENCRYPT_SYSTEM_PARTITION">Error: You are trying to encrypt a system partition.\n\nVeraCrypt can encrypt system partitions only under Windows.</entry>
@@ -1522,6 +1523,7 @@
     <entry lang="en" key="LINUX_NOT_SUPPORTED"> (not supported by components available on this platform).\n</entry>
     <entry lang="en" key="LINUX_KERNEL_OLD">Your system uses an old version of the Linux kernel.\n\nDue to a bug in the Linux kernel, your system may stop responding when writing data to a VeraCrypt volume. This problem can be solved by upgrading the kernel to version 2.6.24 or later.</entry>
     <entry lang="en" key="LINUX_VOL_DISMOUNTED">Volume {0} has been dismounted.</entry>
+    <entry lang="en" key="LINUX_VOL_MOUNTED">Volume {0} has been mounted.</entry>
     <entry lang="en" key="LINUX_OOM">Out of memory.</entry>
     <entry lang="en" key="LINUX_CANT_GET_ADMIN_PRIV">Failed to obtain administrator privileges</entry>
     <entry lang="en" key="LINUX_COMMAND_GET_ERROR">Command {0} returned error {1}.</entry>
@@ -1553,10 +1555,10 @@
     <entry lang="en" key="LINUX_EX2MSG_VOLUMESLOTUNAVAILABLE">Volume slot unavailable.</entry>
     <entry lang="en" key="LINUX_EX2MSG_HIGHERFUSEVERSIONREQUIRED">VeraCrypt requires OSXFUSE 2.5 or above.</entry>
     <entry lang="en" key="EXCEPTION_OCCURRED">Exception occurred</entry>
-    <entry lang="en" key="ENTER_PASSWORD">Enter password</entry>
-    <entry lang="en" key="ENTER_TC_VOL_PASSWORD">Enter VeraCrypt Volume Password</entry>
+    <entry lang="ar" key="ENTER_PASSWORD">إدخال كلمة السر</entry>
+    <entry lang="ar" key="ENTER_TC_VOL_PASSWORD">‮أدخل كلمة سر مجلد ڤيراكربت</entry>
     <entry lang="en" key="MOUNT">Mount</entry>
-    <entry lang="en" key="MOUNT_POINT">Mount Directory"</entry>
+    <entry lang="en" key="MOUNT_POINT">Mount Directory</entry>
     <entry lang="en" key="NO_VOLUMES_MOUNTED">No volumes mounted.</entry>
     <entry lang="en" key="OPEN_NEW_VOLUME">Specify a New VeraCrypt Volume</entry>
     <entry lang="en" key="PARAMETER_INCORRECT">Parameter incorrect</entry>
@@ -1564,8 +1566,81 @@
     <entry lang="en" key="START_TC">Start VeraCrypt</entry>
     <entry lang="en" key="VOLUME_ALREADY_MOUNTED">The volume {0} is already mounted.</entry>
     <entry lang="en" key="UNKNOWN_OPTION">Unknown option</entry>
-    <entry lang="en" key="VOLUME_LOCATION">Volume Location</entry>
+    <entry lang="ar" key="VOLUME_LOCATION">‮موضع المُجلَّد</entry>
     <entry lang="en" key="VOLUME_HOST_IN_USE">WARNING: The host file/device {0} is already in use!\n\nIgnoring this can cause undesired results including system instability. All applications that might be using the host file/device should be closed before mounting the volume.\n\nContinue mounting?</entry>
+    <entry lang="en" key="CANT_INSTALL_WITH_EXE_OVER_MSI">VeraCrypt was previously installed using an MSI package and so it can't be updated using the standard installer.\n\nPlease use the MSI package to update your VeraCrypt installation.</entry>
+    <entry lang="en" key="IDC_USE_ALL_FREE_SPACE">Use all available free space</entry>
+    <entry lang="en" key="SYS_ENCRYPTION_UPGRADE_UNSUPPORTED_ALGORITHM">VeraCrypt cannot be upgraded because the system partition/drive was encrypted using an algorithm that is not supported anymore.\nPlease decrypt your system before upgrading VeraCrypt and then encrypt it again.</entry>
+    <entry lang="en" key="LINUX_EX2MSG_TERMINALNOTFOUND">Supported terminal application could not be found, you need either xterm, konsole or gnome-terminal (with dbus-x11).</entry>
+    <entry lang="en" key="IDM_MOUNT_NO_CACHE">Mount Without Cache</entry>
+    <entry lang="en" key="EXPANDER_INFO">:: VeraCrypt Expander ::\n\nExpand a VeraCrypt volume on the fly without reformatting\n\n\nAll kind of volumes (container files, disks and partitions) formatted with NTFS are supported. The only condition is that there must be enough free space on the host drive or host device of the VeraCrypt volume.\n\nDo not use this software to expand an outer volume containing a hidden volume, because this destroys the hidden volume!\n</entry>
+    <entry lang="en" key="IDC_STEPSEXPAND">1. Select the VeraCrypt volume to be expanded\n2. Click the 'Mount' button</entry>
+    <entry lang="en" key="IDT_VOL_NAME">Volume: </entry>
+    <entry lang="en" key="IDT_FILE_SYS">File system: </entry>
+    <entry lang="en" key="IDT_CURRENT_SIZE">Current size: </entry>
+    <entry lang="en" key="IDT_NEW_SIZE">New size: </entry>
+    <entry lang="en" key="IDT_NEW_SIZE_BOX_TITLE">Enter new volume size</entry>
+    <entry lang="en" key="IDC_INIT_NEWSPACE">Fill new space with random data</entry>
+    <entry lang="en" key="IDC_QUICKEXPAND">Quick Expand</entry>
+    <entry lang="en" key="IDT_INIT_SPACE">Fill new space: </entry>
+    <entry lang="en" key="EXPANDER_FREE_SPACE">%s free space available on host drive</entry>
+    <entry lang="en" key="EXPANDER_HELP_DEVICE">This is a device-based VeraCrypt volume.\n\nThe new volume size will be choosen automatically as the size of the host device.</entry>
+    <entry lang="en" key="EXPANDER_HELP_FILE">Please specify the new size of the VeraCrypt volume (must be at least %I64u KB larger than the current size).</entry>
+    <entry lang="en" key="QUICK_EXPAND_WARNING">WARNING: You should use Quick Expand only in the following cases:\n\n1) The device where the file container is located contains no sensitive data and you do not need plausible deniability.\n2) The device where the file container is located has already been securely and fully encrypted.\n\nAre you sure you want to use Quick Expand?</entry>
+    <entry lang="en" key="EXPANDER_STATUS_TEXT">IMPORTANT: Move your mouse as randomly as possible within this window. The longer you move it, the better. This significantly increases the cryptographic strength of the encryption keys. Then click 'Continue' to expand the volume.</entry>
+    <entry lang="en" key="EXPANDER_STATUS_TEXT_LEGACY">Click 'Continue' to expand the volume.</entry>
+    <entry lang="en" key="EXPANDER_FINISH_ERROR">Error: volume expansion failed.</entry>
+    <entry lang="en" key="EXPANDER_FINISH_ABORT">Error: operation aborted by user.</entry>
+    <entry lang="en" key="EXPANDER_FINISH_OK">Finished. Volume successfully expanded.</entry>
+    <entry lang="en" key="EXPANDER_CANCEL_WARNING">Warning: Volume expansion is in progress!\n\nStopping now may result in a damaged volume.\n\nDo you really want to cancel?</entry>
+    <entry lang="en" key="EXPANDER_STARTING_STATUS">Starting volume expansion ...\n</entry>
+    <entry lang="en" key="EXPANDER_HIDDEN_VOLUME_ERROR">An outer volume containing a hidden volume can't be expanded, because this destroys the hidden volume.\n</entry>
+    <entry lang="en" key="EXPANDER_SYSTEM_VOLUME_ERROR">A VeraCrypt system volume can't be expanded.</entry>
+    <entry lang="en" key="EXPANDER_NO_FREE_SPACE">Not enough free space to expand the volume</entry>
+    <entry lang="en" key="EXPANDER_WARNING_FILE_CONTAINER_JUNK">Warning: The container file is larger than the VeraCrypt volume area. The data after the VeraCrypt volume area will be overwritten.\n\nDo you want to continue?</entry>
+    <entry lang="en" key="EXPANDER_WARNING_FAT">Warning: The VeraCrypt volume contains a FAT file system!\n\nOnly the VeraCrypt volume itself will be expanded, but not the file system.\n\nDo you want to continue?</entry>
+    <entry lang="en" key="EXPANDER_WARNING_EXFAT">Warning: The VeraCrypt volume contains an exFAT file system!\n\nOnly the VeraCrypt volume itself will be expanded, but not the file system.\n\nDo you want to continue?</entry>
+    <entry lang="en" key="EXPANDER_WARNING_UNKNOWN_FS">Warning: The VeraCrypt volume contains an unknown or no file system!\n\nOnly the VeraCrypt volume itself will be expanded, the file system remains unchanged.\n\nDo you want to continue?</entry>
+    <entry lang="en" key="EXPANDER_ERROR_VOLUME_SIZE_TOO_SMALL">New volume size too small, must be at least %I64u kB larger than the current size.</entry>
+    <entry lang="en" key="EXPANDER_ERROR_VOLUME_SIZE_TOO_LARGE">New volume size too large, not enough space on host drive.</entry>
+    <entry lang="en" key="EXPANDER_ERROR_MAX_FILE_SIZE_EXCEEDED">Maximum file size of %I64u MB on host drive exceeded.</entry>
+    <entry lang="en" key="EXPANDER_ERROR_QUICKEXPAND_PRIVILEGES">Error: Failed to get necessary privileges to enable Quick Expand!\nPlease uncheck Quick Expand option and try again.</entry>
+    <entry lang="en" key="EXPANDER_ERROR_MAX_VC_VOLUME_SIZE_EXCEEDED">Maximum VeraCrypt volume size of %I64u TB exceeded!\n</entry>
+    <entry lang="en" key="FULL_FORMAT">Full Format</entry>
+    <entry lang="en" key="FAST_CREATE">Fast Create</entry>
+    <entry lang="en" key="WARN_FAST_CREATE">WARNING: You should use Fast Create only in the following cases:\n\n1) The device contains no sensitive data and you do not need plausible deniability.\n2) The device has already been securely and fully encrypted.\n\nAre you sure you want to use Fast Create?</entry>
+    <entry lang="en" key="IDC_ENABLE_EMV_SUPPORT">Enable EMV Support</entry>
+    <entry lang="en" key="COMMAND_APDU_INVALID">The APDU command sent to the card is not valid.</entry>
+    <entry lang="en" key="EXTENDED_APDU_UNSUPPORTED">Extended APDU commands cannot be used with the current token.</entry>
+    <entry lang="en" key="SCARD_MODULE_INIT_FAILED">Error when loading the WinSCard / PCSC library.</entry>
+    <entry lang="en" key="EMV_UNKNOWN_CARD_TYPE">The card in the reader is not a supported EMV card.</entry>
+    <entry lang="en" key="EMV_SELECT_AID_FAILED">The AID of the card in the reader could not be selected.</entry>
+    <entry lang="en" key="EMV_ICC_CERT_NOTFOUND">ICC Public Key Certificate was not found in the card.</entry>
+    <entry lang="en" key="EMV_ISSUER_CERT_NOTFOUND">Issuer Public Key Certificate was not found in the card.</entry>
+    <entry lang="en" key="EMV_CPLC_NOTFOUND">CPLC was not found in the EMV card.</entry>
+    <entry lang="en" key="EMV_PAN_NOTFOUND">No Primary Account Number (PAN) found in the EMV card.</entry>
+    <entry lang="en" key="INVALID_EMV_PATH">EMV path is invalid.</entry>
+    <entry lang="en" key="EMV_KEYFILE_DATA_NOTFOUND">Unable to build a keyfile from the EMV card's data.\n\nOne of the following is missing:\n- ICC Public Key Certificate.\n- Issuer Public Key Certificate.\n- CPLC data.</entry>
+    <entry lang="en" key="SCARD_W_REMOVED_CARD">No card in the reader.\n\nPlease make sure the card is correctly slotted.</entry>
+    <entry lang="en" key="FORMAT_EXTERNAL_FAILED">Windows format.com command failed to format the volume as NTFS/exFAT/ReFS: Error 0x%.8X.\n\nFalling back to using Windows FormatEx API.</entry>
+    <entry lang="en" key="FORMATEX_API_FAILED">Windows FormatEx API failed to format the volume as NTFS/exFAT/ReFS.\n\nFailure status = %s.</entry>
+    <entry lang="en" key="EXPANDER_WRITING_RANDOM_DATA">Writing random data to new space ...\n</entry>
+    <entry lang="en" key="EXPANDER_WRITING_ENCRYPTED_BACKUP">Writing re-encrypted backup header ...\n</entry>
+    <entry lang="en" key="EXPANDER_WRITING_ENCRYPTED_PRIMARY">Writing re-encrypted primary header ...\n</entry>
+    <entry lang="en" key="EXPANDER_WIPING_OLD_HEADER">Wiping old backup header ...\n</entry>
+    <entry lang="en" key="EXPANDER_MOUNTING_VOLUME">Mounting volume ...\n</entry>
+    <entry lang="en" key="EXPANDER_UNMOUNTING_VOLUME">Unmounting volume ...\n</entry>
+    <entry lang="en" key="EXPANDER_EXTENDING_FILESYSTEM">Extending file system ...\n</entry>
+    <entry lang="en" key="PARTIAL_SYSENC_MOUNT_READONLY">Warning: The system partition you attempted to mount was not fully encrypted. As a safety measure to prevent potential corruption or unwanted modifications, volume '%s' was mounted as read-only.</entry>
+    <entry lang="en" key="IDC_LINK_KEYFILES_EXTENSIONS_WARNING">Important information on using third-party file extensions</entry>
+    <entry lang="en" key="IDC_DISABLE_MEMORY_PROTECTION">Disable memory protection for Accessibility tools compatibility</entry>
+    <entry lang="en" key="DISABLE_MEMORY_PROTECTION_WARNING">WARNING: Disabling memory protection significantly reduces security. Enable this option ONLY if you rely on Accessibility tools, like Screen Readers, to interact with VeraCrypt's UI.</entry>
+    <entry lang="ar" key="LINUX_LANGUAGE">‮اللغة</entry>
+    <entry lang="en" key="LINUX_SELECT_SYS_DEFAULT_LANG">Select system's default language</entry>
+    <entry lang="en" key="LINUX_RESTART_FOR_LANGUAGE_CHANGE">For the language change to come into effect, VeraCrypt needs to be restarted.</entry>
+    <entry lang="en" key="ERR_XTS_MASTERKEY_VULNERABLE">WARNING: The volume's master key is vulnerable to an attack that compromises data security.\n\nPlease create a new volume and transfer the data to it.</entry>
+    <entry lang="en" key="ERR_SYSENC_XTS_MASTERKEY_VULNERABLE">WARNING: The encrypted system's master key is vulnerable to an attack that compromises data security.\nPlease decrypt the system partition/drive and then re-encrypt it.</entry>
+    <entry lang="en" key="ERR_XTS_MASTERKEY_VULNERABLE_SHORT">WARNING: The volume's master key has a security vulnerability.</entry>
   </localization>
   <xs:schema attributeFormDefault="unqualified" elementFormDefault="qualified" xmlns:xs="http://www.w3.org/2001/XMLSchema">
     <xs:element name="VeraCrypt">

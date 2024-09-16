@@ -311,6 +311,9 @@ AES_TEST aes_ecb_vectors[AES_TEST_COUNT] = {
 0x8e,0xa2,0xb7,0xca,0x51,0x67,0x45,0xbf,0xea,0xfc,0x49,0x90,0x4b,0x49,0x60,0x89
 };
 
+
+#ifndef WOLFCRYPT_BACKEND
+
 // Serpent ECB test vectors
 
 #define SERPENT_TEST_COUNT 1
@@ -374,27 +377,6 @@ CAMELLIA_TEST camellia_vectors[CAMELLIA_TEST_COUNT] = {
 	0xAD, 0x5C, 0x4D, 0x84
 }
 };
-#if defined(CIPHER_GOST89)
-// GOST89 ECB test vectors
-#define GOST89_TEST_COUNT 1
-
-typedef struct {
-	unsigned char key[32];
-	unsigned char plaintext[16];
-	unsigned char ciphertext[16];
-	} GOST89_TEST;
-
-GOST89_TEST gost89_vectors[GOST89_TEST_COUNT] = {
-{
-    0xFF, 0xEE, 0xDD, 0xCC, 0xBB, 0xAA, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44,
-	0x33, 0x22, 0x11, 0x00, 0xF0, 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7,
-	0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF, 0xFE, 0xDC, 0xBA, 0x98, 
-    0x76, 0x54, 0x32, 0x10, 0xFF, 0xEE, 0xDD, 0xCC,	0xBB, 0xAA, 0x99, 0x88,
-    0x8F, 0xC6, 0xFE, 0xB8, 0x91, 0x51, 0x4C, 0x37, 0x4D, 0x51, 0x46, 0xEF,
-	0x02, 0x9D, 0xBD, 0x9F
-}
-};
-#endif
 
 // Kuznyechik ECB test vectors
 #define KUZNYECHIK_TEST_COUNT 4
@@ -440,6 +422,7 @@ KUZNYECHIK_TEST kuznyechik_vectors[KUZNYECHIK_TEST_COUNT] = {
 }
 };
 
+#endif
 
 /* Test vectors from FIPS 198a, RFC 4231, RFC 2104, RFC 2202, and other sources. */
 
@@ -503,22 +486,34 @@ char *hmac_sha512_test_vectors[] =
 	"\xe3\x7b\x6a\x77\x5d\xc8\x7d\xba\xa4\xdf\xa9\xf9\x6e\x5e\x3f\xfd\xde\xbd\x71\xf8\x86\x72\x89\x86\x5d\xf5\xa3\x2d\x20\xcd\xc9\x44\xb6\x02\x2c\xac\x3c\x49\x82\xb1\x0d\x5e\xeb\x55\xc3\xe4\xde\x15\x13\x46\x76\xfb\x6d\xe0\x44\x60\x65\xc9\x74\x40\xfa\x8c\x6a\x58",
 };
 
-char *hmac_ripemd160_test_keys[] =
+char *hmac_blake2s_test_keys[] =
 {
-	"\x00\x11\x22\x33\x44\x55\x66\x77\x88\x99\xaa\xbb\xcc\xdd\xee\xff\x01\x23\x45\x67",
-	"\x01\x23\x45\x67\x89\xab\xcd\xef\xfe\xdc\xba\x98\x76\x54\x32\x10\x00\x11\x22\x33",
+	"\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b",
+	"Jefe",
+	"\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa",
+	"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19",
+	"\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa",
+	"\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa\xaa",
 };
 
-char *hmac_ripemd160_test_data[] =
+char *hmac_blake2s_test_data[] =
 {
-	"message digest",
-	"12345678901234567890123456789012345678901234567890123456789012345678901234567890",
+	"Hi There",
+	"what do ya want for nothing?",
+	"\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd\xdd",
+	"\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd\xcd",
+	"Test Using Larger Than Block-Size Key - Hash Key First",
+	"This is a test using a larger than block-size key and a larger than block-size data. The key needs to be hashed before being used by the HMAC algorithm.",
 };
 
-char *hmac_ripemd160_test_vectors[] =
+char *hmac_blake2s_test_vectors[] =
 {
-	"\xf8\x36\x62\xcc\x8d\x33\x9c\x22\x7e\x60\x0f\xcd\x63\x6c\x57\xd2\x57\x1b\x1c\x34",
-	"\x85\xf1\x64\x70\x3e\x61\xa6\x31\x31\xbe\x7e\x45\x95\x8e\x07\x94\x12\x39\x04\xf9",
+	"\x65\xa8\xb7\xc5\xcc\x91\x36\xd4\x24\xe8\x2c\x37\xe2\x70\x7e\x74\xe9\x13\xc0\x65\x5b\x99\xc7\x5f\x40\xed\xf3\x87\x45\x3a\x32\x60",
+	"\x90\xb6\x28\x1e\x2f\x30\x38\xc9\x05\x6a\xf0\xb4\xa7\xe7\x63\xca\xe6\xfe\x5d\x9e\xb4\x38\x6a\x0e\xc9\x52\x37\x89\x0c\x10\x4f\xf0",
+	"\xfc\xc4\xf5\x95\x29\x50\x2e\x34\xc3\xd8\xda\x3f\xfd\xab\x82\x96\x6a\x2c\xb6\x37\xff\x5e\x9b\xd7\x01\x13\x5c\x2e\x94\x69\xe7\x90",
+	"\x46\x44\x34\xdc\xbe\xce\x09\x5d\x45\x6a\x1d\x62\xd6\xec\x56\xf8\x98\xe6\x25\xa3\x9e\x5c\x52\xbd\xf9\x4d\xaf\x11\x1b\xad\x83\xaa",
+	"\xd2\x3d\x79\x39\x4f\x53\xd5\x36\xa0\x96\xe6\x51\x44\x47\xee\xaa\xbb\x05\xde\xd0\x1b\xe3\x2c\x19\x37\xda\x6a\x8f\x71\x03\xbc\x4e",
+	"\xcb\x60\xf6\xa7\x91\xf1\x40\xbf\x8a\xa2\xe5\x1f\xf3\x58\xcd\xb2\xcc\x5c\x03\x33\x04\x5b\x7f\xb7\x7a\xba\x7a\xb3\xb0\xcf\xb2\x37",
 };
 
 char *hmac_whirlpool_test_key =
@@ -628,6 +623,32 @@ HashTestVector Streebog512TestVectors[] = {
 	{NULL, NULL}
 };
 
+/* https://github.com/openssl/openssl/blob/2d0b44126763f989a4cbffbffe9d0c7518158bb7/test/evptests.txt */
+HashTestVector Blake2sTestVectors[] = {
+	{"", 
+	 "69217a3079908094e11121d042354a7c1f55b6482ca1a51e1b250dfd1ed0eef9"
+	},
+	{"61",
+	"4a0d129873403037c2cd9b9048203687f6233fb6738956e0349bd4320fec3e90"
+	},
+	{"616263",
+	"508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982"
+	},
+	{"6d65737361676520646967657374",
+	"fa10ab775acf89b7d3c8a6e823d586f6b67bdbac4ce207fe145b7d3ac25cd28c"
+	},
+	{"6162636465666768696a6b6c6d6e6f707172737475767778797a",
+	"bdf88eb1f86a0cdf0e840ba88fa118508369df186c7355b4b16cf79fa2710a12"
+	},
+	{"4142434445464748494a4b4c4d4e4f505152535455565758595a6162636465666768696a6b6c6d6e6f707172737475767778797a30313233343536373839",
+	"c75439ea17e1de6fa4510c335dc3d3f343e6f9e1ce2773e25b4174f1df8b119b"
+	},
+	{"3132333435363738393031323334353637383930313233343536373839303132333435363738393031323334353637383930313233343536373839303132333435363738393031323334353637383930",
+	"fdaedb290a0d5af9870864fec2e090200989dc9cd53a3c092129e8535e8b4f66"
+	},
+	{NULL, NULL}
+};
+
 unsigned char ks_tmp[MAX_EXPANDED_KEY];
 
 void CipherInit2(int cipher, void* key, void* ks, int key_len)
@@ -650,11 +671,6 @@ void CipherInit2(int cipher, void* key, void* ks, int key_len)
 	case CAMELLIA:
 		CipherInit(cipher,key,ks);
 		break;
-#if defined(CIPHER_GOST89)
-	case GOST89:
-		CipherInit(cipher,key,ks);
-		break;
-#endif // defined(CIPHER_GOST89)
 	case KUZNYECHIK:
 		CipherInit(cipher, key, ks);
 		break;
@@ -707,7 +723,7 @@ BOOL TestSectorBufEncryption (PCRYPTO_INFO ci)
 			if (!EAIsModeSupported (ci->ea, ci->mode))
 				continue;
 
-			EAGetName (name, ci->ea, 0);
+			EAGetName (name, ARRAYSIZE(name), ci->ea, 0);
 
 			if (EAInit (ci->ea, key1, ci->ks) != ERR_SUCCESS)
 				return FALSE;
@@ -772,6 +788,7 @@ BOOL TestSectorBufEncryption (PCRYPTO_INFO ci)
 					break;
 				}
 			}
+               #ifndef WOLFCRYPT_BACKEND
 			else if (wcscmp (name, L"Serpent") == 0)
 			{
 				switch (testCase)
@@ -850,34 +867,6 @@ BOOL TestSectorBufEncryption (PCRYPTO_INFO ci)
 					break;
 				}
 			}
-#if defined(CIPHER_GOST89)
-			else if (wcscmp (name, L"GOST89") == 0)
-			{
-				switch (testCase)
-				{
-				case 0:
-					if (crc != 0x12194ef5)
-						return FALSE;
-					nTestsPerformed++;
-					break;
-				case 1:
-					if (crc != 0xda8d429b)
-						return FALSE;
-					nTestsPerformed++;
-					break;
-				case 2:
-					if (crc != 0xdbf0b12e)
-						return FALSE;
-					nTestsPerformed++;
-					break;
-				case 3:
-					if (crc != 0xb986eb4a)
-						return FALSE;
-					nTestsPerformed++;
-					break;
-				}
-			}
-#endif
 			else if (wcscmp (name, L"Kuznyechik") == 0)
 			{
 				switch (testCase)
@@ -1164,7 +1153,7 @@ BOOL TestSectorBufEncryption (PCRYPTO_INFO ci)
 					break;
 				}
 			}
-
+                #endif
 			if (crc == 0x9f5edd58)
 				return FALSE;
 
@@ -1188,7 +1177,7 @@ BOOL TestSectorBufEncryption (PCRYPTO_INFO ci)
 		if (!EAIsModeSupported (ci->ea, ci->mode))
 			continue;
 
-		EAGetName (name, ci->ea, 0);
+		EAGetName (name, ARRAYSIZE(name), ci->ea, 0);
 
 		if (EAInit (ci->ea, key1, ci->ks) != ERR_SUCCESS)
 			return FALSE;
@@ -1216,6 +1205,7 @@ BOOL TestSectorBufEncryption (PCRYPTO_INFO ci)
 				return FALSE;
 			nTestsPerformed++;
 		}
+        #ifndef WOLFCRYPT_BACKEND
 		else if (wcscmp (name, L"Serpent") == 0)
 		{
 			if (crc != 0x3494d480)
@@ -1234,14 +1224,6 @@ BOOL TestSectorBufEncryption (PCRYPTO_INFO ci)
 				return FALSE;
 			nTestsPerformed++;
 		}
-#if defined(CIPHER_GOST89)
-		else if (wcscmp (name, L"GOST89") == 0)
-		{
-			if (crc != 0x9e8653cb)
-				return FALSE;
-			nTestsPerformed++;
-		}
-#endif
 		else if (wcscmp (name, L"Kuznyechik") == 0)
 		{
 			if (crc != 0xd6d39cdb)
@@ -1308,7 +1290,7 @@ BOOL TestSectorBufEncryption (PCRYPTO_INFO ci)
 				return FALSE;
 			nTestsPerformed++;
 		}
-
+        #endif
 		if (crc == 0x9f5edd58)
 			return FALSE;
 
@@ -1319,11 +1301,7 @@ BOOL TestSectorBufEncryption (PCRYPTO_INFO ci)
 
 		nTestsPerformed++;
 	}
-#if defined(CIPHER_GOST89)
-	return (nTestsPerformed == 160);
-#else
-	return (nTestsPerformed == 155);
-#endif
+	return (nTestsPerformed == 150);
 }
 
 static BOOL DoAutoTestAlgorithms (void)
@@ -1362,13 +1340,13 @@ static BOOL DoAutoTestAlgorithms (void)
 
 	// AES EncipherBlocks()/DecipherBlocks()
 	{
-		byte testData[1024];
+		uint8 testData[1024];
 		uint32 origCrc;
 		size_t i;
 
 		for (i = 0; i < sizeof (testData); ++i)
 		{
-			testData[i] = (byte) i;
+			testData[i] = (uint8) i;
 		}
 
 		origCrc = GetCrc32 (testData, sizeof (testData));
@@ -1385,6 +1363,7 @@ static BOOL DoAutoTestAlgorithms (void)
 			bFailed = TRUE;
 	}
 
+    #ifndef WOLFCRYPT_BACKEND
 	/* Serpent */
 
 	for (i = 0; i < SERPENT_TEST_COUNT; i++)
@@ -1465,28 +1444,7 @@ static BOOL DoAutoTestAlgorithms (void)
 	}
 	if (i != KUZNYECHIK_TEST_COUNT)
 		bFailed = TRUE;
-
-#if defined(CIPHER_GOST89)
-	/* GOST89 */
-
-	for (i = 0; i < GOST89_TEST_COUNT; i++)
-	{
-        int cipher = GOST89;
-        memcpy(key, gost89_vectors[i].key, 32);
-		memcpy(tmp, gost89_vectors[i].plaintext, 16);
-		gost_set_key(key, (gost_kds*)ks_tmp, 0);
-
-		EncipherBlock(cipher, tmp, ks_tmp);
-		if (memcmp(gost89_vectors[i].ciphertext, tmp, 16) != 0)
-			break;
-
-		DecipherBlock(cipher, tmp, ks_tmp);
-		if (memcmp(gost89_vectors[i].plaintext, tmp, 16) != 0)
-			break;
-	}
-	if (i != GOST89_TEST_COUNT)
-		bFailed = TRUE;
-#endif
+    #endif
 
 	/* PKCS #5 and HMACs */
 	if (!test_pkcs5 ())
@@ -1569,12 +1527,20 @@ BOOL test_hmac_sha256 ()
 	for (i = 0; i < sizeof (hmac_sha256_test_data) / sizeof(char *); i++)
 	{
 		char digest[1024]; /* large enough to hold digets and test vector inputs */
-		memcpy (digest, hmac_sha256_test_data[i], strlen (hmac_sha256_test_data[i]));
-		hmac_sha256 (hmac_sha256_test_keys[i], (int) strlen (hmac_sha256_test_keys[i]), digest, (int) strlen (hmac_sha256_test_data[i]));
-		if (memcmp (digest, hmac_sha256_test_vectors[i], SHA256_DIGESTSIZE) != 0)
-			return FALSE;
+		size_t dataLen = strlen (hmac_sha256_test_data[i]);
+		if (dataLen <= sizeof(digest))
+		{
+			memcpy (digest, hmac_sha256_test_data[i], dataLen);
+			hmac_sha256 (hmac_sha256_test_keys[i], (int) strlen (hmac_sha256_test_keys[i]), digest, (int) dataLen);
+			if (memcmp (digest, hmac_sha256_test_vectors[i], SHA256_DIGESTSIZE) != 0)
+				return FALSE;
+			else
+				nTestsPerformed++;
+		}
 		else
-			nTestsPerformed++;
+		{
+			return FALSE;
+		}
 	}
 
 	return (nTestsPerformed == 6);
@@ -1588,34 +1554,57 @@ BOOL test_hmac_sha512 ()
 	for (i = 0; i < sizeof (hmac_sha512_test_data) / sizeof(char *); i++)
 	{
 		char digest[1024]; /* large enough to hold digets and test vector inputs */
-		memcpy (digest, hmac_sha512_test_data[i], (int) strlen (hmac_sha512_test_data[i]));
-		hmac_sha512 (hmac_sha512_test_keys[i], (int) strlen (hmac_sha512_test_keys[i]), digest, (int) strlen (hmac_sha512_test_data[i]));
-		if (memcmp (digest, hmac_sha512_test_vectors[i], SHA512_DIGESTSIZE) != 0)
-			return FALSE;
+		size_t dataLen = strlen (hmac_sha512_test_data[i]);
+		if (dataLen <= sizeof(digest))
+		{
+			memcpy (digest, hmac_sha512_test_data[i], dataLen );
+			hmac_sha512 (hmac_sha512_test_keys[i], (int) strlen (hmac_sha512_test_keys[i]), digest, (int) dataLen);
+			if (memcmp (digest, hmac_sha512_test_vectors[i], SHA512_DIGESTSIZE) != 0)
+				return FALSE;
+			else
+				nTestsPerformed++;
+		}
 		else
-			nTestsPerformed++;
+		{
+			return FALSE;
+		}
 	}
 
 	return (nTestsPerformed == 6);
 }
 
-BOOL test_hmac_ripemd160 ()
+#ifndef WOLFCRYPT_BACKEND
+BOOL test_hmac_blake2s ()
 {
-	int nTestsPerformed = 0;
 	unsigned int i;
+	int nTestsPerformed = 0;
 
-	for (i = 0; i < sizeof (hmac_ripemd160_test_data) / sizeof(char *); i++)
+	for (i = 0; i < sizeof (hmac_blake2s_test_data) / sizeof(char *); i++)
 	{
 		char digest[1024]; /* large enough to hold digets and test vector inputs */
-		memcpy (digest, hmac_ripemd160_test_data[i], strlen (hmac_ripemd160_test_data[i]));
-		hmac_ripemd160 (hmac_ripemd160_test_keys[i], RIPEMD160_DIGESTSIZE, digest, (int) strlen (hmac_ripemd160_test_data[i]));
-		if (memcmp (digest, hmac_ripemd160_test_vectors[i], RIPEMD160_DIGESTSIZE) != 0)
-			return FALSE;
+		size_t dataLen = strlen (hmac_blake2s_test_data[i]);
+		if (dataLen <= sizeof(digest))
+		{
+			memcpy (digest, hmac_blake2s_test_data[i], dataLen);
+			hmac_blake2s (hmac_blake2s_test_keys[i], (int) strlen (hmac_blake2s_test_keys[i]), digest, (int) dataLen);
+			if (memcmp (digest, hmac_blake2s_test_vectors[i], BLAKE2S_DIGESTSIZE) != 0)
+				return FALSE;
+			else
+				nTestsPerformed++;
+		}
 		else
-			nTestsPerformed++;
+		{
+			return FALSE;
+		}
 	}
 
-	return (nTestsPerformed == 2);
+	return (nTestsPerformed == 6);
+}
+
+int __cdecl Blake2sHash (unsigned char* input, unsigned long inputLen, unsigned char* output)
+{
+	blake2s(output, input, (size_t) inputLen);
+	return BLAKE2S_DIGESTSIZE;
 }
 
 BOOL test_hmac_whirlpool ()
@@ -1629,6 +1618,7 @@ BOOL test_hmac_whirlpool ()
 
 	return TRUE;
 }
+#endif
 
 /* http://www.tc26.ru/methods/recommendation/%D0%A2%D0%9A26%D0%90%D0%9B%D0%93.pdf */
 /* https://tools.ietf.org/html/draft-smyshlyaev-gost-usage-00 */
@@ -1653,6 +1643,7 @@ static const unsigned char gost3411_2012_hmac_r1[] = {
 };
 
 
+#ifndef WOLFCRYPT_BACKEND
 BOOL test_hmac_streebog ()
 {
 	CRYPTOPP_ALIGN_DATA(16) char digest[64]; /* large enough to hold digets and test vector inputs */
@@ -1673,6 +1664,7 @@ int __cdecl StreebogHash (unsigned char* input, unsigned long inputLen, unsigned
 	STREEBOG_finalize (&ctx, output);
 	return STREEBOG_DIGESTSIZE;
 }
+#endif
 
 BOOL test_pkcs5 ()
 {
@@ -1686,8 +1678,13 @@ BOOL test_pkcs5 ()
 	if (!test_hmac_sha512())
 		return FALSE;
 
-	/* HMAC-RIPEMD-160 tests */
-	if (test_hmac_ripemd160() == FALSE)
+#ifndef WOLFCRYPT_BACKEND
+	/* HMAC-BLAKE2s tests */
+	if (test_hmac_blake2s() == FALSE)
+		return FALSE;
+
+	/* Blake2s hash tests */
+	if (RunHashTest (Blake2sHash, Blake2sTestVectors, (HasSSE2())? TRUE : FALSE) == FALSE)
 		return FALSE;
 
 	/* HMAC-Whirlpool tests */
@@ -1701,7 +1698,7 @@ BOOL test_pkcs5 ()
 	/* STREEBOG hash tests */
 	if (RunHashTest (StreebogHash, Streebog512TestVectors, (HasSSE2() || HasSSE41())? TRUE : FALSE) == FALSE)
 		return FALSE;
-
+#endif
 	/* PKCS-5 test 1 with HMAC-SHA-256 used as the PRF (https://tools.ietf.org/html/draft-josefsson-scrypt-kdf-00) */
 	derive_key_sha256 ("passwd", 6, "\x73\x61\x6C\x74", 4, 1, dk, 64);
 	if (memcmp (dk, "\x55\xac\x04\x6e\x56\xe3\x08\x9f\xec\x16\x91\xc2\x25\x44\xb6\x05\xf9\x41\x85\x21\x6d\xde\x04\x65\xe6\x8b\x9d\x57\xc2\x0d\xac\xbc\x49\xca\x9c\xcc\xf1\x79\xb6\x45\x99\x16\x64\xb3\x9d\x77\xef\x31\x7c\x71\xb8\x45\xb1\xe3\x0b\xd5\x09\x11\x20\x41\xd3\xa1\x97\x83", 64) != 0)
@@ -1733,14 +1730,15 @@ BOOL test_pkcs5 ()
 	if (memcmp (dk, "\x13\x64\xae\xf8\x0d\xf5\x57\x6c\x30\xd5\x71\x4c\xa7\x75\x3f\xfd\x00\xe5\x25\x8b\x39\xc7\x44\x7f\xce\x23\x3d\x08\x75\xe0\x2f\x48\xd6\x30\xd7\x00\xb6\x24\xdb\xe0\x5a\xd7\x47\xef\x52\xca\xa6\x34\x83\x47\xe5\xcb\xe9\x87\xf1\x20\x59\x6a\xe6\xa9\xcf\x51\x78\xc6\xb6\x23\xa6\x74\x0d\xe8\x91\xbe\x1a\xd0\x28\xcc\xce\x16\x98\x9a\xbe\xfb\xdc\x78\xc9\xe1\x7d\x72\x67\xce\xe1\x61\x56\x5f\x96\x68\xe6\xe1\xdd\xf4\xbf\x1b\x80\xe0\x19\x1c\xf4\xc4\xd3\xdd\xd5\xd5\x57\x2d\x83\xc7\xa3\x37\x87\xf4\x4e\xe0\xf6\xd8\x6d\x65\xdc\xa0\x52\xa3\x13\xbe\x81\xfc\x30\xbe\x7d\x69\x58\x34\xb6\xdd\x41\xc6", 144) != 0)
 		return FALSE;
 
-	/* PKCS-5 test 1 with HMAC-RIPEMD-160 used as the PRF */
-	derive_key_ripemd160 ("password", 8, "\x12\x34\x56\x78", 4, 5, dk, 4);
-	if (memcmp (dk, "\x7a\x3d\x7c\x03", 4) != 0)
+#ifndef WOLFCRYPT_BACKEND
+	/* PKCS-5 test 1 with HMAC-BLAKE2s used as the PRF */
+	derive_key_blake2s ("password", 8, "\x12\x34\x56\x78", 4, 5, dk, 4);
+	if (memcmp (dk, "\x8d\x51\xfa\x31", 4) != 0)
 		return FALSE;
 
-	/* PKCS-5 test 2 with HMAC-RIPEMD-160 used as the PRF (derives a key longer than the underlying hash) */
-	derive_key_ripemd160 ("password", 8, "\x12\x34\x56\x78", 4, 5, dk, 48);
-	if (memcmp (dk, "\x7a\x3d\x7c\x03\xe7\x26\x6b\xf8\x3d\x78\xfb\x29\xd2\x64\x1f\x56\xea\xf0\xe5\xf5\xcc\xc4\x3a\x31\xa8\x84\x70\xbf\xbd\x6f\x8e\x78\x24\x5a\xc0\x0a\xf6\xfa\xf0\xf6\xe9\x00\x47\x5f\x73\xce\xe1\x43", 48) != 0)
+	/* PKCS-5 test 2 with HMAC-BLAKE2s used as the PRF (derives a key longer than the underlying hash) */
+	derive_key_blake2s ("password", 8, "\x12\x34\x56\x78", 4, 5, dk, 48);
+	if (memcmp (dk, "\x8d\x51\xfa\x31\x46\x25\x37\x67\xa3\x29\x6b\x3c\x6b\xc1\x5d\xb2\xee\xe1\x6c\x28\x00\x26\xea\x08\x65\x9c\x12\xf1\x07\xde\x0d\xb9\x9b\x4f\x39\xfa\xc6\x80\x26\xb1\x8f\x8e\x48\x89\x85\x2d\x24\x2d", 48) != 0)
 		return FALSE;
 
 	/* PKCS-5 test 1 with HMAC-Whirlpool used as the PRF */
@@ -1762,6 +1760,6 @@ BOOL test_pkcs5 ()
 	derive_key_streebog ("password", 8, "\x12\x34\x56\x78", 4, 5, dk, 96);
 	if (memcmp (dk, "\xd0\x53\xa2\x30\x6f\x45\x81\xeb\xbc\x06\x81\xc5\xe7\x53\xa8\x5d\xc7\xf1\x23\x33\x1e\xbe\x64\x2c\x3b\x0f\x26\xd7\x00\xe1\x95\xc9\x65\x26\xb1\x85\xbe\x1e\xe2\xf4\x9b\xfc\x6b\x14\x84\xda\x24\x61\xa0\x1b\x9e\x79\x5c\xee\x69\x6e\xf9\x25\xb1\x1d\xca\xa0\x31\xba\x02\x6f\x9e\x99\x0f\xdb\x25\x01\x5b\xf1\xc7\x10\x19\x53\x3b\x29\x3f\x18\x00\xd6\xfc\x85\x03\xdc\xf2\xe5\xe9\x5a\xb1\x1e\x61\xde", 96) != 0)
 		return FALSE;
-
+#endif
 	return TRUE;
 }

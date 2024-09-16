@@ -39,7 +39,6 @@ namespace VeraCrypt
 			SharedAccessAllowed (false),
 			SlotNumber (0),
 			UseBackupHeaders (false),
-			TrueCryptMode (false),
 			SecurityTokenKeySpec(wstring())
 		{
 		}
@@ -75,8 +74,8 @@ namespace VeraCrypt
 		bool SharedAccessAllowed;
 		VolumeSlotNumber SlotNumber;
 		bool UseBackupHeaders;
-		bool TrueCryptMode;
 		wstring SecurityTokenKeySpec;
+		bool EMVSupportEnabled;
 
 	protected:
 		void CopyFrom (const MountOptions &other);

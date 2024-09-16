@@ -74,6 +74,8 @@ BOOL UnloadDriver = TRUE;
 BOOL bSystemRestore = TRUE;
 BOOL bDisableSwapFiles = FALSE;
 BOOL bForAllUsers = TRUE;
+BOOL bDisableMemoryProtection = FALSE;
+BOOL bOriginalDisableMemoryProtection = FALSE;
 BOOL bRegisterFileExt = TRUE;
 BOOL bAddToStartMenu = TRUE;
 BOOL bDesktopIcon = TRUE;
@@ -83,6 +85,8 @@ BOOL bUserSetLanguage = FALSE;
 BOOL bDesktopIconStatusDetermined = FALSE;
 
 HMODULE volatile SystemRestoreDll = 0;
+
+extern HMODULE hcrypt32dll;
 
 void localcleanup (void)
 {
@@ -568,25 +572,12 @@ BOOL IsSystemRestoreEnabled ()
 	GetRestorePointRegKeyName (szRegPath, sizeof (szRegPath));
 	if (RegOpenKeyEx (HKEY_LOCAL_MACHINE, szRegPath, 0, KEY_READ | KEY_WOW64_64KEY, &hKey) == ERROR_SUCCESS)
 	{
-		if (IsOSAtLeast (WIN_VISTA))
+		if (	(ERROR_SUCCESS == RegQueryValueEx (hKey, L"RPSessionInterval", NULL, NULL, (LPBYTE) &dwValue, &cbValue))
+			&&	(dwValue == 1)
+			)
 		{
-			if (	(ERROR_SUCCESS == RegQueryValueEx (hKey, L"RPSessionInterval", NULL, NULL, (LPBYTE) &dwValue, &cbValue))
-				&&	(dwValue == 1)
-				)
-			{
-				bEnabled = TRUE;
-			}
+			bEnabled = TRUE;
 		}
-		else
-		{
-			if (	(ERROR_SUCCESS == RegQueryValueEx (hKey, L"DisableSR", NULL, NULL, (LPBYTE) &dwValue, &cbValue))
-				&&	(dwValue == 0)
-				)
-			{
-				bEnabled = TRUE;
-			}
-		}
-
 
 		RegCloseKey (hKey);
 	}
@@ -718,10 +709,6 @@ void DetermineUpgradeDowngradeStatus (BOOL bCloseDriverHandle, LONG *driverVersi
 		DWORD dwResult;
 		BOOL bResult = DeviceIoControl (hDriver, TC_IOCTL_GET_DRIVER_VERSION, NULL, 0, &driverVersion, sizeof (driverVersion), &dwResult, NULL);
 
-		if (!bResult)
-			bResult = DeviceIoControl (hDriver, TC_IOCTL_LEGACY_GET_DRIVER_VERSION, NULL, 0, &driverVersion, sizeof (driverVersion), &dwResult, NULL);
-
-
 		bUpgrade = (bResult && driverVersion <= VERSION_NUM);
 		bDowngrade = (bResult && driverVersion > VERSION_NUM);
 		bReinstallMode = (bResult && driverVersion == VERSION_NUM);
@@ -736,6 +723,24 @@ void DetermineUpgradeDowngradeStatus (BOOL bCloseDriverHandle, LONG *driverVersi
 	}
 
 	*driverVersionPtr = driverVersion;
+}
+
+BOOL isMsiInstalled ()
+{
+	BOOL bRet = FALSE;
+	HKEY hKey;
+	if (ERROR_SUCCESS == RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\VeraCrypt_MSI", 0, KEY_READ | KEY_WOW64_64KEY, &hKey))
+	{
+		DWORD dwType = 0;
+		if (	(ERROR_SUCCESS == RegQueryValueExW(hKey, L"ProductGuid", NULL, &dwType, NULL, NULL))
+			&&	(REG_SZ == dwType))
+		{
+			bRet = TRUE;
+		}
+		RegCloseKey(hKey);
+	}
+
+	return bRet;
 }
 
 
@@ -767,7 +772,7 @@ BOOL DoFilesInstall (HWND hwndDlg, wchar_t *szDestDir)
 
 		GetModuleFileName (NULL, szTmp, ARRAYSIZE (szTmp));
 
-		if (!SelfExtractInMemory (szTmp))
+		if (!SelfExtractInMemory (szTmp, FALSE))
 			return FALSE;
 	}
 
@@ -799,7 +804,8 @@ BOOL DoFilesInstall (HWND hwndDlg, wchar_t *szDestDir)
 			if (Is64BitOs ())
 				driver64 = TRUE;
 
-			GetSystemDirectory (szDir, ARRAYSIZE (szDir));
+			if (!GetSystemDirectory (szDir, ARRAYSIZE (szDir)))
+				StringCbCopyW(szDir, sizeof(szDir), L"C:\\Windows\\System32");
 
 			x = wcslen (szDir);
 			if (szDir[x - 1] != L'\\')
@@ -1340,13 +1346,10 @@ error:
 	}
 
 	// Register COM servers for UAC
-	if (IsOSAtLeast (WIN_VISTA))
+	if (!RegisterComServers (szDir))
 	{
-		if (!RegisterComServers (szDir))
-		{
-			Error ("COM_REG_FAILED", hwndDlg);
-			return FALSE;
-		}
+		Error ("COM_REG_FAILED", hwndDlg);
+		return FALSE;
 	}
 
 	return bOK;
@@ -1419,16 +1422,9 @@ BOOL DoApplicationDataUninstall (HWND hwndDlg)
 BOOL DoRegUninstall (HWND hwndDlg, BOOL bRemoveDeprecated)
 {
 	wchar_t regk [64];
-	typedef LSTATUS (WINAPI *RegDeleteKeyExWFn) (HKEY hKey,LPCWSTR lpSubKey,REGSAM samDesired,WORD Reserved);
-	RegDeleteKeyExWFn RegDeleteKeyExWPtr = NULL;
-	HMODULE hAdvapiDll = LoadLibrary (L"Advapi32.dll");
-	if (hAdvapiDll)
-	{
-		RegDeleteKeyExWPtr = (RegDeleteKeyExWFn) GetProcAddress(hAdvapiDll, "RegDeleteKeyExW");
-	}
 
 	// Unregister COM servers
-	if (!bRemoveDeprecated && IsOSAtLeast (WIN_VISTA))
+	if (!bRemoveDeprecated)
 	{
 		if (!UnregisterComServers (InstallationPath))
 			StatusMessage (hwndDlg, "COM_DEREG_FAILED");
@@ -1437,16 +1433,9 @@ BOOL DoRegUninstall (HWND hwndDlg, BOOL bRemoveDeprecated)
 	if (!bRemoveDeprecated)
 		StatusMessage (hwndDlg, "REMOVING_REG");
 
-	if (RegDeleteKeyExWPtr)
-	{
-		RegDeleteKeyExWPtr (HKEY_LOCAL_MACHINE, L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\VeraCrypt", KEY_WOW64_32KEY, 0);
-		RegDeleteKeyExWPtr (HKEY_CURRENT_USER, L"Software\\VeraCrypt", KEY_WOW64_32KEY, 0);
-	}
-	else
-	{
-		RegDeleteKey (HKEY_LOCAL_MACHINE, L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\VeraCrypt");
-		RegDeleteKey (HKEY_LOCAL_MACHINE, L"Software\\VeraCrypt");
-	}
+	RegDeleteKeyExW (HKEY_LOCAL_MACHINE, L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\VeraCrypt", KEY_WOW64_32KEY, 0);
+	RegDeleteKeyExW (HKEY_CURRENT_USER, L"Software\\VeraCrypt", KEY_WOW64_32KEY, 0);
+
 	RegDeleteKey (HKEY_LOCAL_MACHINE, L"Software\\Classes\\VeraCryptVolume\\Shell\\open\\command");
 	RegDeleteKey (HKEY_LOCAL_MACHINE, L"Software\\Classes\\VeraCryptVolume\\Shell\\open");
 	RegDeleteKey (HKEY_LOCAL_MACHINE, L"Software\\Classes\\VeraCryptVolume\\Shell");
@@ -1484,9 +1473,6 @@ BOOL DoRegUninstall (HWND hwndDlg, BOOL bRemoveDeprecated)
 
 		SHChangeNotify (SHCNE_ASSOCCHANGED, SHCNF_IDLIST, NULL, NULL);
 	}
-
-	if (hAdvapiDll)
-		FreeLibrary (hAdvapiDll);
 
 	return TRUE;
 }
@@ -1706,6 +1692,10 @@ BOOL DoDriverUnload (HWND hwndDlg)
 					if (CurrentOSMajor == 6 && CurrentOSMinor == 0 && CurrentOSServicePack < 1)
 						AbortProcess ("SYS_ENCRYPTION_UPGRADE_UNSUPPORTED_ON_VISTA_SP0");
 
+					// check if we are upgrading a system encrypted with unsupported algorithms
+					if (bootEnc.IsUsingUnsupportedAlgorithm(driverVersion))
+						AbortProcess ("SYS_ENCRYPTION_UPGRADE_UNSUPPORTED_ALGORITHM");
+
 					SystemEncryptionUpdate = TRUE;
 					PortableMode = FALSE;
 				}
@@ -1729,13 +1719,6 @@ BOOL DoDriverUnload (HWND hwndDlg)
 
 			// Check mounted volumes
 			bResult = DeviceIoControl (hDriver, TC_IOCTL_IS_ANY_VOLUME_MOUNTED, NULL, 0, &volumesMounted, sizeof (volumesMounted), &dwResult, NULL);
-
-			if (!bResult)
-			{
-				bResult = DeviceIoControl (hDriver, TC_IOCTL_LEGACY_GET_MOUNTED_VOLUMES, NULL, 0, &driver, sizeof (driver), &dwResult, NULL);
-				if (bResult)
-					volumesMounted = driver.ulMountedDrives;
-			}
 
 			if (bResult)
 			{
@@ -2224,6 +2207,14 @@ void DoInstall (void *arg)
 
 	ClearLogWindow (hwndDlg);
 
+	if (isMsiInstalled())
+	{
+		MessageBoxW (hwndDlg,  GetString ("CANT_INSTALL_WITH_EXE_OVER_MSI"), lpszTitle, MB_ICONHAND);
+		Error ("INSTALL_FAILED", hwndDlg);
+		PostMessage (MainDlg, TC_APPMSG_INSTALL_FAILURE, 0, 0);
+		return;
+	}
+
 	if (mkfulldir (InstallationPath, TRUE) != 0)
 	{
 		if (mkfulldir (InstallationPath, FALSE) != 0)
@@ -2252,12 +2243,15 @@ void DoInstall (void *arg)
 		&& (IsFileInUse (wstring (InstallationPath) + L'\\' + _T(TC_APP_NAME) L".exe")
 			|| IsFileInUse (wstring (InstallationPath) + L'\\' + _T(TC_APP_NAME) L"-x86.exe")
 			|| IsFileInUse (wstring (InstallationPath) + L'\\' + _T(TC_APP_NAME) L"-x64.exe")
+			|| IsFileInUse (wstring (InstallationPath) + L'\\' + _T(TC_APP_NAME) L"-arm64.exe")
 			|| IsFileInUse (wstring (InstallationPath) + L'\\' + _T(TC_APP_NAME) L" Format.exe")
 			|| IsFileInUse (wstring (InstallationPath) + L'\\' + _T(TC_APP_NAME) L" Format-x86.exe")
 			|| IsFileInUse (wstring (InstallationPath) + L'\\' + _T(TC_APP_NAME) L" Format-x64.exe")
+			|| IsFileInUse (wstring (InstallationPath) + L'\\' + _T(TC_APP_NAME) L" Format-arm64.exe")
 			|| IsFileInUse (wstring (InstallationPath) + L'\\' + _T(TC_APP_NAME) L"Expander.exe")
 			|| IsFileInUse (wstring (InstallationPath) + L'\\' + _T(TC_APP_NAME) L"Expander-x86.exe")
 			|| IsFileInUse (wstring (InstallationPath) + L'\\' + _T(TC_APP_NAME) L"Expander-x64.exe")
+			|| IsFileInUse (wstring (InstallationPath) + L'\\' + _T(TC_APP_NAME) L"Expander-arm64.exe")
 			|| IsFileInUse (wstring (InstallationPath) + L'\\' + _T(TC_APP_NAME) L" Setup.exe")
 			)
 		)
@@ -2342,6 +2336,12 @@ void DoInstall (void *arg)
 
 	if (bSystemRestore)
 		SetSystemRestorePoint (hwndDlg, TRUE);
+
+	if (bOK && (bDisableMemoryProtection != bOriginalDisableMemoryProtection))
+	{
+		WriteMemoryProtectionConfig(bDisableMemoryProtection? FALSE : TRUE);
+		bRestartRequired = TRUE; // Restart is required to apply the new memory protection settings
+	}
 
 	if (bOK)
 	{
@@ -2555,20 +2555,47 @@ typedef struct
 
 static tLanguageEntry g_languagesEntries[] = {
 	{L"العربية", IDR_LANG_AR, LANG_ARABIC, "ar", NULL},
+	{L"Беларуская", IDR_LANG_BE, LANG_BELARUSIAN, "be", NULL},
+	{L"Български", IDR_LANG_BG, LANG_BULGARIAN, "bg", NULL},
+	{L"Català", IDR_LANG_CA, LANG_CATALAN, "ca", NULL},
+	{L"Corsu", IDR_LANG_CO, LANG_CORSICAN, "co", NULL},
 	{L"Čeština", IDR_LANG_CS, LANG_CZECH, "cs", NULL},
+	{L"Dansk", IDR_LANG_DA, LANG_DANISH, "da", NULL},
 	{L"Deutsch", IDR_LANG_DE, LANG_GERMAN, "de", NULL},
+	{L"Ελληνικά", IDR_LANG_EL, LANG_GREEK, "el", NULL},
 	{L"English", IDR_LANGUAGE, LANG_ENGLISH, "en", NULL},
 	{L"Español", IDR_LANG_ES, LANG_SPANISH, "es", NULL},
+	{L"Eesti", IDR_LANG_ET, LANG_ESTONIAN, "et", NULL},
+	{L"Euskara", IDR_LANG_EU, LANG_BASQUE, "eu", NULL},
+	{L"فارسي", IDR_LANG_FA, LANG_PERSIAN, "fa", NULL},
+	{L"Suomi", IDR_LANG_FI, LANG_FINNISH, "fi", NULL},
 	{L"Français", IDR_LANG_FR, LANG_FRENCH, "fr", NULL},
+	{L"עברית", IDR_LANG_HE, LANG_HEBREW, "he", NULL},
+	{L"Magyar", IDR_LANG_HU, LANG_HUNGARIAN, "hu", NULL},
+	{L"Bahasa Indonesia", IDR_LANG_ID, LANG_INDONESIAN, "id", NULL},
 	{L"Italiano", IDR_LANG_IT, LANG_ITALIAN, "it", NULL},
 	{L"日本語", IDR_LANG_JA, LANG_JAPANESE, "ja", NULL},
+	{L"ქართული", IDR_LANG_KA, LANG_GEORGIAN, "ka", NULL},
+	{L"한국어", IDR_LANG_KO, LANG_KOREAN, "ko", NULL},
+	{L"Latviešu", IDR_LANG_LV, LANG_LATVIAN, "lv", NULL},
+	{L"Norsk Bokmål", IDR_LANG_NB, LANG_NORWEGIAN, "nb", NULL},
 	{L"Nederlands", IDR_LANG_NL, LANG_DUTCH, "nl", NULL},
+	{L"Norsk Nynorsk", IDR_LANG_NN, LANG_NORWEGIAN, "nn", NULL},
 	{L"Polski", IDR_LANG_PL, LANG_POLISH, "pl", NULL},
 	{L"Română", IDR_LANG_RO, LANG_ROMANIAN, "ro", NULL},
 	{L"Русский", IDR_LANG_RU, LANG_RUSSIAN, "ru", NULL},
+	{L"Português-Brasil", IDR_LANG_PTBR, LANG_PORTUGUESE, "pt-br", L"pt-BR"},
+	{L"Slovenčina", IDR_LANG_SK, LANG_SLOVAK, "sk", NULL},
+	{L"Slovenščina", IDR_LANG_SL, LANG_SLOVENIAN, "sl", NULL},
+	{L"Svenska", IDR_LANG_SV, LANG_SWEDISH, "sv", NULL},
+	{L"ภาษาไทย", IDR_LANG_TH, LANG_THAI, "th", NULL},
+	{L"Türkçe", IDR_LANG_TR, LANG_TURKISH, "tr", NULL},
+	{L"Українська", IDR_LANG_UK, LANG_UKRAINIAN, "uk", NULL},
+	{L"Ўзбекча", IDR_LANG_UZ, LANG_UZBEK, "uz", NULL},
 	{L"Tiếng Việt", IDR_LANG_VI, LANG_VIETNAMESE, "vi", NULL},
 	{L"简体中文", IDR_LANG_ZHCN, LANG_CHINESE, "zh-cn", L"zh-CN"},
-	{L"繁體中文", IDR_LANG_ZHHK, LANG_CHINESE, "zh-hk", L"zh-HK"},
+	{L"繁體中文(香港)", IDR_LANG_ZHHK, LANG_CHINESE, "zh-hk", L"zh-HK"},
+	{L"繁體中文", IDR_LANG_ZHTW, LANG_CHINESE, "zh-tw", L"zh-TW"},
 };
 
 typedef int (WINAPI *LCIDToLocaleNameFn)(
@@ -2687,31 +2714,6 @@ int WINAPI wWinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, wchar_t *lpsz
 
 	SelfExtractStartupInit();
 
-#ifdef PORTABLE
-	lpszTitle = L"VeraCrypt Portable";
-#else
-	lpszTitle = L"VeraCrypt Setup";
-#endif
-	/* Call InitApp to initialize the common code */
-	InitApp (hInstance, NULL);
-
-#ifndef PORTABLE
-	if (IsAdmin () != TRUE)
-		if (MessageBoxW (NULL, GetString ("SETUP_ADMIN"), lpszTitle, MB_YESNO | MB_ICONQUESTION) != IDYES)
-		{
-			FinalizeApp ();
-			exit (1);
-		}
-#endif
-	/* Setup directory */
-	{
-		wchar_t *s;
-		GetModuleFileName (NULL, SetupFilesDir, ARRAYSIZE (SetupFilesDir));
-		s = wcsrchr (SetupFilesDir, L'\\');
-		if (s)
-			s[1] = 0;
-	}
-
 	/* Parse command line arguments */
 
 	if (lpszCommandLine[0] == L'/')
@@ -2744,11 +2746,35 @@ int WINAPI wWinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, wchar_t *lpsz
 		}
 	}
 
+#ifdef PORTABLE
+	lpszTitle = L"VeraCrypt Portable";
+#else
+	lpszTitle = L"VeraCrypt Setup";
+#endif
+	/* Call InitApp to initialize the common code */
+	InitApp (hInstance, NULL);
+
+#ifndef PORTABLE
+	if (IsAdmin () != TRUE)
+		if (MessageBoxW (NULL, GetString ("SETUP_ADMIN"), lpszTitle, MB_YESNO | MB_ICONQUESTION) != IDYES)
+		{
+			exit (1);
+		}
+#endif
+	/* Setup directory */
+	{
+		wchar_t *s;
+		GetModuleFileName (NULL, SetupFilesDir, ARRAYSIZE (SetupFilesDir));
+		s = wcsrchr (SetupFilesDir, L'\\');
+		if (s)
+			s[1] = 0;
+	}
+
 	if (bMakePackage)
 	{
 		/* Create self-extracting package */
 
-		MakeSelfExtractingPackage (NULL, SetupFilesDir);
+		MakeSelfExtractingPackage (NULL, SetupFilesDir, FALSE);
 	}
 	else
 	{
@@ -2784,7 +2810,6 @@ int WINAPI wWinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, wchar_t *lpsz
 #else
 				MessageBox (NULL, L"Error: This portable installer file does not contain any compressed files.\n\nTo create a self-extracting portable installation package (with embedded compressed files), run:\n\"VeraCrypt Portable.exe\" /p", L"VeraCrypt", MB_ICONERROR | MB_SETFOREGROUND | MB_TOPMOST);
 #endif
-				FinalizeApp ();
 				exit (1);
 			}
 
@@ -2805,7 +2830,6 @@ int WINAPI wWinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, wchar_t *lpsz
 					bUninstall = TRUE;
 					break;
 				default:
-					FinalizeApp ();
 					exit (1);
 				}
 			}
@@ -2831,7 +2855,7 @@ int WINAPI wWinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, wchar_t *lpsz
 
 		if (!bUninstall)
 		{
-			if (!bDevm && !LocalizationActive && (nCurrentOS >= WIN_VISTA))
+			if (!bDevm && !LocalizationActive)
 			{
 				BOOL bHasPreferredLanguage = (strlen (GetPreferredLangId ()) > 0)? TRUE : FALSE;
 				if ((IDCANCEL == DialogBoxParamW (hInstance, MAKEINTRESOURCEW (IDD_INSTALL_LANGUAGE), NULL, (DLGPROC) SelectLanguageDialogProc, (LPARAM) 0 ))
@@ -2839,7 +2863,6 @@ int WINAPI wWinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, wchar_t *lpsz
 					)
 				{
 					// Language dialog cancelled by user: exit the installer
-					FinalizeApp ();
 					exit (1);
 				}
 			}
@@ -2876,6 +2899,5 @@ int WINAPI wWinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, wchar_t *lpsz
 		}
 #endif
 	}
-	FinalizeApp ();
 	return 0;
 }

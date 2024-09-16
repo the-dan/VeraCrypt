@@ -60,9 +60,8 @@ namespace VeraCrypt
 		VolumeType::Enum Type;
 		DevicePath VirtualDevice;
 		VolumeTime VolumeCreationTime;
-		bool TrueCryptMode;
 		int Pim;
-
+		bool MasterKeyVulnerable;
 	private:
 		VolumeInfo (const VolumeInfo &);
 		VolumeInfo &operator= (const VolumeInfo &);

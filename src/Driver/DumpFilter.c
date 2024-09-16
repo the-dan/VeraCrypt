@@ -18,7 +18,7 @@
 
 static DriveFilterExtension *BootDriveFilterExtension = NULL;
 static LARGE_INTEGER DumpPartitionOffset;
-static byte *WriteFilterBuffer = NULL;
+static uint8 *WriteFilterBuffer = NULL;
 static SIZE_T WriteFilterBufferSize;
 
 
@@ -127,7 +127,7 @@ NTSTATUS DumpFilterEntry (PFILTER_EXTENSION filterExtension, PFILTER_INITIALIZAT
 		goto err;
 	}
 
-	WriteFilterBufferSize = filterInitData->MaxPagesPerWrite * PAGE_SIZE;
+	WriteFilterBufferSize = ((SIZE_T)filterInitData->MaxPagesPerWrite) * PAGE_SIZE;
 
 #ifdef _WIN64
 	highestAcceptableWriteBufferAddr.QuadPart = 0x7FFffffFFFFLL;

@@ -1,3 +1,5 @@
+#include <cstddef>
+
 #include "Testing.h"
 #include "PipelineStream.h"
 #include "MemoryStream.h"
@@ -33,7 +35,7 @@ size_t ReadFully(shared_ptr<Stream> s, Buffer *rb, int chunkSize = 10) {
 
 
 void FillBuffer(Buffer &buff) {
-    VeraCrypt::byte *b = buff.Ptr();
+    uint8 *b = buff.Ptr();
     for (auto i = 0; i < buff.Size(); ++i) {
         b[i] = i+1;
     }
@@ -51,7 +53,7 @@ void EmptyTest(shared_ptr<TestResult> r) {
     }
 }
 
-void ZeroLengthStreamsTest(shared_ptr<TestResult> r) {
+void SingleByteSingleStreamTest(shared_ptr<TestResult> r) {
     Buffer buff(1);
     FillBuffer(buff);
 
@@ -64,12 +66,12 @@ void ZeroLengthStreamsTest(shared_ptr<TestResult> r) {
     size_t n = ReadFully(s, rb);
     r->Info("N" + to_string(n));
     if (n != 1) {
-        r->Failed("Expected 10 bytes");
+        r->Failed("Expected 1 byte");
     }
 
 }
 
-void MultipleZeroLengthStreams(shared_ptr<TestResult> r) {
+void SingleByteTwoStreamsTest(shared_ptr<TestResult> r) {
     Buffer buf1(1);
     Buffer buf2(1);
 
@@ -95,7 +97,7 @@ void MultipleZeroLengthStreams(shared_ptr<TestResult> r) {
 
 
 
-void LastZeroLengthStreamTest(shared_ptr<TestResult> r) {
+void LongStreamAndSingleByteStreamTest(shared_ptr<TestResult> r) {
     Buffer buf1(10);
     Buffer buf2(1);
     FillBuffer(buf1);
@@ -116,7 +118,7 @@ void LastZeroLengthStreamTest(shared_ptr<TestResult> r) {
     }
 }
 
-void ReadWholeSubstreamAtOnceTest(shared_ptr<TestResult> r) {
+void ReadWholeStreamAtOnceTest(shared_ptr<TestResult> r) {
     Buffer buf1(10);
     Buffer buf2(5);
     FillBuffer(buf1);
@@ -133,11 +135,11 @@ void ReadWholeSubstreamAtOnceTest(shared_ptr<TestResult> r) {
     size_t n = ReadFully(s, rb, 20);
     r->Info("N" + to_string(n));
     if (n != 15) {
-        r->Failed("Expected 10 bytes");
+        r->Failed("Expected 15 bytes");
     }
 }
 
-void ReadSubstreamByPartsTest(shared_ptr<TestResult> r) {
+void ReadStreamByteByByteTest(shared_ptr<TestResult> r) {
     Buffer buf1(10);
     Buffer buf2(1);
     FillBuffer(buf1);
@@ -154,18 +156,18 @@ void ReadSubstreamByPartsTest(shared_ptr<TestResult> r) {
     size_t n = ReadFully(s, rb, 1);
     r->Info("N" + to_string(n));
     if (n != 11) {
-        r->Failed("Expected 10 bytes");
+        r->Failed("Expected 11 bytes");
     }
 }
 
 int main() {
     VeraCrypt::Testing t;
     t.AddTest("empty", &EmptyTest);
-    t.AddTest("single zero length streams", &ZeroLengthStreamsTest);
-    t.AddTest("multiple zero length stream", &MultipleZeroLengthStreams);
-    t.AddTest("last zero length stream", &LastZeroLengthStreamTest);
-    t.AddTest("read full", &ReadWholeSubstreamAtOnceTest);
-    t.AddTest("read by single byte", &ReadSubstreamByPartsTest);
+    t.AddTest("single byte single stream", &SingleByteSingleStreamTest);
+    t.AddTest("two single byte streams", &SingleByteTwoStreamsTest);
+    t.AddTest("long stream and single byte stream", &LongStreamAndSingleByteStreamTest);
+    t.AddTest("read full stream at once", &ReadWholeStreamAtOnceTest);
+    t.AddTest("read byte by byte", &ReadStreamByteByByteTest);
     t.Main();
 };
 

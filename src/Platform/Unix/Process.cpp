@@ -119,7 +119,6 @@ namespace VeraCrypt
 		throw_sys_if (fcntl (exceptionPipe.GetReadFD(), F_SETFL, O_NONBLOCK) == -1);
 
 		vector <char> buffer (4096), stdOutput (4096), errOutput (4096), exOutput (4096);
-		buffer.clear ();
 		stdOutput.clear ();
 		errOutput.clear ();
 		exOutput.clear ();
@@ -175,7 +174,7 @@ namespace VeraCrypt
 
 			try
 			{
-				shared_ptr <Stream> stream (new MemoryStream (ConstBufferPtr ((byte *) &exOutput[0], exOutput.size())));
+				shared_ptr <Stream> stream (new MemoryStream (ConstBufferPtr ((uint8 *) &exOutput[0], exOutput.size())));
 				deserializedObject.reset (Serializable::DeserializeNew (stream));
 				deserializedException = dynamic_cast <Exception*> (deserializedObject.get());
 			}

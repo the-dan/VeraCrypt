@@ -46,7 +46,7 @@ CFLAGS = $(CFLAGS) /D TC_WINDOWS_BOOT_SINGLE_CIPHER_MODE /D TC_WINDOWS_BOOT_$(SI
 OBJDIR = $(OBJDIR)_$(SINGLE_PRF)
 CFLAGS = $(CFLAGS) /D TC_WINDOWS_BOOT_$(SINGLE_PRF)
 !else
-CFLAGS = $(CFLAGS) /D TC_WINDOWS_BOOT_RIPEMD160
+CFLAGS = $(CFLAGS) /D TC_WINDOWS_BOOT_BLAKE2S
 !endif
 
 OUTDIR = $(OBJDIR)
@@ -85,7 +85,7 @@ OBJS = $(OBJS) $(OUTDIR)\Xts.obj
 !if "$(SINGLE_PRF)" == "SHA2"
 OBJS = $(OBJS) $(OUTDIR)\Sha2Small.obj
 !else
-OBJS = $(OBJS) $(OUTDIR)\Rmd160.obj
+OBJS = $(OBJS) $(OUTDIR)\blake2s-ref.obj
 !endif
 
 !if !DEFINED (SINGLE_CIPHER)
@@ -196,7 +196,7 @@ $(LIBS)
 	$(LD) $(LFLAGS) @$(PROJ).crf
 	del $(PROJ).crf $(PROJ).crf2
 
-# Compress the Rescue Disk botloader for Cascades and Serpent since it is too big (size > 31232 bytes)
+# Compress the Rescue Disk bootloader for Cascades and Serpent since it is too big (size > 31232 bytes)
 #!if DEFINED(RESCUE_DISK) && (!DEFINED (SINGLE_CIPHER) || ("$(SINGLE_CIPHER)" == "SERPENT") || ("$(SINGLE_CIPHER)" == "CAMELLIA"))
 	upx $(PROJ).$(TARGETEXT)
 #!endif

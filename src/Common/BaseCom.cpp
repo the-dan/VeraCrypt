@@ -45,12 +45,13 @@ HRESULT CreateElevatedComObject (HWND hwnd, REFGUID guid, REFIID iid, void **ppv
 BOOL ComGetInstanceBase (HWND hWnd, REFCLSID clsid, REFIID iid, void **tcServer)
 {
 	BOOL r;
+	HRESULT hr;
 
 	if (IsUacSupported ())
 	{
 		while (true)
 		{
-			r = CreateElevatedComObject (hWnd, clsid, iid, tcServer) == S_OK;
+			r = (hr = CreateElevatedComObject (hWnd, clsid, iid, tcServer)) == S_OK;
 			if (r)
 				break;
 			else
@@ -64,9 +65,14 @@ BOOL ComGetInstanceBase (HWND hWnd, REFCLSID clsid, REFIID iid, void **tcServer)
 	}
 	else
 	{
-		r = CoCreateInstance (clsid, NULL, CLSCTX_LOCAL_SERVER, iid, tcServer) == S_OK;
+		r = (hr = CoCreateInstance (clsid, NULL, CLSCTX_LOCAL_SERVER, iid, tcServer)) == S_OK;
 		if (!r)
 			Error ("UAC_INIT_ERROR", hWnd);
+	}
+
+	if (!r)
+	{
+		SetLastError((DWORD) hr);
 	}
 
 	return r;
@@ -444,7 +450,7 @@ DWORD BaseCom::WriteEfiBootSectorUserConfig (DWORD userConfig, BSTR customUserMe
 			msg [maxSize - 1] = 0;
 		std::string msgStr = maxSize > 0 ? msg : "";
 		BootEncryption bootEnc (NULL);
-		bootEnc.WriteEfiBootSectorUserConfig ((byte) userConfig,  msgStr, pim, hashAlg);
+		bootEnc.WriteEfiBootSectorUserConfig ((uint8) userConfig,  msgStr, pim, hashAlg);
 	}
 	catch (SystemException &)
 	{
@@ -485,4 +491,14 @@ DWORD BaseCom::UpdateSetupConfigFile (BOOL bForInstall)
 	}
 
 	return ERROR_SUCCESS;
+}
+
+DWORD BaseCom::NotifyService(DWORD dwNotifyCode)
+{
+	return SendServiceNotification(dwNotifyCode);
+}
+
+DWORD BaseCom::FastFileResize (BSTR filePath, __int64 fileSize)
+{
+	return ::FastResizeFile (filePath, fileSize);
 }

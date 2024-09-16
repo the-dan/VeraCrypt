@@ -23,8 +23,8 @@
 # SSSE3:		Enable SSSE3 support in compiler
 # SSE41:		Enable SSE4.1 support in compiler
 # NOSSE2:		Disable SEE2 support in compiler
-# WITHGTK3:		Build wxWidgets against GTK3
-# VC_OSX_SDK_PATH:	Path to macOS SDK. If not specified, we are trying to find out ourselves. If specified, but empty, rely on OS/compiler default configuration.
+# WOLFCRYPT:	Build with wolfCrypt as crypto provider (see Crypto/wolfCrypt.md)
+# WITHFUSET:	Build with FUSE-T support on macOS instead of MacFUSE
 
 #------ Targets ------
 # all
@@ -50,7 +50,10 @@ C_CXX_FLAGS := -MMD -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_LARGE_FILES -I
 export ASFLAGS := -D __GNUC__ -D __YASM__
 export LFLAGS :=
 
+export PKG_CONFIG ?= pkg-config
 export PKG_CONFIG_PATH ?= /usr/local/lib/pkgconfig
+export VC_FUSE_PACKAGE := fuse
+export VC_OSX_FUSET ?= 0
 
 export WX_CONFIG ?= wx-config
 export WX_CONFIGURE_FLAGS := --unicode
@@ -60,6 +63,12 @@ export WXCONFIG_CXXFLAGS :=
 WX_ROOT ?= $(BASE_DIR)/wxWidgets
 
 export TC_BUILD_CONFIG := Release
+
+ifeq "$(origin WITHFUSET)" "command line"
+	ifneq "$(WITHFUSET)" "0"
+		VC_OSX_FUSET := 1
+	endif
+endif
 
 ifeq "$(origin DEBUG)" "command line"
 	ifneq "$(DEBUG)" "0"
@@ -95,7 +104,6 @@ ifeq "$(origin WXSTATIC)" "command line"
 		export VC_WX_MINIMAL := 1
 	endif
 endif
-
 
 #------ Release configuration ------
 
@@ -140,6 +148,12 @@ export PLATFORM_UNSUPPORTED := 0
 
 export CPU_ARCH ?= unknown
 export SIMD_SUPPORTED := 0
+export DISABLE_AESNI ?= 0
+export ENABLE_WOLFCRYPT ?= 0
+
+export GCC_GTEQ_440 := 0
+export GCC_GTEQ_430 := 0
+export GTK_VERSION := 0
 
 ARCH ?= $(shell uname -m)
 
@@ -173,6 +187,16 @@ ifeq "$(origin NOSSE2)" "command line"
 	SIMD_SUPPORTED := 0
 endif
 
+ifeq "$(origin NOAESNI)" "command line"
+	DISABLE_AESNI := 1
+endif
+
+ifeq "$(origin WOLFCRYPT)" "command line"
+	ENABLE_WOLFCRYPT := 1
+	C_CXX_FLAGS += -DWOLFCRYPT_BACKEND
+	export LIBS += -lwolfssl
+	export LD_LIBRARY_PATH=/usr/local/lib
+endif
 
 #------ Linux configuration ------
 
@@ -181,15 +205,47 @@ ifeq "$(shell uname -s)" "Linux"
 	PLATFORM := Linux
 	C_CXX_FLAGS += -DTC_UNIX -DTC_LINUX
 	
+	# PCSC
+	C_CXX_FLAGS += $(shell $(PKG_CONFIG) --cflags libpcsclite)
+
+	# Extract the major and minor version numbers of GCC in a combined format for easy comparison
+	GCC_VERSION := $(shell $(CC) -dumpversion | awk -F. '{printf "%d%02d", $$1, $$2}')
+
+	# Set the C++ standard based on the version numbers
+	ifeq ($(shell expr $(GCC_VERSION) \< 408), 1)
+		# GCC version below 4.8 support minimal C++11 features through the switch -std=c++0x
+		CXXFLAGS += -std=c++0x
+	else ifeq ($(GCC_VERSION), 408)
+		# GCC version 4.8 supports C++11 features through the switch -std=c++11
+		CXXFLAGS += -std=c++11
+	else ifeq ($(shell expr $(GCC_VERSION) \>= 1100), 1)
+		# GNU GCC version 11 and higher compile with -std=gnu++17 by default
+		# which breaks "byte" definitions in Crypto++ library. So set -std=gnu++14 instead.
+		CXXFLAGS += -std=gnu++14
+	endif
+
+	# Linked in GCC versions below 6 was setting large value for MAXPAGESIZE which is not good for ASLR security
+	# So, we need to manually add the linker flag "-z max-page-size=4096" to set the maximum page size to 4KB
+	# in order to improve ASLR security. Starting from GCC 6, the default value of MAXPAGESIZE is 4KB.
+	ifeq ($(shell expr $(GCC_VERSION) \< 600), 1)
+		LFLAGS += -Wl,-z,max-page-size=4096
+	endif
+	
 	ifeq "$(SIMD_SUPPORTED)" "1"
 		CFLAGS += -msse2
 		CXXFLAGS += -msse2
 
 		GCC_GTEQ_440 := $(shell expr `$(CC) -dumpversion | sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$$/&00/' -e 's/^[0-9]\{1,2\}$$/&0000/'` \>= 40400)
 		GCC_GTEQ_430 := $(shell expr `$(CC) -dumpversion | sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$$/&00/' -e 's/^[0-9]\{1,2\}$$/&0000/'` \>= 40300)
-		ifeq "$(GCC_GTEQ_440)" "1"
-			CFLAGS += -maes
-			CXXFLAGS += -maes
+
+		ifeq "$(DISABLE_AESNI)" "1"
+			CFLAGS += -mno-aes -DCRYPTOPP_DISABLE_AESNI
+			CXXFLAGS += -mno-aes -DCRYPTOPP_DISABLE_AESNI
+		else
+			ifeq "$(GCC_GTEQ_440)" "1"
+				CFLAGS += -maes
+				CXXFLAGS += -maes
+			endif
 		endif
 
 		ifeq "$(GCC_GTEQ_430)" "1"
@@ -233,11 +289,6 @@ ifeq "$(shell uname -s)" "Linux"
 		WXCONFIG_CFLAGS += -mno-sse2
 		WXCONFIG_CXXFLAGS += -mno-sse2
 	endif
-	
-	ifeq "$(origin WITHGTK3)" "command line"
-		WX_CONFIGURE_FLAGS += --with-gtk=3
-	endif
-
 endif
 
 #------ Mac OS X configuration ------
@@ -247,76 +298,105 @@ ifeq "$(shell uname -s)" "Darwin"
 	PLATFORM := MacOSX
 	APPNAME := VeraCrypt
 
-	export VC_OSX_TARGET ?= 10.7
-	export VC_OSX_SDK ?= $(VC_OSX_TARGET)
+	export VC_OSX_TARGET ?= 12
+	# use the output of the command "xcrun --show-sdk-version" to set the SDK version if not set
+	export VC_OSX_SDK ?= $(shell xcrun --show-sdk-version)
 
-	ifneq "$(origin VC_OSX_SDK_PATH)" "command line"
-		#check to see if XCode 3 path exists.Otherwise, use XCode 4 path
-		VC_OSX_SDK_PATH  := /Developer/SDKs/MacOSX$(VC_OSX_SDK).sdk
-		ifeq ($(wildcard $(VC_OSX_SDK_PATH)/SDKSettings.plist),)
-			VC_OSX_SDK_PATH := /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX$(VC_OSX_SDK).sdk
+	#check to see if XCode 3 path exists.Otherwise, use XCode 4 path
+	VC_OSX_SDK_PATH := /Developer/SDKs/MacOSX$(VC_OSX_SDK).sdk
+	ifeq ($(wildcard $(VC_OSX_SDK_PATH)/SDKSettings.plist),)
+		VC_OSX_SDK_PATH := $(shell xcrun --sdk macosx$(VC_OSX_SDK) --show-sdk-path)
+		ifeq ($(VC_OSX_SDK_PATH),)
+$(error Specified SDK version was not found, ensure your active developer directory is correct through xcode-select)
 		endif
-		
-		#----- Legacy build if OSX <= 10.8: we build both 32-bit and 64-bit ----
-		ifneq (,$(filter 10.6 10.7 10.8,$(VC_OSX_TARGET)))
-			export VC_LEGACY_BUILD := 1
-		endif
+	endif
+	
+	#----- Legacy build if OSX <= 10.8: we build both 32-bit and 64-bit ----
+	ifneq (,$(filter 10.6 10.7 10.8,$(VC_OSX_TARGET)))
+		export VC_LEGACY_BUILD := 1
 	endif
 
 	CC := gcc
 	CXX := g++
 
-	# default build defines
-	C_CXX_FLAGS += -DTC_UNIX -DTC_BSD -DTC_MACOSX
+	GCC_GTEQ_430 := 1
 
-	# if we decided not to rely on default macOS SDK path
-	ifneq ($(VC_OSX_SDK_PATH),)
-		C_CXX_FLAGS += -DTC_UNIX -DTC_BSD -DTC_MACOSX -mmacosx-version-min=$(VC_OSX_TARGET) -isysroot $(VC_OSX_SDK_PATH)
-		LFLAGS += -mmacosx-version-min=$(VC_OSX_TARGET) -Wl,-syslibroot $(VC_OSX_SDK_PATH)
-		WX_CONFIGURE_FLAGS += --with-macosx-version-min=$(VC_OSX_TARGET) --with-macosx-sdk=$(VC_OSX_SDK_PATH)
+	CXXFLAGS += -std=c++11
+	C_CXX_FLAGS += -DTC_UNIX -DTC_BSD -DTC_MACOSX -mmacosx-version-min=$(VC_OSX_TARGET) -isysroot $(VC_OSX_SDK_PATH)
+	LFLAGS += -mmacosx-version-min=$(VC_OSX_TARGET) -Wl,-syslibroot $(VC_OSX_SDK_PATH)
+	# Xcode 15 linker emits a warning "no platform load command found" when linking object files generated by yasm
+	# To suppress this warning, we need to use -Wl,-ld_classic flag in order to use the old ld64 linker
+	# https://mjtsai.com/blog/2024/03/15/xcode-15-no-platform-load-command-found/
+	# We can check whether newer linker is in use if ld -v reports dyld instead of ld64.
+	ifeq ($(shell xcrun --sdk macosx$(VC_OSX_SDK) ld -v 2>&1 | grep -oE 'PROJECT:[^-]+' | cut -d: -f2),dyld)
+		LFLAGS += -Wl,-ld_classic
 	endif
 
-	ifeq "$(CPU_ARCH)" "x64"
-		CPU_ARCH = x86
+	WX_CONFIGURE_FLAGS += --with-macosx-version-min=$(VC_OSX_TARGET) --with-macosx-sdk=$(VC_OSX_SDK_PATH)
+
+	ifneq "$(VC_OSX_FUSET)" "0"
+		C_CXX_FLAGS += -DVC_MACOSX_FUSET
+		VC_FUSE_PACKAGE := fuse-t
 	endif
 
-	CFLAGS += -msse2
-	CXXFLAGS += -msse2
-
-	ifeq "$(origin SSSE3)" "command line"
-		CFLAGS += -mssse3
-		CXXFLAGS += -mssse3
+	# Set x86 assembly flags (-msse2, -mssse3, -msse4.1)
+	# Apply flags if SIMD_SUPPORTED is 1 or if not in local development build (we are creating universal binary in this case)
+	ifneq "$(LOCAL_DEVELOPMENT_BUILD)" "true"
+		SIMD_SUPPORTED = 1
 	endif
 
-	ifeq "$(origin SSE41)" "command line"
-		CFLAGS += -mssse3 -msse4.1
-		CXXFLAGS += -mssse3 -msse4.1
+	ifeq "$(SIMD_SUPPORTED)" "1"
+		CFLAGS += -msse2
+		CXXFLAGS += -msse2
+
+		ifeq "$(origin SSSE3)" "command line"
+			CFLAGS += -mssse3
+			CXXFLAGS += -mssse3
+		endif
+
+		ifeq "$(origin SSE41)" "command line"
+			CFLAGS += -mssse3 -msse4.1
+			CXXFLAGS += -mssse3 -msse4.1
+		endif
 	endif
 
-	AS := $(BASE_DIR)/Build/Tools/MacOSX/yasm
+	AS ?= $(BASE_DIR)/Build/Tools/MacOSX/yasm
 	export ASFLAGS32 := -D __GNUC__ -D __YASM__ -D __BITS__=32 --prefix=_ -f macho32
 	export ASFLAGS64 := -D __GNUC__ -D __YASM__ -D __BITS__=64 --prefix=_ -f macho64
 
 	ifeq "$(TC_BUILD_CONFIG)" "Release"
 
-		export DISABLE_PRECOMPILED_HEADERS := 1
+    	export DISABLE_PRECOMPILED_HEADERS := 1
 
-		S := $(C_CXX_FLAGS)
-		C_CXX_FLAGS = $(subst -MMD,,$(S))
+		C_CXX_FLAGS := $(subst -MMD,,$(C_CXX_FLAGS)) -gfull
+		LFLAGS += -Wl,-dead_strip
 
-		C_CXX_FLAGS += -gfull -arch x86_64
-		LFLAGS += -Wl,-dead_strip -arch x86_64
-		
-		#----- Legacy build: we build both 32-bit and 64-bit ----
-		ifdef VC_LEGACY_BUILD
-			C_CXX_FLAGS += -arch i386
-			LFLAGS += -arch i386
-			WX_CONFIGURE_FLAGS += --enable-universal_binary=i386,x86_64
-		else
-			CXXFLAGS += -std=c++11
+		# Initialize architecture flag
+		ARCH_FLAG := -arch x86_64
+
+		# Set architecture flags based on build type and CPU architecture
+		ifeq "$(LOCAL_DEVELOPMENT_BUILD)" "true"
+			ifeq "$(CPU_ARCH)" "arm64"
+				ARCH_FLAG := -arch arm64
+			endif
 			WX_CONFIGURE_FLAGS += --disable-universal_binary
+		else
+			# Legacy build settings
+			ifdef VC_LEGACY_BUILD
+				ARCH_FLAG += -arch i386
+				WX_CONFIGURE_FLAGS += --enable-universal_binary=i386,x86_64
+			else
+				# Non-development build defaults to universal binary for arm64 and x86_64
+				ARCH_FLAG += -arch arm64
+				WX_CONFIGURE_FLAGS += --enable-universal_binary=arm64,x86_64
+			endif
 		endif
 
+		# Apply architecture flags
+		C_CXX_FLAGS += $(ARCH_FLAG)
+		LFLAGS += $(ARCH_FLAG)
+
+		WX_CONFIGURE_FLAGS += --without-libpng --disable-gif --disable-pcx --disable-tga --disable-iff --disable-svg
 		WXCONFIG_CFLAGS += -gfull
 		WXCONFIG_CXXFLAGS += -gfull
 
@@ -336,9 +416,14 @@ ifeq "$(shell uname -s)" "FreeBSD"
 	PLATFORM := FreeBSD
 	PLATFORM_UNSUPPORTED := 1
 	C_CXX_FLAGS += -DTC_UNIX -DTC_BSD -DTC_FREEBSD
+
+	# PCSC
+	C_CXX_FLAGS += $(shell $(PKG_CONFIG) --cflags libpcsclite)
 	
 	CC := cc
 	CXX := c++
+
+	GCC_GTEQ_430 := 1
 	
 	ifeq "$(TC_BUILD_CONFIG)" "Release"
 		C_CXX_FLAGS += -fdata-sections -ffunction-sections -fpie
@@ -353,8 +438,16 @@ ifeq "$(shell uname -s)" "FreeBSD"
 	endif
 
 	ifeq "$(SIMD_SUPPORTED)" "1"
-		CFLAGS += -msse2 -maes
-		CXXFLAGS += -msse2 -maes
+		CFLAGS += -msse2
+		CXXFLAGS += -msse2
+		
+		ifeq "$(DISABLE_AESNI)" "1"
+			CFLAGS += -mno-aes -DCRYPTOPP_DISABLE_AESNI
+			CXXFLAGS += -mno-aes -DCRYPTOPP_DISABLE_AESNI
+		else
+			CFLAGS += -maes
+			CXXFLAGS += -maes
+		endif
 
 		ifeq "$(origin SSSE3)" "command line"
 			CFLAGS += -mssse3
@@ -377,6 +470,32 @@ ifeq "$(shell uname -s)" "FreeBSD"
 endif
 
 
+#------ OpenBSD configuration ------
+
+ifeq "$(shell uname -s)" "OpenBSD"
+
+	PLATFORM := OpenBSD
+	PLATFORM_UNSUPPORTED := 1
+	C_CXX_FLAGS += -DTC_UNIX -DTC_BSD -DTC_OPENBSD
+
+	# PCSC
+	C_CXX_FLAGS += $(shell $(PKG_CONFIG) --cflags libpcsclite)
+
+	CC := cc
+	CXX := c++
+
+	GCC_GTEQ_430 := 1
+
+	ifeq "$(TC_BUILD_CONFIG)" "Release"
+		C_CXX_FLAGS += -fdata-sections -ffunction-sections -fpie
+		LFLAGS += -Wl,--gc-sections -pie
+
+		WXCONFIG_CFLAGS += -fpie -fPIC
+		WXCONFIG_CXXFLAGS += -fpie -fPIC
+	endif
+endif
+
+
 #------ Solaris configuration ------
 
 ifeq "$(shell uname -s)" "SunOS"
@@ -386,8 +505,30 @@ ifeq "$(shell uname -s)" "SunOS"
 	C_CXX_FLAGS += -DTC_UNIX -DTC_SOLARIS
 	WX_CONFIGURE_FLAGS += --with-gtk
 
+	# PCSC
+	C_CXX_FLAGS += $(shell $(PKG_CONFIG) --cflags libpcsclite)
+
 endif
 
+ifneq (,$(filter Linux FreeBSD OpenBSD,$(PLATFORM)))
+	# Determine GTK version
+	GTK_VERSION := $(shell $(PKG_CONFIG) --modversion gtk+-3.0 2>/dev/null | grep -o '^3' || echo 2)
+	ifeq ($(GTK_VERSION),3)
+		WX_CONFIGURE_FLAGS += --with-gtk=3
+	else
+		WX_CONFIGURE_FLAGS += --with-gtk=2
+	endif
+
+	ifeq "$(origin INDICATOR)" "command line"
+		ifeq ($(GTK_VERSION),3)
+			INDICATOR_LIBRARY=ayatana-appindicator3-0.1
+		else
+			INDICATOR_LIBRARY=ayatana-appindicator-0.1
+		endif
+		export AYATANA_LIBS += $(shell $(PKG_CONFIG) --libs $(INDICATOR_LIBRARY))
+		C_CXX_FLAGS += $(shell $(PKG_CONFIG) --cflags $(INDICATOR_LIBRARY)) -DHAVE_INDICATORS
+	endif
+endif
 
 #------ Common configuration ------
 
@@ -398,15 +539,13 @@ LFLAGS := $(LFLAGS) $(TC_EXTRA_LFLAGS)
 WX_CONFIGURE_FLAGS += --enable-unicode --disable-dependency-tracking --enable-exceptions --enable-std_string --enable-dataobj --enable-mimetype
 
 ifdef VC_WX_MINIMAL
-WX_CONFIGURE_FLAGS += --disable-protocol --disable-protocols --disable-url --disable-ipc --disable-sockets --disable-fs_inet --disable-ole --disable-docview --disable-clipboard \
-	--disable-help --disable-html --disable-mshtmlhelp --disable-htmlhelp --disable-mdi --disable-metafile --disable-webviewwebkit --disable-webview \
+WX_CONFIGURE_FLAGS += --disable-protocol --disable-protocols --disable-url --disable-ipc --disable-sockets --without-libcurl --disable-fs_inet --disable-ole --disable-docview --disable-clipboard \
+	--disable-help --disable-html --disable-mshtmlhelp --disable-htmlhelp --disable-mdi --disable-metafile --disable-addremovectrl --disable-webview \
 	--disable-xrc --disable-aui --disable-postscript --disable-printarch \
 	--disable-arcstream --disable-fs_archive --disable-fs_zip --disable-tarstream --disable-zipstream \
 	--disable-animatectrl --disable-bmpcombobox --disable-calendar --disable-caret --disable-checklst --disable-collpane --disable-colourpicker --disable-comboctrl \
-	--disable-datepick --disable-display --disable-dirpicker \
-	--disable-timepick \
-	--disable-filepicker --disable-fontpicker --disable-grid  --disable-dataviewctrl \
-	--disable-listbook --disable-odcombobox --disable-sash  --disable-searchctrl --disable-slider --disable-splitter --disable-togglebtn \
+	--disable-datepick --disable-display --disable-dirpicker --disable-filepicker --disable-fontpicker --disable-grid --disable-dataviewctrl \
+	--disable-listbook --disable-odcombobox --disable-sash --disable-searchctrl --disable-slider --disable-splitter --disable-togglebtn \
 	--disable-toolbar --disable-tbarnative --disable-treebook --disable-toolbook --disable-tipwindow --disable-popupwin \
 	--disable-commondlg --disable-aboutdlg --disable-coldlg --disable-finddlg --disable-fontdlg --disable-numberdlg --disable-splash \
 	--disable-tipdlg --disable-progressdlg --disable-wizarddlg --disable-miniframe --disable-splines --disable-palette \
@@ -418,13 +557,18 @@ WX_CONFIGURE_FLAGS += --disable-protocol --disable-protocols --disable-url --dis
 	--without-expat --without-libtiff --without-libjpeg --without-libpng -without-regex --without-zlib \
 	--disable-webrequest --without-liblzma
 	
-ifeq "$(PLATFORM)" "Linux"
+ifneq (,$(filter Linux FreeBSD,$(PLATFORM)))
 WX_CONFIGURE_FLAGS += --disable-tooltips
-ifneq "$(origin WITHGTK3)" "command line"
+ifneq ($(GTK_VERSION),3)
 	WX_CONFIGURE_FLAGS += --disable-graphics_ctx
 endif
 else
 	WX_CONFIGURE_FLAGS += --disable-graphics_ctx
+endif
+else
+# Disable libtiff on macOS
+ifeq "$(PLATFORM)" "MacOSX"
+	WX_CONFIGURE_FLAGS += --without-libtiff
 endif
 endif
 

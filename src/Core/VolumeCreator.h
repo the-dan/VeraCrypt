@@ -39,6 +39,7 @@ namespace VeraCrypt
 		shared_ptr <EncryptionAlgorithm> EA;
 		wstring SecurityTokenKeySpec;
 		bool Quick;
+		bool EMVSupportEnabled;
 
 		struct FilesystemType
 		{

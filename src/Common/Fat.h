@@ -14,7 +14,7 @@
 typedef struct fatparams_t
 {
 	char volume_name[11];
-	byte volume_id[4];
+	uint8 volume_id[4];
 	unsigned int num_sectors;	/* total number of sectors */
 	int cluster_count;	/* number of clusters */
 	int size_root_dir;	/* size of the root directory in bytes */
@@ -66,4 +66,4 @@ struct msdos_boot_sector
 
 void GetFatParams ( fatparams *ft );
 void PutBoot ( fatparams *ft , unsigned char *boot );
-int FormatFat (void* hwndDlg, unsigned __int64 startSector, fatparams * ft, void * dev, PCRYPTO_INFO cryptoInfo, BOOL quickFormat);
+int FormatFat (void* hwndDlg, unsigned __int64 startSector, fatparams * ft, void * dev, PCRYPTO_INFO cryptoInfo, BOOL quickFormat, BOOL bDevice);

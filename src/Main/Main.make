@@ -103,7 +103,7 @@ endif
 
 #------ FUSE configuration ------
 
-FUSE_LIBS = $(shell pkg-config fuse --libs)
+FUSE_LIBS = $(shell $(PKG_CONFIG) $(VC_FUSE_PACKAGE) --libs)
 
 #------ Executable ------
 
@@ -128,12 +128,36 @@ PACKAGE_NAME := $(APPNAME)_$(TC_VERSION)_$(PLATFORM_ARCH).tar.gz
 endif
 endif
 
+# Determine GUI/GTK conditions
+GUI_CONDITION := $(filter gui,$(INSTALLER_TYPE))
+GTK2_CONDITION := $(filter 2,$(GTK_VERSION))
+
 ifeq "$(origin NOSSE2)" "command line"
 INTERNAL_INSTALLER_NAME := veracrypt_install_$(INSTALLER_TYPE)_$(CPU_ARCH)_legacy.sh
+
+ifneq (,$(GUI_CONDITION))
+ifneq (,$(GTK2_CONDITION))
+INSTALLER_NAME := veracrypt-$(TC_VERSION)-setup-gtk2-gui-$(CPU_ARCH)-legacy
+else
 INSTALLER_NAME := veracrypt-$(TC_VERSION)-setup-$(INSTALLER_TYPE)-$(CPU_ARCH)-legacy
+endif
+else
+INSTALLER_NAME := veracrypt-$(TC_VERSION)-setup-$(INSTALLER_TYPE)-$(CPU_ARCH)-legacy
+endif
+
 else
 INTERNAL_INSTALLER_NAME := veracrypt_install_$(INSTALLER_TYPE)_$(CPU_ARCH).sh
+
+ifneq (,$(GUI_CONDITION))
+ifneq (,$(GTK2_CONDITION))
+INSTALLER_NAME := veracrypt-$(TC_VERSION)-setup-gtk2-gui-$(CPU_ARCH)
+else
 INSTALLER_NAME := veracrypt-$(TC_VERSION)-setup-$(INSTALLER_TYPE)-$(CPU_ARCH)
+endif
+else
+INSTALLER_NAME := veracrypt-$(TC_VERSION)-setup-$(INSTALLER_TYPE)-$(CPU_ARCH)
+endif
+
 endif
 
 endif
@@ -152,15 +176,28 @@ INSTALLER_TYPE := gui
 PACKAGE_NAME := $(APPNAME)_$(TC_VERSION)_$(SYSTEMNAME)_$(PLATFORM_ARCH).tar.gz
 endif
 
+# Determine GUI/GTK conditions
+GUI_CONDITION := $(filter gui,$(INSTALLER_TYPE))
+GTK2_CONDITION := $(filter 2,$(GTK_VERSION))
+
 INTERNAL_INSTALLER_NAME := veracrypt_install_f$(SYSTEMNAME)_$(INSTALLER_TYPE)_$(CPU_ARCH).sh
+
+ifneq (,$(GUI_CONDITION))
+ifneq (,$(GTK2_CONDITION))
+INSTALLER_NAME := veracrypt-$(TC_VERSION)-$(SYSTEMNAME)-setup-gtk2-gui-$(CPU_ARCH)
+else
 INSTALLER_NAME := veracrypt-$(TC_VERSION)-$(SYSTEMNAME)-setup-$(INSTALLER_TYPE)-$(CPU_ARCH)
+endif
+else
+INSTALLER_NAME := veracrypt-$(TC_VERSION)-$(SYSTEMNAME)-setup-$(INSTALLER_TYPE)-$(CPU_ARCH)
+endif
 
 endif
 #-----------------------------------
 
 $(APPNAME): $(LIBS) $(OBJS)
 	@echo Linking $@
-	$(CXX) -o $(APPNAME) $(OBJS) $(LIBS) $(FUSE_LIBS) $(WX_LIBS) $(LFLAGS)
+	$(CXX) -o $(APPNAME) $(OBJS) $(LIBS) $(AYATANA_LIBS) $(FUSE_LIBS) $(WX_LIBS) $(LFLAGS)
 
 ifeq "$(TC_BUILD_CONFIG)" "Release"
 ifndef NOSTRIP
@@ -179,6 +216,7 @@ endif
 ifeq "$(PLATFORM)" "MacOSX"
 prepare: $(APPNAME)
 	mkdir -p $(APPNAME).app/Contents/MacOS $(APPNAME).app/Contents/Resources/doc/HTML
+	mkdir -p $(APPNAME).app/Contents/MacOS $(APPNAME).app/Contents/Resources/languages
 	-rm -f $(APPNAME).app/Contents/MacOS/$(APPNAME)
 	-rm -f $(APPNAME).app/Contents/MacOS/$(APPNAME)_console
 
@@ -200,7 +238,8 @@ endif
 
 	cp $(BASE_DIR)/Resources/Icons/VeraCrypt.icns $(APPNAME).app/Contents/Resources
 	cp $(BASE_DIR)/Resources/Icons/VeraCrypt_Volume.icns $(APPNAME).app/Contents/Resources
-	cp $(BASE_DIR)/../doc/html/* $(APPNAME).app/Contents/Resources/doc/HTML
+	cp -R $(BASE_DIR)/../doc/html/* $(APPNAME).app/Contents/Resources/doc/HTML
+	cp $(BASE_DIR)/../Translations/* $(APPNAME).app/Contents/Resources/languages
 
 	echo -n APPLTRUE >$(APPNAME).app/Contents/PkgInfo
 ifdef VC_LEGACY_BUILD
@@ -208,8 +247,9 @@ ifdef VC_LEGACY_BUILD
 else
 	sed -e 's/_VERSION_/$(patsubst %a,%.1,$(patsubst %b,%.2,$(TC_VERSION)))/' ../Build/Resources/MacOSX/Info.plist.xml >$(APPNAME).app/Contents/Info.plist
 endif
-ifdef $(VC_OSX_DEVELOPER_ID)
-	codesign -s "Developer ID Application: $(VC_OSX_DEVELOPER_ID)" --timestamp $(APPNAME).app
+	chmod -R go-w $(APPNAME).app
+ifneq ("$(LOCAL_DEVELOPMENT_BUILD)","true")
+	codesign -s "Developer ID Application: IDRIX (Z933746L2S)" --timestamp $(APPNAME).app
 endif
 
 install: prepare
@@ -225,10 +265,15 @@ else
 endif
 	rm -f $(APPNAME)_Legacy_$(TC_VERSION).dmg
 else
-	/usr/local/bin/packagesbuild $(BASE_DIR)/Setup/MacOSX/veracrypt.pkgproj
-ifdef $(VC_OSX_DEVELOPER_ID)
-	productsign --sign "Developer ID Installer: $(VC_OSX_DEVELOPER_ID)" --timestamp "$(BASE_DIR)/Setup/MacOSX/VeraCrypt $(TC_VERSION).pkg" $(BASE_DIR)/Setup/MacOSX/VeraCrypt_$(TC_VERSION).pkg
+ifeq "$(VC_OSX_FUSET)" "1"
+	/usr/local/bin/packagesbuild $(BASE_DIR)/Setup/MacOSX/veracrypt_fuse-t.pkgproj
 else
+	/usr/local/bin/packagesbuild $(BASE_DIR)/Setup/MacOSX/veracrypt.pkgproj
+endif
+ifneq ("$(LOCAL_DEVELOPMENT_BUILD)","true")
+	productsign --sign "Developer ID Installer: IDRIX (Z933746L2S)" --timestamp "$(BASE_DIR)/Setup/MacOSX/VeraCrypt $(TC_VERSION).pkg" $(BASE_DIR)/Setup/MacOSX/VeraCrypt_$(TC_VERSION).pkg
+else
+	# copy the unsigned package to the expected location
 	cp "$(BASE_DIR)/Setup/MacOSX/VeraCrypt $(TC_VERSION).pkg" $(BASE_DIR)/Setup/MacOSX/VeraCrypt_$(TC_VERSION).pkg
 endif
 	rm -f $(APPNAME)_$(TC_VERSION).dmg
@@ -260,20 +305,27 @@ prepare: $(APPNAME)
 	cp $(BASE_DIR)/Setup/Linux/$(APPNAME)-uninstall.sh $(BASE_DIR)/Setup/Linux/usr/bin/$(APPNAME)-uninstall.sh
 	chmod +x $(BASE_DIR)/Setup/Linux/usr/bin/$(APPNAME)-uninstall.sh
 	cp $(BASE_DIR)/License.txt $(BASE_DIR)/Setup/Linux/usr/share/doc/$(APPNAME)/License.txt
-	cp $(BASE_DIR)/../doc/html/* "$(BASE_DIR)/Setup/Linux/usr/share/doc/$(APPNAME)/HTML"
+	cp -R $(BASE_DIR)/../doc/html/* "$(BASE_DIR)/Setup/Linux/usr/share/doc/$(APPNAME)/HTML"
 	mkdir -p $(BASE_DIR)/Setup/Linux/usr/share/veracrypt/languages
 	cp -r $(BASE_DIR)/../Translations/* $(BASE_DIR)/Setup/Linux/usr/share/veracrypt/languages/
 
+	mkdir -p $(BASE_DIR)/Setup/Linux/usr/sbin
+	cp $(BASE_DIR)/Setup/Linux/mount.$(APPNAME) $(BASE_DIR)/Setup/Linux/usr/sbin/mount.$(APPNAME)
+	chmod +x $(BASE_DIR)/Setup/Linux/usr/sbin/mount.$(APPNAME)
 ifndef TC_NO_GUI
 	mkdir -p $(BASE_DIR)/Setup/Linux/usr/share/applications
 	mkdir -p $(BASE_DIR)/Setup/Linux/usr/share/pixmaps
+	mkdir -p $(BASE_DIR)/Setup/Linux/usr/share/mime/packages
 	cp $(BASE_DIR)/Resources/Icons/VeraCrypt-256x256.xpm $(BASE_DIR)/Setup/Linux/usr/share/pixmaps/$(APPNAME).xpm
 	cp $(BASE_DIR)/Setup/Linux/$(APPNAME).desktop $(BASE_DIR)/Setup/Linux/usr/share/applications/$(APPNAME).desktop
+	cp $(BASE_DIR)/Setup/Linux/$(APPNAME).xml $(BASE_DIR)/Setup/Linux/usr/share/mime/packages/$(APPNAME).xml
 endif
 
 
 install: prepare
+ifneq "$(DESTDIR)" ""
 	mkdir -p $(DESTDIR)
+endif
 	cp -R $(BASE_DIR)/Setup/Linux/usr $(DESTDIR)/
 
 ifeq "$(TC_BUILD_CONFIG)" "Release"
@@ -285,7 +337,7 @@ package: prepare
 	@echo "VERSION=$(TC_VERSION)" >> $(INTERNAL_INSTALLER_NAME)
 	@echo "PACKAGE_TYPE=tar" >> $(INTERNAL_INSTALLER_NAME)
 	@echo "PACKAGE_NAME=$(PACKAGE_NAME)" >> $(INTERNAL_INSTALLER_NAME)
-	@echo "PACKAGE_START=1107" >> $(INTERNAL_INSTALLER_NAME)
+	@echo "PACKAGE_START=1112" >> $(INTERNAL_INSTALLER_NAME)
 	@echo "INSTALLER_TYPE=$(INSTALLER_TYPE)" >> $(INTERNAL_INSTALLER_NAME)
 
 	@cat $(BASE_DIR)/Setup/Linux/veracrypt_install_template.sh >> $(INTERNAL_INSTALLER_NAME)
@@ -310,20 +362,26 @@ prepare: $(APPNAME)
 	cp $(BASE_DIR)/Setup/Linux/$(APPNAME)-uninstall.sh $(BASE_DIR)/Setup/FreeBSD/usr/bin/$(APPNAME)-uninstall.sh
 	chmod +x $(BASE_DIR)/Setup/FreeBSD/usr/bin/$(APPNAME)-uninstall.sh
 	cp $(BASE_DIR)/License.txt $(BASE_DIR)/Setup/FreeBSD/usr/share/doc/$(APPNAME)/License.txt
-	cp $(BASE_DIR)/../doc/html/* "$(BASE_DIR)/Setup/FreeBSD/usr/share/doc/$(APPNAME)/HTML"
+	cp -R $(BASE_DIR)/../doc/html/* "$(BASE_DIR)/Setup/FreeBSD/usr/share/doc/$(APPNAME)/HTML"
+	mkdir -p $(BASE_DIR)/Setup/FreeBSD/usr/share/veracrypt/languages
+	cp -r $(BASE_DIR)/../Translations/* $(BASE_DIR)/Setup/FreeBSD/usr/share/veracrypt/languages/
 
 ifndef TC_NO_GUI
 	mkdir -p $(BASE_DIR)/Setup/FreeBSD/usr/share/applications
 	mkdir -p $(BASE_DIR)/Setup/FreeBSD/usr/share/pixmaps
+	mkdir -p $(BASE_DIR)/Setup/Linux/usr/share/mime/packages
 	cp $(BASE_DIR)/Resources/Icons/VeraCrypt-256x256.xpm $(BASE_DIR)/Setup/FreeBSD/usr/share/pixmaps/$(APPNAME).xpm
 	cp $(BASE_DIR)/Setup/Linux/$(APPNAME).desktop $(BASE_DIR)/Setup/FreeBSD/usr/share/applications/$(APPNAME).desktop
+	cp $(BASE_DIR)/Setup/Linux/$(APPNAME).xml $(BASE_DIR)/Setup/Linux/usr/share/mime/packages/$(APPNAME).xml
 endif
 	chown -R root:wheel $(BASE_DIR)/Setup/FreeBSD/usr
 	chmod -R go-w $(BASE_DIR)/Setup/FreeBSD/usr
 
 
 install: prepare
+ifneq "$(DESTDIR)" ""
 	mkdir -p $(DESTDIR)
+endif
 	cp -R $(BASE_DIR)/Setup/FreeBSD/usr $(DESTDIR)/.
 
 ifeq "$(TC_BUILD_CONFIG)" "Release"
@@ -335,7 +393,7 @@ package: prepare
 	@echo "VERSION=$(TC_VERSION)" >> $(INTERNAL_INSTALLER_NAME)
 	@echo "PACKAGE_TYPE=tar" >> $(INTERNAL_INSTALLER_NAME)
 	@echo "PACKAGE_NAME=$(PACKAGE_NAME)" >> $(INTERNAL_INSTALLER_NAME)
-	@echo "PACKAGE_START=1107" >> $(INTERNAL_INSTALLER_NAME)
+	@echo "PACKAGE_START=1108" >> $(INTERNAL_INSTALLER_NAME)
 	@echo "INSTALLER_TYPE=$(INSTALLER_TYPE)" >> $(INTERNAL_INSTALLER_NAME)
 
 	@cat $(BASE_DIR)/Setup/FreeBSD/veracrypt_install_template.sh >> $(INTERNAL_INSTALLER_NAME)

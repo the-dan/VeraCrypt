@@ -82,13 +82,14 @@ namespace VeraCrypt
 	{
 		mUserInterface = new GraphicUserInterface;
 		mUserInterfaceType = UserInterfaceType::Graphic;
+		wxSetEnv("WXSUPPRESS_SIZER_FLAGS_CHECK", "1");
 		return mUserInterface;
 	}
 #endif
 
 	FilePath Application::GetConfigFilePath (const wxString &configFileName, bool createConfigDir)
 	{
-		static wxScopedPtr<const wxString> configDirC;
+		static std::unique_ptr<const wxString> configDirC;
 		static bool configDirExists = false;
 
 		if (!configDirExists)

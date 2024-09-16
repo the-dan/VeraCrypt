@@ -93,7 +93,7 @@ show_message()
 					else
 						if [ $KTERM -eq 1 ]
 						then
-							konsole --title 'VeraCrypt Setup' --caption 'VeraCrypt Setup' -e sh -c "echo $*; read A"
+							konsole --qwindowtitle 'VeraCrypt Setup' --caption 'VeraCrypt Setup' -e sh -c "echo $*; read A"
 						fi
 					fi
 				fi
@@ -1031,14 +1031,15 @@ fi
 
 if [ "$PACKAGE_TYPE" = "tar" ]
 then
-	if ! which fusermount >/dev/null 2>/dev/null || ! which dmsetup >/dev/null 2>/dev/null
+	if ! which fusermount >/dev/null 2>/dev/null || ! which dmsetup >/dev/null 2>/dev/null || ! service pcscd status >/dev/null 2>/dev/null
 	then
 		show_message "$(cat <<_INFO
 Requirements for Running VeraCrypt:
 -----------------------------------
 
  - FUSE library and tools
- - device mapper tools
+ - device mapper tool
+ - PC/SC Lite (optional)
 
 _INFO
 )"
@@ -1073,7 +1074,7 @@ then
 			else
 				if [ $KTERM -eq 1 ]
 				then
-					exec konsole --title 'VeraCrypt Setup' --caption 'VeraCrypt Setup' -e sh -c "echo Installing package...; $SUDO $PACKAGE_INSTALLER $PACKAGE_INSTALLER_OPTS $PACKAGE; rm -f $PACKAGE; echo; echo Press Enter to exit...; read A"
+					exec konsole --qwindowtitle 'VeraCrypt Setup' --caption 'VeraCrypt Setup' -e sh -c "echo Installing package...; $SUDO $PACKAGE_INSTALLER $PACKAGE_INSTALLER_OPTS $PACKAGE; rm -f $PACKAGE; echo; echo Press Enter to exit...; read A"
 				fi
 			fi
 		fi

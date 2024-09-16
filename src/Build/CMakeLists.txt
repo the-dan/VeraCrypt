@@ -11,8 +11,8 @@ elseif ( NOT DEFINED NOGUI )
 endif()
 
 # - Set version of the package
-set( FULL_VERSION 		"1.24-Update9" )
-set( VERSION 			"1.24.25" )
+set( FULL_VERSION 		"1.26.13" )
+set( VERSION 			"1.26.13" )
 set( RELEASE 			"1" )
 
 # - Set PROJECT_NAME and CONFLICT_PACKAGE values
@@ -194,6 +194,9 @@ MESSAGE ( STATUS "Architecture = ${ARCHITECTURE}" )
 install(DIRECTORY 	${VERACRYPT_BUILD_DIR}/usr/bin
 		DESTINATION .
 		USE_SOURCE_PERMISSIONS)
+install(DIRECTORY 	${VERACRYPT_BUILD_DIR}/usr/sbin
+		DESTINATION .
+		USE_SOURCE_PERMISSIONS)
 install(DIRECTORY 	${VERACRYPT_BUILD_DIR}/usr/share
 		DESTINATION .
 		USE_SOURCE_PERMISSIONS)
@@ -244,22 +247,40 @@ if ( ( PLATFORM STREQUAL "Debian" ) OR ( PLATFORM STREQUAL "Ubuntu" ) )
 	
 	if (NOGUI)
 		# Link against statically built wxWidgets so that we don't depend on any GTK library
-		set( CPACK_DEBIAN_PACKAGE_DEPENDS 		"libfuse2, dmsetup, sudo" )
+		# In case of Ubuntu 24.04/ Debian 13 or newer, libfuse2 package was renamed libfuse2t64
+		if (   ( ( PLATFORM STREQUAL "Debian" ) AND ( PLATFORM_VERSION VERSION_GREATER_EQUAL "13" ) ) 
+			OR ( ( PLATFORM STREQUAL "Ubuntu" ) AND ( PLATFORM_VERSION VERSION_GREATER_EQUAL "24.04" ) ) )
+			set( CPACK_DEBIAN_PACKAGE_DEPENDS 		"libfuse2t64, dmsetup, sudo, libpcsclite1, pcscd" )
+		else ()
+			set( CPACK_DEBIAN_PACKAGE_DEPENDS 		"libfuse2, dmsetup, sudo, libpcsclite1, pcscd" )
+		endif()
 	else ()
 		# Link against gtk3 version of wxWidgets if >= Debian 10 or >= Ubuntu 18.04
 		# Otherwise, link against gtk2 version of wxWidgets
-		if ( ( ( PLATFORM STREQUAL "Debian" ) AND ( PLATFORM_VERSION VERSION_GREATER_EQUAL "10" ) ) 
+		# In case of Ubuntu 24.04, we depend on libfuse2t64 instead of libfuse2 and we link statically against wxWidgets
+		# because there is a bug in wxWidgets that ships with Ubuntu 24.04 and which was fixed in wxWidgets 3.2.5
+		if (   ( ( PLATFORM STREQUAL "Debian" ) AND ( PLATFORM_VERSION VERSION_GREATER_EQUAL "13" ) ) 
+			OR ( ( PLATFORM STREQUAL "Ubuntu" ) AND ( PLATFORM_VERSION VERSION_GREATER_EQUAL "24.04" ) ) )
+			
+			set( CPACK_DEBIAN_PACKAGE_DEPENDS 		"libgtk-3-0t64, libayatana-appindicator3-1, libfuse2t64, dmsetup, sudo, libpcsclite1, pcscd" )										
+
+		elseif ( ( ( PLATFORM STREQUAL "Debian" ) AND ( PLATFORM_VERSION VERSION_GREATER_EQUAL "12" ) ) 
+			OR ( ( PLATFORM STREQUAL "Ubuntu" ) AND ( PLATFORM_VERSION VERSION_GREATER_EQUAL "23.04" ) ) )
+			
+			set( CPACK_DEBIAN_PACKAGE_DEPENDS 		"libwxgtk3.2-1, libayatana-appindicator3-1, libfuse2, dmsetup, sudo, libpcsclite1, pcscd" )										
+			
+		elseif ( ( ( PLATFORM STREQUAL "Debian" ) AND ( PLATFORM_VERSION VERSION_GREATER_EQUAL "10" ) ) 
 			OR ( ( PLATFORM STREQUAL "Ubuntu" ) AND ( PLATFORM_VERSION VERSION_GREATER_EQUAL "18.04" ) ) )
 			
-			set( CPACK_DEBIAN_PACKAGE_DEPENDS 		"libwxgtk3.0-gtk3-0v5, libfuse2, dmsetup, sudo" )										
+			set( CPACK_DEBIAN_PACKAGE_DEPENDS 		"libwxgtk3.0-gtk3-0v5, libayatana-appindicator3-1, libfuse2, dmsetup, sudo, libpcsclite1, pcscd" )										
 			
 		else ()
 			# Link against statically built wxWidgets on Ubuntu 14.04 and older, and Debian 8 and older
 			if ( ( ( PLATFORM STREQUAL "Debian" ) AND ( PLATFORM_VERSION VERSION_LESS_EQUAL "8" ) ) 
 				OR ( ( PLATFORM STREQUAL "Ubuntu" ) AND ( PLATFORM_VERSION VERSION_LESS_EQUAL "14.04" ) ) )
-				set( CPACK_DEBIAN_PACKAGE_DEPENDS 		"libgtk2.0-0, libfuse2, dmsetup, sudo" )
+				set( CPACK_DEBIAN_PACKAGE_DEPENDS 		"libgtk2.0-0, libfuse2, dmsetup, sudo, libpcsclite1, pcscd" )
 			else ()
-				set( CPACK_DEBIAN_PACKAGE_DEPENDS 		"libwxgtk3.0-0v5, libfuse2, dmsetup, sudo" )
+				set( CPACK_DEBIAN_PACKAGE_DEPENDS 		"libwxgtk3.0-0v5, libfuse2, dmsetup, sudo, libpcsclite1, pcscd" )
 			endif ()
 			
 		endif()
@@ -297,17 +318,13 @@ elseif ( ( PLATFORM STREQUAL "CentOS" ) OR ( PLATFORM STREQUAL "openSUSE" ) )
 	if (NOGUI)
 		set( CPACK_RPM_PACKAGE_REQUIRES 	"fuse, device-mapper, sudo" )
 	else ()
-		if ( PLATFORM STREQUAL "CentOS" )
-				
-			if ( DEFINED WITHGTK3 AND WITHGTK3 )
-				set( CPACK_RPM_PACKAGE_REQUIRES 	"fuse, device-mapper, gtk3, sudo" )
-			else ()
-				set( CPACK_RPM_PACKAGE_REQUIRES 	"fuse, device-mapper, gtk2, sudo" )
-			endif()
-			
-		elseif ( PLATFORM STREQUAL "openSUSE" )
-			
-			set( CPACK_RPM_PACKAGE_REQUIRES 	"fuse, device-mapper, gtk2, sudo" )
+		find_package(PkgConfig REQUIRED)
+		pkg_check_modules(GTK3 gtk+-3.0)
+		
+		if(GTK3_FOUND)
+			set( CPACK_RPM_PACKAGE_REQUIRES     "fuse, device-mapper, gtk3, sudo, pcsc-lite" )
+		else()
+			set( CPACK_RPM_PACKAGE_REQUIRES     "fuse, device-mapper, gtk2, sudo, pcsc-lite" )
 		endif()
 	endif()
 
@@ -317,9 +334,12 @@ elseif ( ( PLATFORM STREQUAL "CentOS" ) OR ( PLATFORM STREQUAL "openSUSE" ) )
 	# This is to avoid having %dir of these directories in the .spec file
 	set( CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION 			"/usr" )
 	list(APPEND CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION	"/usr/bin" )
+	list(APPEND CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION	"/usr/sbin" )
 	list(APPEND CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION	"/usr/share" )
 	list(APPEND CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION	"/usr/share/applications" )
 	list(APPEND CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION	"/usr/share/doc" )
+	list(APPEND CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION	"/usr/share/mime" )
+	list(APPEND CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION	"/usr/share/mime/packages" )
 	list(APPEND CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION	"/usr/share/pixmaps" )
 	
 	set( CPACK_RPM_PACKAGE_RELOCATABLE 					"OFF" )

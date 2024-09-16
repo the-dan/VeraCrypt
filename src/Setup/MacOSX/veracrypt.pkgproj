@@ -519,8 +519,10 @@
 			<dict>
 				<key>POSTINSTALL_PATH</key>
 				<dict>
+					<key>PATH</key>
+					<string>postinstall.sh</string>
 					<key>PATH_TYPE</key>
-					<integer>0</integer>
+					<integer>1</integer>
 				</dict>
 				<key>PREINSTALL_PATH</key>
 				<dict>
@@ -555,7 +557,7 @@
 				<key>USE_HFS+_COMPRESSION</key>
 				<false/>
 				<key>VERSION</key>
-				<string>1.24.25</string>
+				<string>1.26.13</string>
 			</dict>
 			<key>TYPE</key>
 			<integer>0</integer>
@@ -753,7 +755,7 @@
 						<key>IC_REQUIREMENT_OS_DISTRIBUTION_TYPE</key>
 						<integer>0</integer>
 						<key>IC_REQUIREMENT_OS_MINIMUM_VERSION</key>
-						<integer>100900</integer>
+						<integer>120001</integer>
 					</dict>
 					<key>IC_REQUIREMENT_CHECK_TYPE</key>
 					<integer>0</integer>
@@ -765,13 +767,13 @@
 							<key>LANGUAGE</key>
 							<string>English</string>
 							<key>VALUE</key>
-							<string>VeraCrypt requires MacOSX 10.9 and above.</string>
+							<string>VeraCrypt requires MacOSX 12 and above.</string>
 						</dict>
 						<dict>
 							<key>LANGUAGE</key>
 							<string>French</string>
 							<key>VALUE</key>
-							<string>VeraCrypt nécessite MacOSX 10.9 et supérieur.</string>
+							<string>VeraCrypt nécessite MacOSX 12 et supérieur.</string>
 						</dict>
 					</array>
 					<key>NAME</key>
@@ -838,6 +840,13 @@ https://osxfuse.github.io/
 		</dict>
 		<key>PROJECT_SETTINGS</key>
 		<dict>
+			<key>ADVANCED_OPTIONS</key>
+			<dict>
+				<key>installer-script.options:hostArchitectures</key>
+				<array>
+					<string>x86_64,arm64</string>
+				</array>
+			</dict>
 			<key>BUILD_FORMAT</key>
 			<integer>0</integer>
 			<key>BUILD_PATH</key>
@@ -1016,7 +1025,7 @@ https://osxfuse.github.io/
 				</dict>
 			</array>
 			<key>NAME</key>
-			<string>VeraCrypt 1.24-Update9</string>
+			<string>VeraCrypt 1.26.13</string>
 			<key>PAYLOAD_ONLY</key>
 			<false/>
 			<key>TREAT_MISSING_PRESENTATION_DOCUMENTS_AS_WARNING</key>

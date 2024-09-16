@@ -14,6 +14,9 @@
 #include <wx/dynlib.h>
 #ifdef TC_WINDOWS
 #include <wx/msw/registry.h>
+#else
+#include <wx/dir.h>
+#include <wx/arrstr.h>
 #endif
 #include "Common/SecurityToken.h"
 #include "Main/Main.h"
@@ -53,12 +56,10 @@ namespace VeraCrypt
 
 		FilesystemOptionsTextCtrl->SetValue (Preferences.DefaultMountOptions.FilesystemOptions);
 
-		TrueCryptModeCheckBox->SetValidator (wxGenericValidator (&Preferences.DefaultMountOptions.TrueCryptMode));
-
 		int index, prfInitialIndex = 0;
 		Pkcs5PrfChoice->Append (LangString["AUTODETECTION"]);
 
-		foreach_ref (const Pkcs5Kdf &kdf, Pkcs5Kdf::GetAvailableAlgorithms(false))
+		foreach_ref (const Pkcs5Kdf &kdf, Pkcs5Kdf::GetAvailableAlgorithms())
 		{
 			index = Pkcs5PrfChoice->Append (kdf.GetName());
 			if (Preferences.DefaultMountOptions.Kdf
@@ -69,6 +70,78 @@ namespace VeraCrypt
 			}
 		}
 		Pkcs5PrfChoice->Select (prfInitialIndex);
+
+		// Language for non-Windows
+#ifndef TC_WINDOWS
+#if defined (TC_MACOSX)
+		wxDir languagesFolder(StringConverter::ToSingle (Application::GetExecutableDirectory()) + "/../Resources/languages/");
+#else
+		wxDir languagesFolder("/usr/share/veracrypt/languages/");
+#endif
+		wxArrayString langArray;
+		LanguageListBox->Append("System default");
+		LanguageListBox->Append("English");
+
+		langEntries = {
+				{"system", L"System default"},
+				{"ar", L"العربية"},
+				{"be", L"Беларуская"},
+				{"bg", L"Български"},
+				{"ca", L"Català"},
+				{"co", L"Corsu"},
+				{"cs", L"Čeština"},
+				{"da", L"Dansk"},
+				{"de", L"Deutsch"},
+				{"el", L"Ελληνικά"},
+				{"en", L"English"},
+				{"es", L"Español"},
+				{"et", L"Eesti"},
+				{"eu", L"Euskara"},
+				{"fa", L"فارسي"},
+				{"fi", L"Suomi"},
+				{"fr", L"Français"},
+				{"he", L"עברית"},
+				{"hu", L"Magyar"},
+				{"id", L"Bahasa Indonesia"},
+				{"it", L"Italiano"},
+				{"ja", L"日本語"},
+				{"ka", L"ქართული"},
+				{"ko", L"한국어"},
+				{"lv", L"Latviešu"},
+				{"nb", L"Norsk Bokmål"},
+				{"nl", L"Nederlands"},
+				{"nn", L"Norsk Nynorsk"},
+				{"pl", L"Polski"},
+				{"ro", L"Română"},
+				{"ru", L"Русский"},
+				{"pt-br", L"Português-Brasil"},
+				{"sk", L"Slovenčina"},
+				{"sl", L"Slovenščina"},
+				{"sv", L"Svenska"},
+				{"th", L"ภาษาไทย"},
+				{"tr", L"Türkçe"},
+				{"uk", L"Українська"},
+				{"uz", L"Ўзбекча"},
+				{"vi", L"Tiếng Việt"},
+				{"zh-cn", L"简体中文"},
+				{"zh-hk", L"繁體中文(香港)"},
+				{"zh-tw", L"繁體中文"}
+		};
+
+		if (wxDir::Exists(languagesFolder.GetName())) {
+			size_t langCount;
+			langCount = wxDir::GetAllFiles(languagesFolder.GetName(), &langArray, wxEmptyString, wxDIR_FILES);
+			for (size_t i = 0; i < langCount; ++i) {
+				wxFileName filename(langArray[i]);
+				wxString langId = filename.GetName().AfterLast('.');
+				wxString langNative = langEntries[langId];
+				if (!langNative.empty()) {
+					LanguageListBox->Append(langNative);
+				}
+			}
+		}
+#endif
+
 
 		// Keyfiles
 		TC_CHECK_BOX_VALIDATOR (UseKeyfiles);
@@ -96,6 +169,7 @@ namespace VeraCrypt
 		// Security tokens
 		Pkcs11ModulePathTextCtrl->SetValue (wstring (Preferences.SecurityTokenModule));
 		TC_CHECK_BOX_VALIDATOR (CloseSecurityTokenSessionsAfterMount);
+		TC_CHECK_BOX_VALIDATOR (EMVSupportEnabled);
 
 		// System integration
 		TC_CHECK_BOX_VALIDATOR (StartOnLogon);
@@ -239,6 +313,15 @@ namespace VeraCrypt
 		}
 	}
 
+	void PreferencesDialog::OnSysDefaultLangButtonClick (wxCommandEvent& event)
+	{
+		// SetStringSelection()'s Assert currently broken in sorted ListBoxes on macOS, workaround:
+		int itemIndex = LanguageListBox->FindString("System default", true);
+		if (itemIndex != wxNOT_FOUND) {
+			LanguageListBox->SetSelection(itemIndex);
+		}
+	}
+
 	void PreferencesDialog::OnAssignHotkeyButtonClick (wxCommandEvent& event)
 	{
 #ifdef TC_WINDOWS
@@ -356,6 +439,13 @@ namespace VeraCrypt
 		AssignHotkeyButton->Enable (false);
 	}
 
+	// Fixes an issue where going through PreferencesNotebook tabs would unintentionally select the first entry
+	// in the LanguageListBox and thus cause a language change on OKButton press.
+	void PreferencesDialog::OnPageChanged(wxBookCtrlEvent &event)
+	{
+		LanguageListBox->DeselectAll();
+	}
+
 	void PreferencesDialog::OnOKButtonClick (wxCommandEvent& event)
 	{
 #ifdef TC_WINDOWS
@@ -369,11 +459,10 @@ namespace VeraCrypt
 		{
 			try
 			{
-				selectedKdf = Pkcs5Kdf::GetAlgorithm (wstring (Pkcs5PrfChoice->GetStringSelection ()), TrueCryptModeCheckBox->IsChecked ());
+				selectedKdf = Pkcs5Kdf::GetAlgorithm (wstring (Pkcs5PrfChoice->GetStringSelection ()));
 			}
 			catch (ParameterIncorrect&)
 			{
-				Gui->ShowWarning ("ALGO_NOT_SUPPORTED_FOR_TRUECRYPT_MODE");
 				return;
 			}
 		}
@@ -389,6 +478,19 @@ namespace VeraCrypt
 
 		bool securityTokenModuleChanged = (Preferences.SecurityTokenModule != wstring (Pkcs11ModulePathTextCtrl->GetValue()));
 		Preferences.SecurityTokenModule = wstring (Pkcs11ModulePathTextCtrl->GetValue());
+
+		if (LanguageListBox->GetSelection() != wxNOT_FOUND) {
+			wxString langToFind = LanguageListBox->GetString(LanguageListBox->GetSelection());
+			for (map<wxString, std::wstring>::const_iterator each = langEntries.begin(); each != langEntries.end(); ++each) {
+				if (each->second == langToFind) {
+					Preferences.Language = each->first;
+#ifdef DEBUG
+					cout << "Lang set to: " << each->first << endl;
+#endif
+				}
+			}
+			Gui->ShowInfo (LangString["LINUX_RESTART_FOR_LANGUAGE_CHANGE"]);
+		}
 
 		Gui->SetPreferences (Preferences);
 

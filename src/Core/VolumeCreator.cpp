@@ -12,6 +12,9 @@
 
 #include "Volume/EncryptionTest.h"
 #include "Volume/EncryptionModeXTS.h"
+#ifdef WOLFCRYPT_BACKEND
+#include "Volume/EncryptionModeWolfCryptXTS.h"
+#endif
 #include "Core.h"
 
 #ifdef TC_UNIX
@@ -298,6 +301,11 @@ namespace VeraCrypt
 			// Master data key
 			MasterKey.Allocate (options->EA->GetKeySize() * 2);
 			RandomNumberGenerator::GetData (MasterKey);
+			// check that first half of MasterKey is different from its second half. If they are the same, through an exception
+			// cf CCSS,NSA comment at page 3: https://csrc.nist.gov/csrc/media/Projects/crypto-publication-review-project/documents/initial-comments/sp800-38e-initial-public-comments-2021.pdf
+			if (memcmp (MasterKey.Ptr(), MasterKey.Ptr() + MasterKey.Size() / 2, MasterKey.Size() / 2) == 0)
+				throw AssertionFailed (SRC_POS);
+
 			headerOptions.DataKey = MasterKey;
 
 			// PKCS5 salt
@@ -307,7 +315,7 @@ namespace VeraCrypt
 
 			// Header key
 			HeaderKey.Allocate (VolumeHeader::GetLargestSerializedKeySize());
-			PasswordKey = Keyfile::ApplyListToPassword (options->Keyfiles, options->Password, options->SecurityTokenKeySpec);
+			PasswordKey = Keyfile::ApplyListToPassword (options->Keyfiles, options->Password, options->SecurityTokenKeySpec, options->EMVSupportEnabled);
 			options->VolumeHeaderKdf->DeriveKey (HeaderKey, *PasswordKey, options->Pim, salt);
 			headerOptions.HeaderKey = HeaderKey;
 
@@ -355,8 +363,13 @@ namespace VeraCrypt
 
 			// Data area keys
 			options->EA->SetKey (MasterKey.GetRange (0, options->EA->GetKeySize()));
-			shared_ptr <EncryptionMode> mode (new EncryptionModeXTS ());
-			mode->SetKey (MasterKey.GetRange (options->EA->GetKeySize(), options->EA->GetKeySize()));
+                    #ifdef WOLFCRYPT_BACKEND
+                        shared_ptr <EncryptionMode> mode (new EncryptionModeWolfCryptXTS ());
+                        options->EA->SetKeyXTS (MasterKey.GetRange (options->EA->GetKeySize(), options->EA->GetKeySize()));
+                    #else
+                        shared_ptr <EncryptionMode> mode (new EncryptionModeXTS ());
+                    #endif
+                        mode->SetKey (MasterKey.GetRange (options->EA->GetKeySize(), options->EA->GetKeySize()));
 			options->EA->SetMode (mode);
 
 			Options = options;

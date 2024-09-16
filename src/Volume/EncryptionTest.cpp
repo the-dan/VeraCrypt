@@ -16,6 +16,9 @@
 #include "EncryptionAlgorithm.h"
 #include "EncryptionMode.h"
 #include "EncryptionModeXTS.h"
+#ifdef WOLFCRYPT_BACKEND
+#include "EncryptionModeWolfCryptXTS.h"
+#endif
 #include "EncryptionTest.h"
 #include "Pkcs5Kdf.h"
 
@@ -43,9 +46,9 @@ namespace VeraCrypt
 
 	struct CipherTestVector
 	{
-		byte Key[32];
-		byte Plaintext[16];
-		byte Ciphertext[16];
+		uint8 Key[32];
+		uint8 Plaintext[16];
+		uint8 Ciphertext[16];
 	};
 
 	static const CipherTestVector AESTestVectors[] =
@@ -64,6 +67,7 @@ namespace VeraCrypt
 		}
 	};
 
+    #ifndef WOLFCRYPT_BACKEND
 	static const CipherTestVector SerpentTestVectors[] =
 	{
 		{
@@ -123,23 +127,7 @@ namespace VeraCrypt
 			}
 		}
 	};
-	
-	static const CipherTestVector GOST89TestVectors[] =
-	{
-		{
-			{
-				0xFF, 0xEE, 0xDD, 0xCC, 0xBB, 0xAA, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00, 
-				0xF0, 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7,	0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF
-			},
-			{
-				0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10, 0xFF, 0xEE, 0xDD, 0xCC,	0xBB, 0xAA, 0x99, 0x88
-			},
-			{
-				0x8F, 0xC6, 0xFE, 0xB8, 0x91, 0x51, 0x4C, 0x37, 0x4D, 0x51, 0x46, 0xEF, 0x02, 0x9D, 0xBD, 0x9F
-			}
-		}
-	};
-	
+
 	static const CipherTestVector KuznyechikTestVectors[] =
 	{
 		{
@@ -167,6 +155,7 @@ namespace VeraCrypt
 			}
 		}
 	};
+    #endif
 
 	static void TestCipher (Cipher &cipher, const CipherTestVector *testVector, size_t testVectorCount)
 	{
@@ -190,7 +179,7 @@ namespace VeraCrypt
 			Buffer testData (1024);
 			for (size_t i = 0; i < testData.Size(); ++i)
 			{
-				testData[i] = (byte) i;
+				testData[i] = (uint8) i;
 			}
 
 			uint32 origCrc = Crc32::ProcessBuffer (testData);
@@ -206,6 +195,7 @@ namespace VeraCrypt
 			if (origCrc != Crc32::ProcessBuffer (testData))
 				throw TestFailed (SRC_POS);
 
+        #ifndef WOLFCRYPT_BACKEND
 			CipherSerpent serpent;
 			TestCipher (serpent, SerpentTestVectors, array_capacity (SerpentTestVectors));
 
@@ -215,11 +205,9 @@ namespace VeraCrypt
 			CipherCamellia camellia;
 			TestCipher (camellia, CamelliaTestVectors, array_capacity (CamelliaTestVectors));
 			
-			CipherGost89StaticSBOX gost89;
-			TestCipher (gost89, GOST89TestVectors, array_capacity (GOST89TestVectors));
-			
 			CipherKuznyechik kuznyechik;
 			TestCipher (kuznyechik, KuznyechikTestVectors, array_capacity (KuznyechikTestVectors));
+        #endif
 	}
 
 	const EncryptionTest::XtsTestVector EncryptionTest::XtsTestVectors[] =
@@ -456,9 +444,16 @@ namespace VeraCrypt
 		for (i = 0; i < array_capacity (XtsTestVectors); i++)
 		{
 			AES aes;
-			shared_ptr <EncryptionMode> xts (new EncryptionModeXTS);
+                    #ifdef WOLFCRYPT_BACKEND
+                        shared_ptr <EncryptionMode> xts (new EncryptionModeWolfCryptXTS);
+                    #else
+                        shared_ptr <EncryptionMode> xts (new EncryptionModeXTS);
+                    #endif
 
-			aes.SetKey (ConstBufferPtr (XtsTestVectors[i].key1, sizeof (XtsTestVectors[i].key1)));
+                        aes.SetKey (ConstBufferPtr (XtsTestVectors[i].key1, sizeof (XtsTestVectors[i].key1)));
+                    #ifdef WOLFCRYPT_BACKEND
+                        aes.SetKeyXTS (ConstBufferPtr (XtsTestVectors[i].key2, sizeof (XtsTestVectors[i].key2)));
+                    #endif
 			xts->SetKey (ConstBufferPtr (XtsTestVectors[i].key2, sizeof (XtsTestVectors[i].key2)));
 			aes.SetMode (xts);
 
@@ -490,7 +485,7 @@ namespace VeraCrypt
 		int testCase = 0;
 		int nTestsPerformed = 0;
 
-		static const byte testKey[] =
+		static const uint8 testKey[] =
 		{
 			0x27, 0x18, 0x28, 0x18, 0x28, 0x45, 0x90, 0x45, 0x23, 0x53, 0x60, 0x28, 0x74, 0x71, 0x35, 0x26, 0x62, 0x49, 0x77, 0x57, 0x24, 0x70, 0x93, 0x69, 0x99, 0x59, 0x57, 0x49, 0x66, 0x96, 0x76, 0x27,
 			0x31, 0x41, 0x59, 0x26, 0x53, 0x58, 0x97, 0x93, 0x23, 0x84, 0x62, 0x64, 0x33, 0x83, 0x27, 0x95, 0x02, 0x88, 0x41, 0x97, 0x16, 0x93, 0x99, 0x37, 0x51, 0x05, 0x82, 0x09, 0x74, 0x94, 0x45, 0x92,
@@ -513,7 +508,11 @@ namespace VeraCrypt
 			// Test all EAs that support this mode of operation
 			foreach_ref (EncryptionAlgorithm &ea, EncryptionAlgorithm::GetAvailableAlgorithms())
 			{
-				shared_ptr <EncryptionMode> mode (new EncryptionModeXTS);
+                            #ifdef WOLFCRYPT_BACKEND
+                                shared_ptr <EncryptionMode> mode (new EncryptionModeWolfCryptXTS);
+                            #else
+                                shared_ptr <EncryptionMode> mode (new EncryptionModeXTS);
+                            #endif
 
 				if (!ea.IsModeSupported (mode))
 					continue;
@@ -522,13 +521,16 @@ namespace VeraCrypt
 
 				Buffer modeKey (ea.GetKeySize());
 				for (size_t mi = 0; mi < modeKey.Size(); mi++)
-					modeKey[mi] = (byte) mi;
+					modeKey[mi] = (uint8) mi;
 				modeKey.CopyFrom (ConstBufferPtr (XtsTestVectors[array_capacity (XtsTestVectors)-1].key2, sizeof (XtsTestVectors[array_capacity (XtsTestVectors)-1].key2)));
 
 				mode->SetKey (modeKey);
 				ea.SetMode (mode);
+                            #ifdef WOLFCRYPT_BACKEND
+				ea.SetKeyXTS (modeKey);
+                            #endif
 
-				// Each data unit will contain the same plaintext
+                                // Each data unit will contain the same plaintext
 				for (i = 0; i < nbrUnits; i++)
 				{
 					memcpy ((unsigned char *) buf + i * ENCRYPTION_DATA_UNIT_SIZE,
@@ -575,6 +577,7 @@ namespace VeraCrypt
 						break;
 					}
 				}
+                        #ifndef WOLFCRYPT_BACKEND
 				else if (typeid (ea) == typeid (Serpent))
 				{
 					switch (testCase)
@@ -648,32 +651,6 @@ namespace VeraCrypt
 						break;
 					case 3:
 						if (crc != 0xb838d2c1)
-							throw TestFailed (SRC_POS);
-						nTestsPerformed++;
-						break;
-					}
-				}
-				else if (typeid (ea) == typeid (GOST89))
-				{
-					switch (testCase)
-					{
-					case 0:
-						if (crc != 0x12194ef5)
-							throw TestFailed (SRC_POS);
-						nTestsPerformed++;
-						break;
-					case 1:
-						if (crc != 0xda8d429b)
-							throw TestFailed (SRC_POS);
-						nTestsPerformed++;
-						break;
-					case 2:
-						if (crc != 0xdbf0b12e)
-							throw TestFailed (SRC_POS);
-						nTestsPerformed++;
-						break;
-					case 3:
-						if (crc != 0xb986eb4a)
 							throw TestFailed (SRC_POS);
 						nTestsPerformed++;
 						break;
@@ -965,7 +942,7 @@ namespace VeraCrypt
 						break;
 					}
 				}
-
+                        #endif
 				if (crc == 0x9f5edd58)
 					throw TestFailed (SRC_POS);
 
@@ -986,7 +963,11 @@ namespace VeraCrypt
 		// Test all EAs that support this mode of operation
 		foreach_ref (EncryptionAlgorithm &ea, EncryptionAlgorithm::GetAvailableAlgorithms())
 		{
+                    #ifdef WOLFCRYPT_BACKEND
+			shared_ptr <EncryptionMode> mode (new EncryptionModeWolfCryptXTS);
+                    #else
 			shared_ptr <EncryptionMode> mode (new EncryptionModeXTS);
+                    #endif
 
 			if (!ea.IsModeSupported (mode))
 				continue;
@@ -995,11 +976,14 @@ namespace VeraCrypt
 
 			Buffer modeKey (ea.GetKeySize());
 			for (size_t mi = 0; mi < modeKey.Size(); mi++)
-				modeKey[mi] = (byte) mi;
+				modeKey[mi] = (uint8) mi;
 			modeKey.CopyFrom (ConstBufferPtr (XtsTestVectors[array_capacity (XtsTestVectors)-1].key2, sizeof (XtsTestVectors[array_capacity (XtsTestVectors)-1].key2)));
 
 			mode->SetKey (modeKey);
 			ea.SetMode (mode);
+                    #ifdef WOLFCRYPT_BACKEND
+                        ea.SetKeyXTS (modeKey);
+                    #endif
 
 			// Each data unit will contain the same plaintext
 			for (i = 0; i < nbrUnits; i++)
@@ -1019,6 +1003,7 @@ namespace VeraCrypt
 					throw TestFailed (SRC_POS);
 				nTestsPerformed++;
 			}
+                #ifndef WOLFCRYPT_BACKEND
 			else if (typeid (ea) == typeid (Serpent))
 			{
 				if (crc != 0x3494d480)
@@ -1034,12 +1019,6 @@ namespace VeraCrypt
 			else if (typeid (ea) == typeid (Camellia))
 			{
 				if (crc != 0x8176b223)
-					throw TestFailed (SRC_POS);
-				nTestsPerformed++;
-			}
-			else if (typeid (ea) == typeid (GOST89))
-			{
-				if (crc != 0x9e8653cb)
 					throw TestFailed (SRC_POS);
 				nTestsPerformed++;
 			}
@@ -1109,6 +1088,7 @@ namespace VeraCrypt
 					throw TestFailed (SRC_POS);
 				nTestsPerformed++;
 			}
+                #endif
 
 			if (crc == 0x9f5edd58)
 				throw TestFailed (SRC_POS);
@@ -1120,29 +1100,33 @@ namespace VeraCrypt
 
 			nTestsPerformed++;
 		}
-
-		if (nTestsPerformed != 160)
+            #ifndef WOLFCRYPT_BACKEND
+		if (nTestsPerformed != 150)
+            #else
+               if (nTestsPerformed != 10)
+            #endif
 			throw TestFailed (SRC_POS);
 	}
 
 	void EncryptionTest::TestPkcs5 ()
 	{
-		VolumePassword password ((byte*) "password", 8);
-		static const byte saltData[] = { 0x12, 0x34, 0x56, 0x78 };
+		VolumePassword password ((uint8*) "password", 8);
+		static const uint8 saltData[] = { 0x12, 0x34, 0x56, 0x78 };
 		ConstBufferPtr salt (saltData, sizeof (saltData));
 		Buffer derivedKey (4);
 
-		Pkcs5HmacRipemd160 pkcs5HmacRipemd160(false);
-		pkcs5HmacRipemd160.DeriveKey (derivedKey, password, salt, 5);
-		if (memcmp (derivedKey.Ptr(), "\x7a\x3d\x7c\x03", 4) != 0)
+         #ifndef WOLFCRYPT_BACKEND
+		Pkcs5HmacBlake2s pkcs5HmacBlake2s;
+		pkcs5HmacBlake2s.DeriveKey (derivedKey, password, salt, 5);
+		if (memcmp (derivedKey.Ptr(), "\x8d\x51\xfa\x31", 4) != 0)
 			throw TestFailed (SRC_POS);
 
-		Pkcs5HmacSha512 pkcs5HmacSha512(false);
+		Pkcs5HmacSha512 pkcs5HmacSha512;
 		pkcs5HmacSha512.DeriveKey (derivedKey, password, salt, 5);
 		if (memcmp (derivedKey.Ptr(), "\x13\x64\xae\xf8", 4) != 0)
 			throw TestFailed (SRC_POS);
 
-		Pkcs5HmacWhirlpool pkcs5HmacWhirlpool(false);
+		Pkcs5HmacWhirlpool pkcs5HmacWhirlpool;
 		pkcs5HmacWhirlpool.DeriveKey (derivedKey, password, salt, 5);
 		if (memcmp (derivedKey.Ptr(), "\x50\x7c\x36\x6f", 4) != 0)
 			throw TestFailed (SRC_POS);
@@ -1156,5 +1140,16 @@ namespace VeraCrypt
 		pkcs5HmacStreebog.DeriveKey (derivedKey, password, salt, 5);
 		if (memcmp (derivedKey.Ptr(), "\xd0\x53\xa2\x30", 4) != 0)
 			throw TestFailed (SRC_POS);
-	}
+         #else
+               Pkcs5HmacSha256 pkcs5HmacSha256;
+		pkcs5HmacSha256.DeriveKey (derivedKey, password, salt, 5);
+		if (memcmp (derivedKey.Ptr(), "\x64\xf3\xa5\xa3", 4) != 0)
+			throw TestFailed (SRC_POS);
+
+		Pkcs5HmacSha512 pkcs5HmacSha512;	
+                pkcs5HmacSha512.DeriveKey (derivedKey, password, salt, 5);
+		if (memcmp (derivedKey.Ptr(), "\x55\xa1\x76\xbb", 4) != 0)
+			throw TestFailed (SRC_POS);
+        #endif	
+        }
 }

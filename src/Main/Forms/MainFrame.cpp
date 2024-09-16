@@ -46,6 +46,9 @@ namespace VeraCrypt
 	DEFINE_EVENT_TYPE(wxEVT_COMMAND_SHOW_WARNING)
 
 	MainFrame::MainFrame (wxWindow* parent) : MainFrameBase (parent),
+#ifdef HAVE_INDICATORS
+		indicator (NULL),
+#endif
 		ListItemRightClickEventPending (false),
 		SelectedItemIndex (-1),
 		SelectedSlotNumber (0),
@@ -639,13 +642,9 @@ namespace VeraCrypt
 		try
 		{
 			MountOptions mountOptions (GetPreferences().DefaultMountOptions);
-			if (CmdLine->ArgTrueCryptMode)
-			{
-				mountOptions.TrueCryptMode = CmdLine->ArgTrueCryptMode;
-			}
 			if (CmdLine->ArgHash)
 			{
-				mountOptions.Kdf = Pkcs5Kdf::GetAlgorithm (*CmdLine->ArgHash, mountOptions.TrueCryptMode);
+				mountOptions.Kdf = Pkcs5Kdf::GetAlgorithm (*CmdLine->ArgHash);
 			}
 			if (CmdLine->ArgPim > 0)
 			{
@@ -668,19 +667,15 @@ namespace VeraCrypt
 		try
 		{
 			MountOptions mountOptions (GetPreferences().DefaultMountOptions);
-			if (CmdLine->ArgTrueCryptMode)
-			{
-				mountOptions.TrueCryptMode = CmdLine->ArgTrueCryptMode;
-			}
 			if (CmdLine->ArgHash)
 			{
-				mountOptions.Kdf = Pkcs5Kdf::GetAlgorithm (*CmdLine->ArgHash, mountOptions.TrueCryptMode);
+				mountOptions.Kdf = Pkcs5Kdf::GetAlgorithm (*CmdLine->ArgHash);
 			}
 			if (CmdLine->ArgPim > 0)
 			{
 				mountOptions.Pim = CmdLine->ArgPim;
 			}
-
+			mountOptions.EMVSupportEnabled = GetPreferences().EMVSupportEnabled;
 			Gui->MountAllFavoriteVolumes (mountOptions);
 		}
 		catch (exception &e)
@@ -703,18 +698,15 @@ namespace VeraCrypt
 		MountOptions mountOptions (GetPreferences().DefaultMountOptions);
 		mountOptions.SlotNumber = SelectedSlotNumber;
 		mountOptions.Path = GetSelectedVolumePath();
-		if (CmdLine->ArgTrueCryptMode)
-		{
-			mountOptions.TrueCryptMode = CmdLine->ArgTrueCryptMode;
-		}
 		if (CmdLine->ArgHash)
 		{
-			mountOptions.Kdf = Pkcs5Kdf::GetAlgorithm (*CmdLine->ArgHash, mountOptions.TrueCryptMode);
+			mountOptions.Kdf = Pkcs5Kdf::GetAlgorithm (*CmdLine->ArgHash);
 		}
 		if (CmdLine->ArgPim > 0)
 		{
 			mountOptions.Pim = CmdLine->ArgPim;
 		}
+        mountOptions.EMVSupportEnabled = GetPreferences().EMVSupportEnabled;
 
 		try
 		{
@@ -745,6 +737,7 @@ namespace VeraCrypt
 #ifdef TC_MACOSX
 		if (event.GetActive() && Gui->IsInBackgroundMode())
 			Gui->SetBackgroundMode (false);
+		EnsureVisible();
 #endif
 		event.Skip();
 	}
@@ -960,13 +953,9 @@ namespace VeraCrypt
 			SetVolumePath (favorite.Path);
 
 			MountOptions mountOptions (GetPreferences().DefaultMountOptions);
-			if (CmdLine->ArgTrueCryptMode)
-			{
-				mountOptions.TrueCryptMode = CmdLine->ArgTrueCryptMode;
-			}
 			if (CmdLine->ArgHash)
 			{
-				mountOptions.Kdf = Pkcs5Kdf::GetAlgorithm (*CmdLine->ArgHash, mountOptions.TrueCryptMode);
+				mountOptions.Kdf = Pkcs5Kdf::GetAlgorithm (*CmdLine->ArgHash);
 			}
 			if (CmdLine->ArgPim > 0)
 			{
@@ -1076,6 +1065,17 @@ namespace VeraCrypt
 #endif
 		PreferencesDialog dialog (this);
 		dialog.SelectPage (dialog.HotkeysPage);
+		dialog.ShowModal();
+	}
+
+	void MainFrame::OnLanguageMenuItemSelected (wxCommandEvent& event)
+	{
+#ifdef TC_MACOSX
+		if (Gui->IsInBackgroundMode())
+			Gui->SetBackgroundMode (false);
+#endif
+		PreferencesDialog dialog (this);
+		dialog.SelectPage (dialog.LanguagesPage);
 		dialog.ShowModal();
 	}
 
@@ -1449,7 +1449,7 @@ namespace VeraCrypt
 #if defined(TC_UNIX) && !defined(TC_MACOSX)
 			try
 			{
-				byte buf[128];
+				uint8 buf[128];
 				if (read (ShowRequestFifo, buf, sizeof (buf)) > 0 && Gui->IsInBackgroundMode())
 					Gui->SetBackgroundMode (false);
 			}
@@ -1570,6 +1570,32 @@ namespace VeraCrypt
 		}
 	}
 
+#ifdef HAVE_INDICATORS
+	void MainFrame::SetBusy (bool busy)
+	{
+		gtk_widget_set_sensitive(indicator_item_mountfavorites, !busy);
+		gtk_widget_set_sensitive(indicator_item_dismountall, !busy);
+		gtk_widget_set_sensitive(indicator_item_prefs, !busy);
+		gtk_widget_set_sensitive(indicator_item_exit, !busy /*&& CanExit()*/);
+	}
+
+	static void IndicatorOnShowHideMenuItemSelected (GtkWidget *widget, MainFrame *self) { Gui->SetBackgroundMode (!Gui->IsInBackgroundMode()); }
+	static void IndicatorOnMountAllFavoritesMenuItemSelected (GtkWidget *widget, MainFrame *self) { self->SetBusy(true); self->MountAllFavorites (); self->SetBusy(false); }
+	static void IndicatorOnDismountAllMenuItemSelected (GtkWidget *widget, MainFrame *self) { self->SetBusy(true); Gui->DismountAllVolumes(); self->SetBusy(false); }
+	static void IndicatorOnPreferencesMenuItemSelected (GtkWidget *widget, MainFrame *self) {
+		self->SetBusy(true);
+		PreferencesDialog dialog (self);
+		dialog.ShowModal();
+		self->SetBusy(false);
+	}
+	static void IndicatorOnExitMenuItemSelected (GtkWidget *widget, MainFrame *self) {
+		self->SetBusy(true);
+		if (Core->GetMountedVolumes().empty() || Gui->AskYesNo (LangString ["CONFIRM_EXIT"], false, true))
+			self->Close (true);
+		self->SetBusy(false);
+	}
+
+#endif
 	void MainFrame::ShowTaskBarIcon (bool show)
 	{
 		if (!show && mTaskBarIcon->IsIconInstalled())
@@ -1579,7 +1605,46 @@ namespace VeraCrypt
 		else if (show && !mTaskBarIcon->IsIconInstalled())
 		{
 #ifndef TC_MACOSX
+#ifndef HAVE_INDICATORS
 			mTaskBarIcon->SetIcon (Resources::GetVeraCryptIcon(), L"VeraCrypt");
+#endif
+#endif
+#ifdef HAVE_INDICATORS
+			if (indicator == NULL) {
+				indicator = app_indicator_new ("veracrypt", "veracrypt", APP_INDICATOR_CATEGORY_APPLICATION_STATUS);
+				app_indicator_set_status (indicator, APP_INDICATOR_STATUS_ACTIVE);
+
+				GtkWidget *menu = gtk_menu_new();
+
+				indicator_item_showhide = gtk_menu_item_new_with_label (LangString[Gui->IsInBackgroundMode() ? "SHOW_TC" : "HIDE_TC"].mb_str());
+				gtk_menu_shell_append (GTK_MENU_SHELL (menu), indicator_item_showhide);
+				g_signal_connect (indicator_item_showhide, "activate", G_CALLBACK (IndicatorOnShowHideMenuItemSelected), this);
+
+				gtk_menu_shell_append (GTK_MENU_SHELL (menu), gtk_separator_menu_item_new());
+
+				indicator_item_mountfavorites = gtk_menu_item_new_with_label (LangString["IDM_MOUNT_FAVORITE_VOLUMES"]);
+				gtk_menu_shell_append (GTK_MENU_SHELL (menu), indicator_item_mountfavorites);
+				g_signal_connect (indicator_item_mountfavorites, "activate", G_CALLBACK (IndicatorOnMountAllFavoritesMenuItemSelected), this);
+
+				indicator_item_dismountall = gtk_menu_item_new_with_label (LangString["HK_DISMOUNT_ALL"]);
+				gtk_menu_shell_append (GTK_MENU_SHELL (menu), indicator_item_dismountall);
+				g_signal_connect (indicator_item_dismountall, "activate", G_CALLBACK (IndicatorOnDismountAllMenuItemSelected), this);
+
+				gtk_menu_shell_append (GTK_MENU_SHELL (menu), gtk_separator_menu_item_new());
+
+				indicator_item_prefs = gtk_menu_item_new_with_label (LangString["IDM_PREFERENCES"]);
+				gtk_menu_shell_append (GTK_MENU_SHELL (menu), indicator_item_prefs);
+				g_signal_connect (indicator_item_prefs, "activate", G_CALLBACK (IndicatorOnPreferencesMenuItemSelected), this);
+
+				gtk_menu_shell_append (GTK_MENU_SHELL (menu), gtk_separator_menu_item_new());
+
+				indicator_item_exit = gtk_menu_item_new_with_label (LangString["EXIT"]);
+				gtk_menu_shell_append (GTK_MENU_SHELL (menu), indicator_item_exit);
+				g_signal_connect (indicator_item_exit, "activate", G_CALLBACK (IndicatorOnExitMenuItemSelected), this);
+
+				gtk_widget_show_all (menu);
+				app_indicator_set_menu (indicator, GTK_MENU (menu));
+			}
 #endif
 		}
 	}
@@ -1649,7 +1714,7 @@ namespace VeraCrypt
 #endif
 				fields[ColumnPath] = volume->Path;
 				fields[ColumnSize] = Gui->SizeToString (volume->Size);
-				fields[ColumnType] = Gui->VolumeTypeToString (volume->Type, volume->TrueCryptMode, volume->Protection);
+				fields[ColumnType] = Gui->VolumeTypeToString (volume->Type, volume->Protection);
 
 				if (volume->HiddenVolumeProtectionTriggered)
 				{
@@ -1659,7 +1724,7 @@ namespace VeraCrypt
 				bool slotUpdated = false;
 				if (itemIndex == -1)
 				{
-					Gui->InsertToListCtrl (SlotListCtrl, ++prevItemIndex, fields, 0, (void *) volume->SlotNumber);
+					Gui->InsertToListCtrl (SlotListCtrl, ++prevItemIndex, fields, 0, (void *)(intptr_t) volume->SlotNumber);
 					OnListItemInserted (prevItemIndex);
 
 					listChanged |= true;
@@ -1694,7 +1759,7 @@ namespace VeraCrypt
 				{
 					if (itemIndex == -1)
 					{
-						Gui->InsertToListCtrl (SlotListCtrl, ++prevItemIndex, fields, 0, (void *) slotNumber);
+						Gui->InsertToListCtrl (SlotListCtrl, ++prevItemIndex, fields, 0, (void *)(intptr_t) slotNumber);
 						OnListItemInserted (prevItemIndex);
 						listChanged |= true;
 					}

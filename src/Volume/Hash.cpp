@@ -12,7 +12,7 @@
 
 #include "Hash.h"
 
-#include "Crypto/Rmd160.h"
+#include "Crypto/blake2.h"
 #include "Crypto/Sha2.h"
 #include "Crypto/Whirlpool.h"
 #include "Crypto/Streebog.h"
@@ -24,11 +24,12 @@ namespace VeraCrypt
 		HashList l;
 
 		l.push_back (shared_ptr <Hash> (new Sha512 ()));
-		l.push_back (shared_ptr <Hash> (new Whirlpool ()));
 		l.push_back (shared_ptr <Hash> (new Sha256 ()));
+        #ifndef WOLFCRYPT_BACKEND
+		l.push_back (shared_ptr <Hash> (new Blake2s ()));
+                l.push_back (shared_ptr <Hash> (new Whirlpool ()));
 		l.push_back (shared_ptr <Hash> (new Streebog ()));
-		l.push_back (shared_ptr <Hash> (new Ripemd160 ()));
-
+        #endif
 		return l;
 	}
 
@@ -44,30 +45,31 @@ namespace VeraCrypt
 			throw ParameterIncorrect (SRC_POS);
 	}
 
+    #ifndef WOLFCRYPT_BACKEND
 	// RIPEMD-160
-	Ripemd160::Ripemd160 ()
+	Blake2s::Blake2s ()
 	{
-		Deprecated = true; // Mark RIPEMD-160 as deprecated like on Windows.
-		Context.Allocate (sizeof (RMD160_CTX), 32);
+		Context.Allocate (sizeof (blake2s_state), 32);
 		Init();
 	}
 
-	void Ripemd160::GetDigest (const BufferPtr &buffer)
+	void Blake2s::GetDigest (const BufferPtr &buffer)
 	{
 		if_debug (ValidateDigestParameters (buffer));
-		RMD160Final (buffer, (RMD160_CTX *) Context.Ptr());
+		blake2s_final ((blake2s_state *) Context.Ptr(), buffer);
 	}
 
-	void Ripemd160::Init ()
+	void Blake2s::Init ()
 	{
-		RMD160Init ((RMD160_CTX *) Context.Ptr());
+		blake2s_init ((blake2s_state *) Context.Ptr());
 	}
 
-	void Ripemd160::ProcessData (const ConstBufferPtr &data)
+	void Blake2s::ProcessData (const ConstBufferPtr &data)
 	{
 		if_debug (ValidateDataParameters (data));
-		RMD160Update ((RMD160_CTX *) Context.Ptr(), data.Get(), (int) data.Size());
+		blake2s_update ((blake2s_state *) Context.Ptr(), data.Get(), data.Size());
 	}
+    #endif
 
 	// SHA-256
 	Sha256::Sha256 ()
@@ -117,6 +119,7 @@ namespace VeraCrypt
 		sha512_hash (data.Get(), (int) data.Size(), (sha512_ctx *) Context.Ptr());
 	}
 
+    #ifndef WOLFCRYPT_BACKEND
 	// Whirlpool
 	Whirlpool::Whirlpool ()
 	{
@@ -164,4 +167,5 @@ namespace VeraCrypt
 		if_debug (ValidateDataParameters (data));
 		STREEBOG_add ((STREEBOG_CTX *) Context.Ptr(), data.Get(), (int) data.Size());
 	}
+    #endif
 }

@@ -21,13 +21,36 @@
 #endif
 
 #include <wx/platinfo.h>
+#include "Common/Token.h"
 #include "Common/SecurityToken.h"
+#include "Common/EMVToken.h"
 #include "Core/RandomNumberGenerator.h"
 #include "Application.h"
 #include "TextUserInterface.h"
 
 namespace VeraCrypt
 {
+	class AdminPasswordTextRequestHandler : public GetStringFunctor
+	{
+		public:
+		AdminPasswordTextRequestHandler (TextUserInterface *userInterface) : UI (userInterface) { }
+		virtual void operator() (string &passwordStr)
+		{
+			UI->ShowString (_("Enter your user password or administrator password: "));
+
+			TextUserInterface::SetTerminalEcho (false);
+			finally_do ({ TextUserInterface::SetTerminalEcho (true); });
+
+			wstring wPassword (UI->ReadInputStreamLine());
+			finally_do_arg (wstring *, &wPassword, { StringConverter::Erase (*finally_arg); });
+
+			UI->ShowString (L"\n");
+
+			StringConverter::ToSingle (wPassword, passwordStr);
+		}
+		TextUserInterface *UI;
+	};
+
 	TextUserInterface::TextUserInterface ()
 	{
 #ifdef TC_UNIX
@@ -103,7 +126,7 @@ namespace VeraCrypt
 		finally_do ({ TextUserInterface::SetTerminalEcho (true); });
 
 		wchar_t passwordBuf[4096];
-		finally_do_arg (BufferPtr, BufferPtr (reinterpret_cast <byte *> (passwordBuf), sizeof (passwordBuf)), { finally_arg.Erase(); });
+		finally_do_arg (BufferPtr, BufferPtr (reinterpret_cast <uint8 *> (passwordBuf), sizeof (passwordBuf)), { finally_arg.Erase(); });
 
 		shared_ptr<VolumePassword> password;
 
@@ -180,9 +203,13 @@ namespace VeraCrypt
 		wxString msg = _("Enter new PIM: ");
 		if (!message.empty())
 			msg = message + L": ";
+		SetTerminalEcho (false);
+		finally_do ({ TextUserInterface::SetTerminalEcho (true); });
 		while (pim < 0)
 		{
 			wstring pimStr = AskString (msg);
+			ShowString (L"\n");
+
 			if (pimStr.empty())
 				pim = 0;
 			else
@@ -276,7 +303,7 @@ namespace VeraCrypt
 		shared_ptr <Pkcs5Kdf> kdf;
 		if (CmdLine->ArgHash)
 		{
-			kdf = Pkcs5Kdf::GetAlgorithm (*CmdLine->ArgHash, false);
+			kdf = Pkcs5Kdf::GetAlgorithm (*CmdLine->ArgHash);
 		}
 
 		shared_ptr <Volume> normalVolume;
@@ -288,7 +315,11 @@ namespace VeraCrypt
 		normalVolumeMountOptions.Path = volumePath;
 		hiddenVolumeMountOptions.Path = volumePath;
 
+		normalVolumeMountOptions.EMVSupportEnabled = true;
+		hiddenVolumeMountOptions.EMVSupportEnabled = true;
+
 		VolumeType::Enum volumeType = VolumeType::Normal;
+		bool masterKeyVulnerable = false;
 
 		// Open both types of volumes
 		while (true)
@@ -312,8 +343,9 @@ namespace VeraCrypt
 						options->Password,
 						options->Pim,
 						kdf,
-						false,
 						options->Keyfiles,
+						options->SecurityTokenKeySpec,
+                        options->EMVSupportEnabled,
 						options->Protection,
 						options->ProtectionPassword,
 						options->ProtectionPim,
@@ -338,8 +370,9 @@ namespace VeraCrypt
 								options->Password,
 								options->Pim,
 								kdf,
-								false,
 								options->Keyfiles,
+								options->SecurityTokenKeySpec,
+                                options->EMVSupportEnabled,
 								options->Protection,
 								options->ProtectionPassword,
 								options->ProtectionPim,
@@ -363,6 +396,13 @@ namespace VeraCrypt
 					else
 						ShowInfo ("HEADER_DAMAGED_AUTO_USED_HEADER_BAK");
 				}
+			}
+
+			// check if volume master key is vulnerable
+			if (volume->IsMasterKeyVulnerable())
+			{
+				masterKeyVulnerable = true;
+				ShowWarning ("ERR_XTS_MASTERKEY_VULNERABLE");
 			}
 
 			if (volumeType == VolumeType::Hidden)
@@ -411,7 +451,7 @@ namespace VeraCrypt
 
 		// Re-encrypt volume header
 		SecureBuffer newHeaderBuffer (normalVolume->GetLayout()->GetHeaderSize());
-		Core->ReEncryptVolumeHeaderWithNewSalt (newHeaderBuffer, normalVolume->GetHeader(), normalVolumeMountOptions.Password, normalVolumeMountOptions.Pim, normalVolumeMountOptions.Keyfiles, normalVolumeMountOptions.SecurityTokenKeySpec);
+		Core->ReEncryptVolumeHeaderWithNewSalt (newHeaderBuffer, normalVolume->GetHeader(), normalVolumeMountOptions.Password, normalVolumeMountOptions.Pim, normalVolumeMountOptions.Keyfiles, normalVolumeMountOptions.SecurityTokenKeySpec, normalVolumeMountOptions.EMVSupportEnabled);
 
 		backupFile.Write (newHeaderBuffer);
 
@@ -419,7 +459,7 @@ namespace VeraCrypt
 		{
 			// Re-encrypt hidden volume header
 			Core->ReEncryptVolumeHeaderWithNewSalt (newHeaderBuffer, hiddenVolume->GetHeader(), hiddenVolumeMountOptions.Password, hiddenVolumeMountOptions.Pim, hiddenVolumeMountOptions.Keyfiles,
-			hiddenVolumeMountOptions.SecurityTokenKeySpec);
+			hiddenVolumeMountOptions.SecurityTokenKeySpec, hiddenVolumeMountOptions.EMVSupportEnabled);
 		}
 		else
 		{
@@ -433,9 +473,13 @@ namespace VeraCrypt
 
 		ShowString (L"\n");
 		ShowInfo ("VOL_HEADER_BACKED_UP");
+
+		// display again warning that master key is vulnerable
+		if (masterKeyVulnerable)
+			ShowWarning ("ERR_XTS_MASTERKEY_VULNERABLE");
 	}
 
-	void TextUserInterface::ChangePassword (shared_ptr <VolumePath> volumePath, shared_ptr <VolumePassword> password, int pim, shared_ptr <Hash> currentHash, bool truecryptMode, shared_ptr <KeyfileList> keyfiles, shared_ptr <VolumePassword> newPassword, int newPim, shared_ptr <KeyfileList> newKeyfiles, shared_ptr <Hash> newHash) const
+	void TextUserInterface::ChangePassword (shared_ptr <VolumePath> volumePath, shared_ptr <VolumePassword> password, int pim, shared_ptr <Hash> currentHash, shared_ptr <KeyfileList> keyfiles, wstring securityTokenKeySpec, shared_ptr <VolumePassword> newPassword, int newPim, shared_ptr <KeyfileList> newKeyfiles, shared_ptr <Hash> newHash) const
 	{
 		shared_ptr <Volume> volume;
 
@@ -455,11 +499,12 @@ namespace VeraCrypt
 
 		bool passwordInteractive = !password.get();
 		bool keyfilesInteractive = !keyfiles.get();
+		bool securityTokenKeySpecInteractive = securityTokenKeySpec.empty();
 
 		shared_ptr<Pkcs5Kdf> kdf;
 		if (currentHash)
 		{
-			kdf = Pkcs5Kdf::GetAlgorithm (*currentHash, truecryptMode);
+			kdf = Pkcs5Kdf::GetAlgorithm (*currentHash);
 		}
 
 		while (true)
@@ -475,9 +520,17 @@ namespace VeraCrypt
 			}
 
 			// current PIM
-			if (!truecryptMode && !Preferences.NonInteractive && (pim < 0))
+			if (!Preferences.NonInteractive && (pim < 0))
 			{
 				pim = AskPim (_("Enter current PIM"));
+			}
+
+			if (!securityTokenKeySpecInteractive) {
+
+			}
+			else if (!Preferences.NonInteractive)
+			{
+				securityTokenKeySpec = AskSecurityTokenKeySpec();
 			}
 
 			// Current keyfiles
@@ -489,7 +542,7 @@ namespace VeraCrypt
 					try
 					{
 						keyfiles.reset (new KeyfileList);
-						volume = Core->OpenVolume (volumePath, Preferences.DefaultMountOptions.PreserveTimestamps, password, pim, kdf, truecryptMode, keyfiles);
+						volume = Core->OpenVolume (volumePath, Preferences.DefaultMountOptions.PreserveTimestamps, password, pim, kdf, keyfiles, securityTokenKeySpec, true);
 					}
 					catch (PasswordException&)
 					{
@@ -499,7 +552,7 @@ namespace VeraCrypt
 				}
 
 				if (!volume.get())
-					volume = Core->OpenVolume (volumePath, Preferences.DefaultMountOptions.PreserveTimestamps, password, pim, kdf, truecryptMode, keyfiles);
+					volume = Core->OpenVolume (volumePath, Preferences.DefaultMountOptions.PreserveTimestamps, password, pim, kdf, keyfiles, securityTokenKeySpec, true);
 			}
 			catch (PasswordException &e)
 			{
@@ -511,6 +564,12 @@ namespace VeraCrypt
 			}
 
 			break;
+		}
+
+		// display warning if volume master key is vulnerable
+		if (volume->IsMasterKeyVulnerable())
+		{
+			ShowWarning ("ERR_XTS_MASTERKEY_VULNERABLE");
 		}
 
 		// New password
@@ -534,7 +593,8 @@ namespace VeraCrypt
 		RandomNumberGenerator::SetEnrichedByUserStatus (false);
 		UserEnrichRandomPool();
 
-		Core->ChangePassword (volume, newPassword, newPim, newKeyfiles, newSecurityTokenKeySpec, newHash ? Pkcs5Kdf::GetAlgorithm (*newHash, false) : shared_ptr <Pkcs5Kdf>());
+		Core->ChangePassword (volume, newPassword, newPim, newKeyfiles, newSecurityTokenKeySpec, true,
+			newHash ? Pkcs5Kdf::GetAlgorithm (*newHash) : shared_ptr <Pkcs5Kdf>());
 
 		ShowInfo ("PASSWORD_CHANGED");
 	}
@@ -656,6 +716,44 @@ namespace VeraCrypt
 		}
 		else
 		{
+			uint64 AvailableDiskSpace = 0;
+			if (options->Path.IsDevice())
+			{
+				AvailableDiskSpace = maxVolumeSize;
+			}
+			else
+			{
+				wxLongLong diskSpace = 0;
+				wxString parentDir = wxFileName (wstring (options->Path)).GetPath();
+				if (parentDir.IsEmpty())
+				{
+					parentDir = wxT(".");
+				}
+				if (options->Type == VolumeType::Normal && wxDirExists(parentDir) && wxGetDiskSpace (parentDir, nullptr, &diskSpace))
+				{
+					AvailableDiskSpace = (uint64) diskSpace.GetValue ();
+					if (maxVolumeSize > AvailableDiskSpace)
+						maxVolumeSize = AvailableDiskSpace;
+				}
+			}
+
+			if (options->Size == (uint64) (-1))
+			{
+				if (options->Type == VolumeType::Hidden) {
+					throw_err (_("Please do not use maximum size for hidden volume. As we do not mount the outer volume to determine the available space, it is your responsibility to choose a value so that the hidden volume does not overlap the outer volume."));
+				}
+				else if (AvailableDiskSpace)
+				{
+					// caller requesting maximum size
+					// we use maxVolumeSize because it is guaranteed to be less or equal to AvailableDiskSpace for outer volumes
+					options->Size = maxVolumeSize;
+				}
+				else
+				{
+					throw_err (_("Failed to get available disk space on the selected target."));
+				}
+			}
+
 			options->Quick = false;
 
 			uint32 sectorSizeRem = options->Size % options->SectorSize;
@@ -667,43 +765,65 @@ namespace VeraCrypt
 				if (Preferences.NonInteractive)
 					throw MissingArgument (SRC_POS);
 
-				wstring sizeStr = AskString (options->Type == VolumeType::Hidden ? _("\nEnter hidden volume size (sizeK/size[M]/sizeG): ") : _("\nEnter volume size (sizeK/size[M]/sizeG): "));
 				uint64 multiplier = 1024 * 1024;
+				wxString sizeStr = AskString (options->Type == VolumeType::Hidden ? _("\nEnter hidden volume size (sizeK/size[M]/sizeG/sizeT): ") : _("\nEnter volume size (sizeK/size[M]/sizeG.sizeT/max): "));
+				if (sizeStr.CmpNoCase(wxT("max")) == 0)
+				{
+					multiplier = 1;
+					if (options->Type == VolumeType::Hidden) {
+						throw_err (_("Please do not use maximum size for hidden volume. As we do not mount the outer volume to determine the available space, it is your responsibility to choose a value so that the hidden volume does not overlap the outer volume."));
+					}
+					else if (AvailableDiskSpace)
+					{
+						// caller requesting maximum size
+						// we use maxVolumeSize because it is guaranteed to be less or equal to AvailableDiskSpace for outer volumes
+						options->Size = maxVolumeSize;
+					}
+					else
+					{
+						throw_err (_("Failed to get available disk space on the selected target."));
+					}
+				}
+				else
+				{
+					multiplier = 1024 * 1024;
+					size_t index = sizeStr.find_first_not_of (wxT("0123456789"));
+					if (index == 0)
+					{
+						continue;
+					}
+					else if (index != (size_t) wxNOT_FOUND)
+					{
+						wxString sizeSuffix = sizeStr.Mid(index);
+						if (sizeSuffix.CmpNoCase(wxT("K")) == 0 || sizeSuffix.CmpNoCase(wxT("KiB")) == 0)
+							multiplier = BYTES_PER_KB;
+						else if (sizeSuffix.CmpNoCase(wxT("M")) == 0 || sizeSuffix.CmpNoCase(wxT("MiB")) == 0)
+							multiplier = BYTES_PER_MB;
+						else if (sizeSuffix.CmpNoCase(wxT("G")) == 0 || sizeSuffix.CmpNoCase(wxT("GiB")) == 0)
+							multiplier = BYTES_PER_GB;
+						else if (sizeSuffix.CmpNoCase(wxT("T")) == 0 || sizeSuffix.CmpNoCase(wxT("TiB")) == 0)
+							multiplier = BYTES_PER_TB;
+						else
+							continue;
 
-				if (sizeStr.find (L"K") != string::npos)
-				{
-					multiplier = 1024;
-					sizeStr.resize (sizeStr.size() - 1);
-				}
-				else if (sizeStr.find (L"M") != string::npos)
-				{
-					sizeStr.resize (sizeStr.size() - 1);
-				}
-				else if (sizeStr.find (L"G") != string::npos)
-				{
-					multiplier = 1024 * 1024 * 1024;
-					sizeStr.resize (sizeStr.size() - 1);
-				}
-				else if (sizeStr.find (L"T") != string::npos)
-				{
-					multiplier = (uint64) 1024 * 1024 * 1024 * 1024;
-					sizeStr.resize (sizeStr.size() - 1);
-				}
+						sizeStr = sizeStr.Left (index);
+					}
 
-				try
-				{
-					options->Size = StringConverter::ToUInt64 (sizeStr);
-					options->Size *= multiplier;
+					try
+					{
+						options->Size = StringConverter::ToUInt64 (wstring(sizeStr));
+					}
+					catch (...)
+					{
+						options->Size = 0;
+						continue;
+					}
+				}
+				options->Size *= multiplier;
 
-					sectorSizeRem = options->Size % options->SectorSize;
-					if (sectorSizeRem != 0)
-						options->Size += options->SectorSize - sectorSizeRem;
-				}
-				catch (...)
-				{
-					options->Size = 0;
-					continue;
-				}
+				sectorSizeRem = options->Size % options->SectorSize;
+				if (sectorSizeRem != 0)
+					options->Size += options->SectorSize - sectorSizeRem;
 
 				if (options->Size < minVolumeSize)
 				{
@@ -767,12 +887,13 @@ namespace VeraCrypt
 
 			shared_ptr <Hash> selectedHash = hashes[AskSelection (hashes.size(), 1) - 1];
 			RandomNumberGenerator::SetHash (selectedHash);
-			options->VolumeHeaderKdf = Pkcs5Kdf::GetAlgorithm (*selectedHash, false);
+			options->VolumeHeaderKdf = Pkcs5Kdf::GetAlgorithm (*selectedHash);
 
 		}
 
 		// Filesystem
 		options->FilesystemClusterSize = 0;
+		uint64 filesystemSize = layout->GetMaxDataSize (options->Size);
 
 		if (options->Filesystem == VolumeCreationOptions::FilesystemType::Unknown)
 		{
@@ -786,32 +907,39 @@ namespace VeraCrypt
 
 				vector <VolumeCreationOptions::FilesystemType::Enum> filesystems;
 
-				ShowInfo (L" 1) " + LangString["NONE"]); filesystems.push_back (VolumeCreationOptions::FilesystemType::None);
-				ShowInfo (L" 2) FAT"); filesystems.push_back (VolumeCreationOptions::FilesystemType::FAT);
-
+				ShowInfo (wxString::Format (L" %li) %s", filesystems.size() + 1, LangString["NONE"])); filesystems.push_back (VolumeCreationOptions::FilesystemType::None);
+				ShowInfo (wxString::Format (L" %li) %s", filesystems.size() + 1, "FAT")); filesystems.push_back (VolumeCreationOptions::FilesystemType::FAT);
 #if defined (TC_LINUX)
-				ShowInfo (L" 3) Linux Ext2"); filesystems.push_back (VolumeCreationOptions::FilesystemType::Ext2);
-				ShowInfo (L" 4) Linux Ext3"); filesystems.push_back (VolumeCreationOptions::FilesystemType::Ext3);
-				ShowInfo (L" 5) Linux Ext4"); filesystems.push_back (VolumeCreationOptions::FilesystemType::Ext4);
-				ShowInfo (L" 6) NTFS");       filesystems.push_back (VolumeCreationOptions::FilesystemType::NTFS);
-				ShowInfo (L" 7) exFAT");      filesystems.push_back (VolumeCreationOptions::FilesystemType::exFAT);
-				ShowInfo (L" 8) Btrfs");      filesystems.push_back (VolumeCreationOptions::FilesystemType::Btrfs);
+				ShowInfo (wxString::Format (L" %li) %s", filesystems.size() + 1, "Linux Ext2")); filesystems.push_back (VolumeCreationOptions::FilesystemType::Ext2);
+				ShowInfo (wxString::Format (L" %li) %s", filesystems.size() + 1, "Linux Ext3")); filesystems.push_back (VolumeCreationOptions::FilesystemType::Ext3);
+				ShowInfo (wxString::Format (L" %li) %s", filesystems.size() + 1, "Linux Ext4")); filesystems.push_back (VolumeCreationOptions::FilesystemType::Ext4);
+				ShowInfo (wxString::Format (L" %li) %s", filesystems.size() + 1, "NTFS"));       filesystems.push_back (VolumeCreationOptions::FilesystemType::NTFS);
+				if (VolumeCreationOptions::FilesystemType::IsFsFormatterPresent (VolumeCreationOptions::FilesystemType::exFAT))
+				{
+				        ShowInfo (wxString::Format (L" %li) %s", filesystems.size() + 1, "exFAT"));      filesystems.push_back (VolumeCreationOptions::FilesystemType::exFAT);
+				}
+				if (VolumeCreationOptions::FilesystemType::IsFsFormatterPresent (VolumeCreationOptions::FilesystemType::Btrfs))
+		                {
+			                // minimum size to be able to format as Btrfs is 16777216 bytes
+			                if (filesystemSize >= VC_MIN_SMALL_BTRFS_VOLUME_SIZE)
+			                {
+                                                ShowInfo (wxString::Format (L" %li) %s", filesystems.size() + 1, "Btrfs"));      filesystems.push_back (VolumeCreationOptions::FilesystemType::Btrfs);
+			                }
+			        }
 #elif defined (TC_MACOSX)
-				ShowInfo (L" 3) Mac OS Extended"); filesystems.push_back (VolumeCreationOptions::FilesystemType::MacOsExt);
-				ShowInfo (L" 4) exFAT");      filesystems.push_back (VolumeCreationOptions::FilesystemType::exFAT);
+				ShowInfo (wxString::Format (L" %li) %s", filesystems.size() + 1, "Mac OS Extended")); filesystems.push_back (VolumeCreationOptions::FilesystemType::MacOsExt);
+				ShowInfo (wxString::Format (L" %li) %s", filesystems.size() + 1, "exFAT"));      filesystems.push_back (VolumeCreationOptions::FilesystemType::exFAT);
 				if (wxPlatformInfo::Get().CheckOSVersion (10, 13))
 				{
-					ShowInfo (L" 5) APFS");      filesystems.push_back (VolumeCreationOptions::FilesystemType::APFS);
+					ShowInfo (wxString::Format (L" %li) %s", filesystems.size() + 1, "APFS"));      filesystems.push_back (VolumeCreationOptions::FilesystemType::APFS);
 				}
 #elif defined (TC_FREEBSD) || defined (TC_SOLARIS)
-				ShowInfo (L" 3) UFS"); filesystems.push_back (VolumeCreationOptions::FilesystemType::UFS);
+				ShowInfo (wxString::Format (L" %li) %s", filesystems.size() + 1, "UFS")); filesystems.push_back (VolumeCreationOptions::FilesystemType::UFS);
 #endif
 
 				options->Filesystem = filesystems[AskSelection (filesystems.size(), 2) - 1];
 			}
 		}
-
-		uint64 filesystemSize = layout->GetMaxDataSize (options->Size);
 
 		if (options->Filesystem == VolumeCreationOptions::FilesystemType::FAT
 			&& (filesystemSize < TC_MIN_FAT_FS_SIZE || filesystemSize > TC_MAX_FAT_SECTOR_COUNT * options->SectorSize))
@@ -862,6 +990,7 @@ namespace VeraCrypt
 		wxLongLong startTime = wxGetLocalTimeMillis();
 
 		VolumeCreator creator;
+		options->EMVSupportEnabled = true;
 		creator.CreateVolume (options);
 
 		bool volumeCreated = false;
@@ -903,6 +1032,7 @@ namespace VeraCrypt
 			mountOptions.Password = options->Password;
 			mountOptions.Pim = options->Pim;
 			mountOptions.Keyfiles = options->Keyfiles;
+			mountOptions.EMVSupportEnabled = true;
 
 			shared_ptr <VolumeInfo> volume = Core->MountVolume (mountOptions);
 			finally_do_arg (shared_ptr <VolumeInfo>, volume, { Core->DismountVolume (finally_arg, true); });
@@ -975,7 +1105,7 @@ namespace VeraCrypt
 
 		foreach_ref (const Keyfile &keyfile, *keyfiles)
 		{
-			SecurityToken::DeleteKeyfile (SecurityTokenKeyfilePath (FilePath (keyfile)));
+            SecurityToken::DeleteKeyfile (TokenKeyfilePath (FilePath (keyfile)));
 		}
 	}
 
@@ -991,7 +1121,7 @@ namespace VeraCrypt
 
 	void TextUserInterface::DoShowString (const wxString &str) const
 	{
-		wcout << str.c_str();
+		wcout << str.c_str() << flush;
 	}
 
 	void TextUserInterface::DoShowWarning (const wxString &message) const
@@ -999,17 +1129,17 @@ namespace VeraCrypt
 		wcerr << L"Warning: " << static_cast<wstring> (message) << endl;
 	}
 
-	void TextUserInterface::ExportSecurityTokenKeyfile () const
+	void TextUserInterface::ExportTokenKeyfile () const
 	{
-		wstring keyfilePath = AskString (_("Enter security token keyfile path: "));
+		wstring keyfilePath = AskString (_("Enter token keyfile path: "));
 
 		if (keyfilePath.empty())
 			throw UserAbort (SRC_POS);
 
-		SecurityTokenKeyfile tokenKeyfile (keyfilePath);
+        shared_ptr<TokenKeyfile> tokenKeyfile = Token::getTokenKeyfile(keyfilePath);
 
-		vector <byte> keyfileData;
-		SecurityToken::GetKeyfileData (tokenKeyfile, keyfileData);
+		vector <uint8> keyfileData;
+		tokenKeyfile->GetKeyfileData (keyfileData);
 
 		BufferPtr keyfileDataBuf (&keyfileData.front(), keyfileData.size());
 		finally_do_arg (BufferPtr, keyfileDataBuf, { finally_arg.Erase(); });
@@ -1026,32 +1156,12 @@ namespace VeraCrypt
 
 	shared_ptr <GetStringFunctor> TextUserInterface::GetAdminPasswordRequestHandler ()
 	{
-		struct AdminPasswordRequestHandler : public GetStringFunctor
-		{
-			AdminPasswordRequestHandler (TextUserInterface *userInterface) : UI (userInterface) { }
-			virtual void operator() (string &passwordStr)
-			{
-				UI->ShowString (_("Enter your user password or administrator password: "));
-
-				TextUserInterface::SetTerminalEcho (false);
-				finally_do ({ TextUserInterface::SetTerminalEcho (true); });
-
-				wstring wPassword (UI->ReadInputStreamLine());
-				finally_do_arg (wstring *, &wPassword, { StringConverter::Erase (*finally_arg); });
-
-				UI->ShowString (L"\n");
-
-				StringConverter::ToSingle (wPassword, passwordStr);
-			}
-			TextUserInterface *UI;
-		};
-
-		return shared_ptr <GetStringFunctor> (new AdminPasswordRequestHandler (this));
+		return shared_ptr <GetStringFunctor> (new AdminPasswordTextRequestHandler (this));
 	}
 
-	void TextUserInterface::ImportSecurityTokenKeyfiles () const
+	void TextUserInterface::ImportTokenKeyfiles () const
 	{
-		list <SecurityTokenInfo> tokens = SecurityToken::GetAvailableTokens();
+		list <shared_ptr<TokenInfo>> tokens = Token::GetAvailableTokens();
 
 		if (tokens.empty())
 			throw_err (LangString ["NO_TOKENS_FOUND"]);
@@ -1060,19 +1170,19 @@ namespace VeraCrypt
 
 		if (tokens.size() == 1)
 		{
-			slotId = tokens.front().SlotId;
+			slotId = tokens.front()->SlotId;
 		}
 		else
 		{
-			foreach (const SecurityTokenInfo &token, tokens)
+			foreach (const shared_ptr<TokenInfo> &token, tokens)
 			{
 				wstringstream tokenLabel;
-				tokenLabel << L"[" << token.SlotId << L"] " << LangString["TOKEN_SLOT_ID"].c_str() << L" " << token.SlotId << L"  " << token.Label;
+				tokenLabel << L"[" << token->SlotId << L"] " << LangString["TOKEN_SLOT_ID"].c_str() << L" " << token->SlotId << L"  " << token->Label;
 
 				ShowInfo (tokenLabel.str());
 			}
 
-			slotId = (CK_SLOT_ID) AskSelection (tokens.back().SlotId, tokens.front().SlotId);
+			slotId = (CK_SLOT_ID) AskSelection (tokens.back()->SlotId, tokens.front()->SlotId);
 		}
 
 		shared_ptr <KeyfileList> keyfiles;
@@ -1095,7 +1205,7 @@ namespace VeraCrypt
 
 			if (keyfile.Length() > 0)
 			{
-				vector <byte> keyfileData (keyfile.Length());
+				vector <uint8> keyfileData (keyfile.Length());
 				BufferPtr keyfileDataBuf (&keyfileData.front(), keyfileData.size());
 
 				keyfile.ReadCompleteBuffer (keyfileDataBuf);
@@ -1176,14 +1286,30 @@ namespace VeraCrypt
 		}
 	}
 
-	void TextUserInterface::ListSecurityTokenKeyfiles () const
+	void TextUserInterface::ListTokenKeyfiles () const
 	{
-		foreach (const SecurityTokenKeyfile &keyfile, SecurityToken::GetAvailableKeyfiles())
+		foreach (const shared_ptr<TokenKeyfile> keyfile, Token::GetAvailableKeyfiles(true))
 		{
-			ShowString (wstring (SecurityTokenKeyfilePath (keyfile)));
+			ShowString (wstring (TokenKeyfilePath (*keyfile)));
 			ShowString (L"\n");
 		}
 	}
+    void TextUserInterface::ListSecurityTokenKeyfiles () const
+    {
+        foreach (const TokenKeyfile &keyfile, SecurityToken::GetAvailableKeyfiles())
+        {
+            ShowString (wstring (TokenKeyfilePath (keyfile)));
+            ShowString (L"\n");
+        }
+    }
+    void TextUserInterface::ListEMVTokenKeyfiles () const
+    {
+        foreach (const TokenKeyfile &keyfile, EMVToken::GetAvailableKeyfiles())
+        {
+            ShowString (wstring (TokenKeyfilePath (keyfile)));
+            ShowString (L"\n");
+        }
+    }
 
 	VolumeInfoList TextUserInterface::MountAllDeviceHostedVolumes (MountOptions &options) const
 	{
@@ -1192,11 +1318,13 @@ namespace VeraCrypt
 			if (!options.Password)
 				options.Password = AskPassword();
 
-			if (!options.TrueCryptMode && (options.Pim < 0))
+			if (options.Pim < 0)
 				options.Pim = AskPim (_("Enter PIM"));
 
 			if (!options.Keyfiles)
 				options.Keyfiles = AskKeyfiles();
+
+			options.EMVSupportEnabled = true;
 
 			VolumeInfoList mountedVolumes = UserInterface::MountAllDeviceHostedVolumes (options);
 
@@ -1238,6 +1366,8 @@ namespace VeraCrypt
 		VolumePassword password;
 		KeyfileList keyfiles;
 
+		options.EMVSupportEnabled = true;
+
 		if ((!options.Password || options.Password->IsEmpty())
 			&& (!options.Keyfiles || options.Keyfiles->empty())
 			&& !Core->IsPasswordCacheEmpty())
@@ -1260,7 +1390,7 @@ namespace VeraCrypt
 				options.Password = AskPassword (StringFormatter (_("Enter password for {0}"), wstring (*options.Path)));
 			}
 
-			if (!options.TrueCryptMode && (options.Pim < 0))
+			if (options.Pim < 0)
 			{
 				options.Pim = AskPim (StringFormatter (_("Enter PIM for {0}"), wstring (*options.Path)));
 			}
@@ -1279,7 +1409,7 @@ namespace VeraCrypt
 			{
 				if (!options.ProtectionPassword)
 					options.ProtectionPassword = AskPassword (_("Enter password for hidden volume"));
-				if (!options.TrueCryptMode && (options.ProtectionPim < 0))
+				if (options.ProtectionPim < 0)
 					options.ProtectionPim = AskPim (_("Enter PIM for hidden volume"));
 				if (!options.ProtectionKeyfiles)
 					options.ProtectionKeyfiles = AskKeyfiles (_("Enter keyfile for hidden volume"));
@@ -1314,12 +1444,14 @@ namespace VeraCrypt
 						options.UseBackupHeaders = false;
 						ShowInfo (e);
 						options.Password.reset();
+						options.Pim = -1;
 					}
 				}
 				else
 				{
 					ShowInfo (e);
 					options.Password.reset();
+					options.Pim = -1;
 				}
 
 				ShowString (L"\n");
@@ -1427,7 +1559,7 @@ namespace VeraCrypt
 		shared_ptr <Pkcs5Kdf> kdf;
 		if (CmdLine->ArgHash)
 		{
-			kdf = Pkcs5Kdf::GetAlgorithm (*CmdLine->ArgHash, false);
+			kdf = Pkcs5Kdf::GetAlgorithm (*CmdLine->ArgHash);
 		}
 
 		ShowInfo (LangString["HEADER_RESTORE_EXTERNAL_INTERNAL"]);
@@ -1451,12 +1583,14 @@ namespace VeraCrypt
 		/* force the display of the random enriching interface */
 		RandomNumberGenerator::SetEnrichedByUserStatus (false);
 
+		bool masterKeyVulnerable = false;
 		if (restoreInternalBackup)
 		{
 			// Restore header from the internal backup
 			shared_ptr <Volume> volume;
 			MountOptions options;
 			options.Path = volumePath;
+			options.EMVSupportEnabled = true;
 
 			while (!volume)
 			{
@@ -1473,8 +1607,9 @@ namespace VeraCrypt
 						options.Password,
 						options.Pim,
 						kdf,
-						false,
 						options.Keyfiles,
+						options.SecurityTokenKeySpec,
+                        options.EMVSupportEnabled,
 						options.Protection,
 						options.ProtectionPassword,
 						options.ProtectionPim,
@@ -1498,12 +1633,14 @@ namespace VeraCrypt
 				throw_err (LangString ["VOLUME_HAS_NO_BACKUP_HEADER"]);
 			}
 
+			masterKeyVulnerable = volume->IsMasterKeyVulnerable();
+
 			RandomNumberGenerator::Start();
 			UserEnrichRandomPool();
 
 			// Re-encrypt volume header
 			SecureBuffer newHeaderBuffer (volume->GetLayout()->GetHeaderSize());
-			Core->ReEncryptVolumeHeaderWithNewSalt (newHeaderBuffer, volume->GetHeader(), options.Password, options.Pim,  options.Keyfiles, options.SecurityTokenKeySpec);
+			Core->ReEncryptVolumeHeaderWithNewSalt (newHeaderBuffer, volume->GetHeader(), options.Password, options.Pim,  options.Keyfiles, options.SecurityTokenKeySpec, options.EMVSupportEnabled);
 
 			// Write volume header
 			int headerOffset = volume->GetLayout()->GetHeaderOffset();
@@ -1553,6 +1690,7 @@ namespace VeraCrypt
 
 			// Open the volume header stored in the backup file
 			MountOptions options;
+			options.EMVSupportEnabled = true;
 
 			shared_ptr <VolumeLayout> decryptedLayout;
 
@@ -1580,10 +1718,11 @@ namespace VeraCrypt
 						backupFile.ReadAt (headerBuffer, layout->GetType() == VolumeType::Hidden ? layout->GetHeaderSize() : 0);
 
 						// Decrypt header
-						shared_ptr <VolumePassword> passwordKey = Keyfile::ApplyListToPassword (options.Keyfiles, options.Password, options.SecurityTokenKeySpec);
-						if (layout->GetHeader()->Decrypt (headerBuffer, *passwordKey, options.Pim, kdf, false, layout->GetSupportedKeyDerivationFunctions(false), layout->GetSupportedEncryptionAlgorithms(), layout->GetSupportedEncryptionModes()))
+						shared_ptr <VolumePassword> passwordKey = Keyfile::ApplyListToPassword (options.Keyfiles, options.Password, options.SecurityTokenKeySpec, options.EMVSupportEnabled);
+						if (layout->GetHeader()->Decrypt (headerBuffer, *passwordKey, options.Pim, kdf, layout->GetSupportedKeyDerivationFunctions(), layout->GetSupportedEncryptionAlgorithms(), layout->GetSupportedEncryptionModes()))
 						{
 							decryptedLayout = layout;
+							masterKeyVulnerable = layout->GetHeader()->IsMasterKeyVulnerable();
 							break;
 						}
 					}
@@ -1605,7 +1744,7 @@ namespace VeraCrypt
 
 			// Re-encrypt volume header
 			SecureBuffer newHeaderBuffer (decryptedLayout->GetHeaderSize());
-			Core->ReEncryptVolumeHeaderWithNewSalt (newHeaderBuffer, decryptedLayout->GetHeader(), options.Password, options.Pim, options.Keyfiles, options.SecurityTokenKeySpec);
+			Core->ReEncryptVolumeHeaderWithNewSalt (newHeaderBuffer, decryptedLayout->GetHeader(), options.Password, options.Pim, options.Keyfiles, options.SecurityTokenKeySpec, options.EMVSupportEnabled);
 
 			// Write volume header
 			int headerOffset = decryptedLayout->GetHeaderOffset();
@@ -1619,7 +1758,7 @@ namespace VeraCrypt
 			if (decryptedLayout->HasBackupHeader())
 			{
 				// Re-encrypt backup volume header
-				Core->ReEncryptVolumeHeaderWithNewSalt (newHeaderBuffer, decryptedLayout->GetHeader(), options.Password, options.Pim, options.Keyfiles, options.SecurityTokenKeySpec);
+				Core->ReEncryptVolumeHeaderWithNewSalt (newHeaderBuffer, decryptedLayout->GetHeader(), options.Password, options.Pim, options.Keyfiles, options.SecurityTokenKeySpec, options.EMVSupportEnabled);
 
 				// Write backup volume header
 				headerOffset = decryptedLayout->GetBackupHeaderOffset();
@@ -1634,6 +1773,11 @@ namespace VeraCrypt
 
 		ShowString (L"\n");
 		ShowInfo ("VOL_HEADER_RESTORED");
+		// display warning if the volume master key is vulnerable
+		if (masterKeyVulnerable)
+		{
+			ShowWarning ("ERR_XTS_MASTERKEY_VULNERABLE");
+		}
 	}
 
 	void TextUserInterface::SetTerminalEcho (bool enable)
@@ -1696,7 +1840,7 @@ namespace VeraCrypt
 			while (randCharsRequired > 0)
 			{
 				wstring randStr = AskString();
-				RandomNumberGenerator::AddToPool (ConstBufferPtr ((byte *) randStr.c_str(), randStr.size() * sizeof (wchar_t)));
+				RandomNumberGenerator::AddToPool (ConstBufferPtr ((uint8 *) randStr.c_str(), randStr.size() * sizeof (wchar_t)));
 
 				randCharsRequired -= randStr.size();
 

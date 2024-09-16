@@ -191,7 +191,7 @@ static NTSTATUS CompleteOriginalIrp (EncryptedIoQueueItem *item, NTSTATUS status
 }
 
 
-static void AcquireFragmentBuffer (EncryptedIoQueue *queue, byte *buffer)
+static void AcquireFragmentBuffer (EncryptedIoQueue *queue, uint8 *buffer)
 {
 	NTSTATUS status = STATUS_INVALID_PARAMETER;
 
@@ -209,7 +209,7 @@ static void AcquireFragmentBuffer (EncryptedIoQueue *queue, byte *buffer)
 }
 
 
-static void ReleaseFragmentBuffer (EncryptedIoQueue *queue, byte *buffer)
+static void ReleaseFragmentBuffer (EncryptedIoQueue *queue, uint8 *buffer)
 {
 	if (buffer == queue->FragmentBufferA)
 	{
@@ -227,8 +227,8 @@ static void ReleaseFragmentBuffer (EncryptedIoQueue *queue, byte *buffer)
 
 BOOL 
 UpdateBuffer(
-	byte*     buffer,
-	byte*     secRegion,
+	uint8*     buffer,
+	uint8*     secRegion,
 	uint64    bufferDiskOffset,
 	uint32    bufferLength,
 	BOOL      doUpadte
@@ -393,7 +393,7 @@ static VOID IoThreadProc (PVOID threadArg)
 						{
 							// Up to three subfragments may be required to handle a partially remapped fragment
 							int subFragment;
-							byte *subFragmentData = request->Data;
+							uint8 *subFragmentData = request->Data;
 
 							for (subFragment = 0 ; subFragment < 3; ++subFragment)
 							{
@@ -615,7 +615,7 @@ static VOID MainThreadProc (PVOID threadArg)
 				&& (item->OriginalLength & (ENCRYPTION_DATA_UNIT_SIZE - 1)) == 0
 				&& (item->OriginalOffset.QuadPart & (ENCRYPTION_DATA_UNIT_SIZE - 1)) != 0)
 			{
-				byte *buffer;
+				uint8 *buffer;
 				ULONG alignedLength;
 				LARGE_INTEGER alignedOffset;
 				hResult = ULongAdd(item->OriginalLength, ENCRYPTION_DATA_UNIT_SIZE, &alignedLength);
@@ -775,9 +775,10 @@ static VOID MainThreadProc (PVOID threadArg)
 
 			while (dataRemaining > 0)
 			{
-				BOOL isLastFragment = dataRemaining <= TC_ENC_IO_QUEUE_MAX_FRAGMENT_SIZE;
+				ULONG queueFragmentSize = queue->FragmentSize;
+				BOOL isLastFragment = dataRemaining <= queueFragmentSize;
 
-				ULONG dataFragmentLength = isLastFragment ? dataRemaining : TC_ENC_IO_QUEUE_MAX_FRAGMENT_SIZE;
+				ULONG dataFragmentLength = isLastFragment ? dataRemaining : queueFragmentSize;
 				activeFragmentBuffer = (activeFragmentBuffer == queue->FragmentBufferA ? queue->FragmentBufferB : queue->FragmentBufferA);
 
 				InterlockedIncrement (&queue->IoThreadPendingRequestCount);
@@ -796,7 +797,7 @@ static VOID MainThreadProc (PVOID threadArg)
 				request->OrigDataBufferFragment = dataBuffer;
 				request->Length = dataFragmentLength;
 
-				if (queue->IsFilterDevice)
+				if (queue->IsFilterDevice || queue->bSupportPartialEncryption)
 				{
 					if (queue->EncryptedAreaStart == -1 || queue->EncryptedAreaEnd == -1)
 					{
@@ -847,9 +848,9 @@ static VOID MainThreadProc (PVOID threadArg)
 				if (isLastFragment)
 					break;
 
-				dataRemaining -= TC_ENC_IO_QUEUE_MAX_FRAGMENT_SIZE;
-				dataBuffer += TC_ENC_IO_QUEUE_MAX_FRAGMENT_SIZE;
-				fragmentOffset.QuadPart += TC_ENC_IO_QUEUE_MAX_FRAGMENT_SIZE;
+				dataRemaining -= queueFragmentSize;
+				dataBuffer += queueFragmentSize;
+				fragmentOffset.QuadPart += queueFragmentSize;
 			}
 		}
 	}
@@ -971,7 +972,11 @@ NTSTATUS EncryptedIoQueueStart (EncryptedIoQueue *queue)
 {
 	NTSTATUS status;
 	EncryptedIoQueueBuffer *buffer;
-	int i;
+	int i, preallocatedIoRequestCount, preallocatedItemCount, fragmentSize;
+
+	preallocatedIoRequestCount = EncryptionIoRequestCount;
+	preallocatedItemCount = EncryptionItemCount;
+	fragmentSize = EncryptionFragmentSize;
 
 	queue->StartPending = TRUE;
 	queue->ThreadExitRequested = FALSE;
@@ -986,30 +991,84 @@ NTSTATUS EncryptedIoQueueStart (EncryptedIoQueue *queue)
 	KeInitializeEvent (&queue->PoolBufferFreeEvent, SynchronizationEvent, FALSE);
 	KeInitializeEvent (&queue->QueueResumedEvent, SynchronizationEvent, FALSE);
 
-	queue->FragmentBufferA = TCalloc (TC_ENC_IO_QUEUE_MAX_FRAGMENT_SIZE);
+retry_fragmentAllocate:
+	queue->FragmentBufferA = TCalloc (fragmentSize);
 	if (!queue->FragmentBufferA)
-		goto noMemory;
+	{
+		if (fragmentSize > TC_ENC_IO_QUEUE_MAX_FRAGMENT_SIZE)
+		{
+			fragmentSize = TC_ENC_IO_QUEUE_MAX_FRAGMENT_SIZE;
+			goto retry_fragmentAllocate;
+		}
+		else
+			goto noMemory;
+	}
 
-	queue->FragmentBufferB = TCalloc (TC_ENC_IO_QUEUE_MAX_FRAGMENT_SIZE);
+	queue->FragmentBufferB = TCalloc (fragmentSize);
 	if (!queue->FragmentBufferB)
-		goto noMemory;
+	{
+		if (fragmentSize > TC_ENC_IO_QUEUE_MAX_FRAGMENT_SIZE)
+		{
+			fragmentSize = TC_ENC_IO_QUEUE_MAX_FRAGMENT_SIZE;
+			TCfree (queue->FragmentBufferA);
+			queue->FragmentBufferA = NULL;
+			goto retry_fragmentAllocate;
+		}
+		else
+			goto noMemory;
+	}
+
+	queue->ReadAheadBufferValid = FALSE;
+	queue->ReadAheadBuffer = TCalloc (fragmentSize);
+	if (!queue->ReadAheadBuffer)
+	{
+		if (fragmentSize > TC_ENC_IO_QUEUE_MAX_FRAGMENT_SIZE)
+		{
+			fragmentSize = TC_ENC_IO_QUEUE_MAX_FRAGMENT_SIZE;
+			TCfree (queue->FragmentBufferA);
+			TCfree (queue->FragmentBufferB);
+			queue->FragmentBufferA = NULL;
+			queue->FragmentBufferB = NULL;
+			goto retry_fragmentAllocate;
+		}
+		else
+			goto noMemory;
+	}
+
+	queue->FragmentSize = fragmentSize;
 
 	KeInitializeEvent (&queue->FragmentBufferAFreeEvent, SynchronizationEvent, TRUE);
 	KeInitializeEvent (&queue->FragmentBufferBFreeEvent, SynchronizationEvent, TRUE);
 
-	queue->ReadAheadBufferValid = FALSE;
-	queue->ReadAheadBuffer = TCalloc (TC_ENC_IO_QUEUE_MAX_FRAGMENT_SIZE);
-	if (!queue->ReadAheadBuffer)
-		goto noMemory;
-
+retry_preallocated:
 	// Preallocate buffers
-	for (i = 0; i < TC_ENC_IO_QUEUE_PREALLOCATED_IO_REQUEST_COUNT; ++i)
+	for (i = 0; i < preallocatedIoRequestCount; ++i)
 	{
-		if (i < TC_ENC_IO_QUEUE_PREALLOCATED_ITEM_COUNT && !GetPoolBuffer (queue, sizeof (EncryptedIoQueueItem)))
-			goto noMemory;
+		if (i < preallocatedItemCount && !GetPoolBuffer (queue, sizeof (EncryptedIoQueueItem)))
+		{
+			if (preallocatedItemCount > TC_ENC_IO_QUEUE_PREALLOCATED_ITEM_COUNT)
+			{
+				preallocatedItemCount = TC_ENC_IO_QUEUE_PREALLOCATED_ITEM_COUNT;
+				preallocatedIoRequestCount = TC_ENC_IO_QUEUE_PREALLOCATED_IO_REQUEST_COUNT;
+				FreePoolBuffers (queue);
+				goto retry_preallocated;
+			}
+			else
+				goto noMemory;
+		}
 
 		if (!GetPoolBuffer (queue, sizeof (EncryptedIoRequest)))
-			goto noMemory;
+		{
+			if (preallocatedIoRequestCount > TC_ENC_IO_QUEUE_PREALLOCATED_IO_REQUEST_COUNT)
+			{
+				preallocatedItemCount = TC_ENC_IO_QUEUE_PREALLOCATED_ITEM_COUNT;
+				preallocatedIoRequestCount = TC_ENC_IO_QUEUE_PREALLOCATED_IO_REQUEST_COUNT;
+				FreePoolBuffers (queue);
+				goto retry_preallocated;
+			}
+			else
+				goto noMemory;
+		}
 	}
 
 	for (buffer = queue->FirstPoolBuffer; buffer != NULL; buffer = buffer->NextBuffer)

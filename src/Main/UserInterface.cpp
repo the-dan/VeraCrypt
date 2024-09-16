@@ -17,6 +17,7 @@
 #include <wx/cmdline.h>
 #include "Crypto/cpu.h"
 #include "Platform/PlatformTest.h"
+#include "Common/PCSCException.h"
 #ifdef TC_UNIX
 #include <errno.h>
 #include "Platform/Unix/Process.h"
@@ -31,6 +32,15 @@
 
 namespace VeraCrypt
 {
+	class AdminPasswordRequestHandler : public GetStringFunctor
+	{
+		public:
+		virtual void operator() (string &str)
+		{
+			throw ElevationFailed (SRC_POS, "sudo", 1, "");
+		}
+	};
+
 	UserInterface::UserInterface ()
 	{
 	}
@@ -254,7 +264,7 @@ namespace VeraCrypt
 #endif
 			prop << LangString["MOUNT_POINT"] << L": " << wstring (volume.MountPoint) << L'\n';
 			prop << LangString["SIZE"] << L": " << SizeToString (volume.Size) << L'\n';
-			prop << LangString["TYPE"] << L": " << VolumeTypeToString (volume.Type, volume.TrueCryptMode, volume.Protection) << L'\n';
+			prop << LangString["TYPE"] << L": " << VolumeTypeToString (volume.Type, volume.Protection) << L'\n';
 
 			prop << LangString["READ_ONLY"] << L": " << LangString [volume.Protection == VolumeProtection::ReadOnly ? "UISTR_YES" : "UISTR_NO"] << L'\n';
 
@@ -389,7 +399,7 @@ namespace VeraCrypt
 			errOutput += StringConverter::ToWide (execEx->GetErrorOutput());
 
 			if (errOutput.empty())
-				return errOutput + StringFormatter (LangString["LINUX_COMMAND_GET_ERROR"], execEx->GetCommand(), execEx->GetExitCode());
+				return errOutput + static_cast<wstring>(StringFormatter (LangString["LINUX_COMMAND_GET_ERROR"], execEx->GetCommand(), execEx->GetExitCode()));
 
 			return wxString (errOutput).Trim (true);
 		}
@@ -436,6 +446,27 @@ namespace VeraCrypt
 			return LangString["SECURITY_TOKEN_ERROR"] + L":\n\n" + StringConverter::ToWide (errorString);
 		}
 
+
+        // PCSC Exception
+        if (dynamic_cast <const PCSCException *> (&ex))
+        {
+            string errorString = string (dynamic_cast <const PCSCException &> (ex));
+
+            if (LangString.Exists (errorString))
+                return LangString[errorString];
+
+            if (errorString.find("SCARD_E_") == 0 || errorString.find("SCARD_F_") == 0 || errorString.find("SCARD_W_") == 0)
+            {
+                errorString = errorString.substr(8);
+                for (size_t i = 0; i < errorString.size(); ++i)
+                {
+                    if (errorString[i] == '_')
+                        errorString[i] = ' ';
+                }
+            }
+            return LangString["PCSC_ERROR"] + L":\n\n" + StringConverter::ToWide (errorString);
+        }
+
 		// Other library exceptions
 		return ExceptionTypeToString (typeid (ex));
 	}
@@ -480,7 +511,20 @@ namespace VeraCrypt
 		EX2MSG (TemporaryDirectoryFailure,			LangString["LINUX_EX2MSG_TEMPORARYDIRECTORYFAILURE"]);
 		EX2MSG (UnportablePassword,					LangString["UNSUPPORTED_CHARS_IN_PWD"]);
 
+		EX2MSG (CommandAPDUNotValid,				LangString["COMMAND_APDU_INVALID"]);
+		EX2MSG (ExtendedAPDUNotSupported,			LangString["EXTENDED_APDU_UNSUPPORTED"]);
+		EX2MSG (ScardLibraryInitializationFailed,	LangString["SCARD_MODULE_INIT_FAILED"]);
+		EX2MSG (EMVUnknownCardType,					LangString["EMV_UNKNOWN_CARD_TYPE"]);
+		EX2MSG (EMVSelectAIDFailed,					LangString["EMV_SELECT_AID_FAILED"]);
+		EX2MSG (EMVIccCertNotFound,					LangString["EMV_ICC_CERT_NOTFOUND"]);
+		EX2MSG (EMVIssuerCertNotFound,				LangString["EMV_ISSUER_CERT_NOTFOUND"]);
+		EX2MSG (EMVCPLCNotFound,					LangString["EMV_CPLC_NOTFOUND"]);
+		EX2MSG (InvalidEMVPath,						LangString["INVALID_EMV_PATH"]);
+		EX2MSG (EMVKeyfileDataNotFound,				LangString["EMV_KEYFILE_DATA_NOTFOUND"]);
+		EX2MSG (EMVPANNotFound,						LangString["EMV_PAN_NOTFOUND"]);
+
 #if defined (TC_LINUX)
+		EX2MSG (TerminalNotFound,					LangString["LINUX_EX2MSG_TERMINALNOTFOUND"]);
 		EX2MSG (UnsupportedSectorSize,				LangString["SECTOR_SIZE_UNSUPPORTED"]);
 		EX2MSG (UnsupportedSectorSizeHiddenVolumeProtection, LangString["LINUX_EX2MSG_UNSUPPORTEDSECTORSIZEHIDDENVOLUMEPROTECTION"]);
 		EX2MSG (UnsupportedSectorSizeNoKernelCrypto, LangString["LINUX_EX2MSG_UNSUPPORTEDSECTORSIZENOKERNELCRYPTO"]);
@@ -492,8 +536,6 @@ namespace VeraCrypt
 		EX2MSG (VolumeEncryptionNotCompleted,		LangString["ERR_ENCRYPTION_NOT_COMPLETED"]);
 		EX2MSG (VolumeHostInUse,					LangString["LINUX_EX2MSG_VOLUMEHOSTINUSE"]);
 		EX2MSG (VolumeSlotUnavailable,				LangString["LINUX_EX2MSG_VOLUMESLOTUNAVAILABLE"]);
-		EX2MSG (UnsupportedAlgoInTrueCryptMode,		LangString["ALGO_NOT_SUPPORTED_FOR_TRUECRYPT_MODE"]);
-		EX2MSG (UnsupportedTrueCryptFormat,			LangString["UNSUPPORTED_TRUECRYPT_FORMAT"]);
 
 #ifdef TC_MACOSX
 		EX2MSG (HigherFuseVersionRequired,			LangString["LINUX_EX2MSG_HIGHERFUSEVERSIONREQUIRED"]);
@@ -525,14 +567,6 @@ namespace VeraCrypt
 		}
 		else
 		{
-			struct AdminPasswordRequestHandler : public GetStringFunctor
-			{
-				virtual void operator() (string &str)
-				{
-					throw ElevationFailed (SRC_POS, "sudo", 1, "");
-				}
-			};
-
 			Core->SetAdminPasswordCallback (shared_ptr <GetStringFunctor> (new AdminPasswordRequestHandler));
 		}
 
@@ -618,6 +652,7 @@ namespace VeraCrypt
 
 		bool protectedVolumeMounted = false;
 		bool legacyVolumeMounted = false;
+		bool vulnerableVolumeMounted = false;
 
 		foreach_ref (const HostDevice &device, devices)
 		{
@@ -660,6 +695,10 @@ namespace VeraCrypt
 
 				if (newMountedVolumes.back()->EncryptionAlgorithmMinBlockSize == 8)
 					legacyVolumeMounted = true;
+
+				if (newMountedVolumes.back()->MasterKeyVulnerable)
+					vulnerableVolumeMounted = true;
+				
 			}
 			catch (DriverError&) { }
 			catch (MissingVolumeData&) { }
@@ -674,6 +713,9 @@ namespace VeraCrypt
 		}
 		else
 		{
+			if (vulnerableVolumeMounted)
+				ShowWarning ("ERR_XTS_MASTERKEY_VULNERABLE");
+
 			if (someVolumesShared)
 				ShowWarning ("DEVICE_IN_USE_INFO");
 
@@ -707,10 +749,12 @@ namespace VeraCrypt
 
 			favorite.ToMountOptions (options);
 
+			bool mountPerformed = false;
 			if (Preferences.NonInteractive)
 			{
 				BusyScope busy (this);
 				newMountedVolumes.push_back (Core->MountVolume (options));
+				mountPerformed = true;
 			}
 			else
 			{
@@ -718,6 +762,7 @@ namespace VeraCrypt
 				{
 					BusyScope busy (this);
 					newMountedVolumes.push_back (Core->MountVolume (options));
+					mountPerformed = true;
 				}
 				catch (...)
 				{
@@ -735,6 +780,9 @@ namespace VeraCrypt
 					newMountedVolumes.push_back (volume);
 				}
 			}
+			
+			if (mountPerformed && newMountedVolumes.back()->MasterKeyVulnerable)
+				ShowWarning ("ERR_XTS_MASTERKEY_VULNERABLE");
 		}
 
 		if (!newMountedVolumes.empty() && GetPreferences().CloseSecurityTokenSessionsAfterMount)
@@ -770,6 +818,9 @@ namespace VeraCrypt
 				throw_err (LangString["FILE_IN_USE_FAILED"]);
 			}
 		}
+
+		if (volume->MasterKeyVulnerable)
+			ShowWarning ("ERR_XTS_MASTERKEY_VULNERABLE");
 
 		if (volume->EncryptionAlgorithmMinBlockSize == 8)
 			ShowWarning ("WARN_64_BIT_BLOCK_CIPHER");
@@ -932,10 +983,9 @@ namespace VeraCrypt
 				cmdLine.ArgMountOptions.Pim = cmdLine.ArgPim;
 				cmdLine.ArgMountOptions.Keyfiles = cmdLine.ArgKeyfiles;
 				cmdLine.ArgMountOptions.SharedAccessAllowed = cmdLine.ArgForce;
-				cmdLine.ArgMountOptions.TrueCryptMode = cmdLine.ArgTrueCryptMode;
 				if (cmdLine.ArgHash)
 				{
-					cmdLine.ArgMountOptions.Kdf = Pkcs5Kdf::GetAlgorithm (*cmdLine.ArgHash, cmdLine.ArgTrueCryptMode);
+					cmdLine.ArgMountOptions.Kdf = Pkcs5Kdf::GetAlgorithm (*cmdLine.ArgHash);
 				}
 
 
@@ -1011,7 +1061,7 @@ namespace VeraCrypt
 					{
 						if (!message.IsEmpty())
 							message += L'\n';
-						message += StringFormatter (LangString["LINUX_VOL_DISMOUNTED"], wstring (volume.Path));
+						message += StringFormatter (LangString["LINUX_VOL_MOUNTED"], wstring (volume.Path));
 					}
 					ShowInfo (message);
 				}
@@ -1023,7 +1073,7 @@ namespace VeraCrypt
 			return true;
 
 		case CommandId::ChangePassword:
-			ChangePassword (cmdLine.ArgVolumePath, cmdLine.ArgPassword, cmdLine.ArgPim, cmdLine.ArgHash, cmdLine.ArgTrueCryptMode, cmdLine.ArgKeyfiles, cmdLine.ArgNewPassword, cmdLine.ArgNewPim, cmdLine.ArgNewKeyfiles, cmdLine.ArgNewHash);
+			ChangePassword (cmdLine.ArgVolumePath, cmdLine.ArgPassword, cmdLine.ArgPim, cmdLine.ArgHash, cmdLine.ArgKeyfiles, cmdLine.ArgSecurityTokenKeySpec, cmdLine.ArgNewPassword, cmdLine.ArgNewPim, cmdLine.ArgNewKeyfiles, cmdLine.ArgNewHash);
 			return true;
 
 		case CommandId::CreateKeyfile:
@@ -1036,7 +1086,7 @@ namespace VeraCrypt
 
 				if (cmdLine.ArgHash)
 				{
-					options->VolumeHeaderKdf = Pkcs5Kdf::GetAlgorithm (*cmdLine.ArgHash, false);
+					options->VolumeHeaderKdf = Pkcs5Kdf::GetAlgorithm (*cmdLine.ArgHash);
 					RandomNumberGenerator::SetHash (cmdLine.ArgHash);
 				}
 
@@ -1124,7 +1174,7 @@ namespace VeraCrypt
 					" Delete keyfiles from security tokens. See also command --list-token-keyfiles.\n"
 					"\n"
 					"--export-token-keyfile\n"
-					" Export a keyfile from a security token. See also command --list-token-keyfiles.\n"
+					" Export a keyfile from a token. See also command --list-token-keyfiles.\n"
 					"\n"
 					"--import-token-keyfiles\n"
 					" Import keyfiles to a security token. See also option --token-lib.\n"
@@ -1136,9 +1186,15 @@ namespace VeraCrypt
 					" output option (-v). See below for description of MOUNTED_VOLUME.\n"
 					"\n"
 					"--list-token-keyfiles\n"
-					" Display a list of all available security token keyfiles. See also command\n"
+					" Display a list of all available token keyfiles. See also command\n"
 					" --import-token-keyfiles.\n"
-					"\n"
+					"\n""--list-securitytoken-keyfiles\n"
+                    " Display a list of all available security token keyfiles. See also command\n"
+                    " --import-token-keyfiles.\n"
+                    "\n"
+                    "\n""--list-emvtoken-keyfiles\n"
+                    " Display a list of all available emv token keyfiles. See also command\n"
+                    "\n"
 					"--mount[=VOLUME_PATH]\n"
 					" Mount a volume. Volume path and other options are requested from the user\n"
 					" if not specified on command line.\n"
@@ -1173,7 +1229,8 @@ namespace VeraCrypt
 					" Display password characters while typing.\n"
 					"\n"
 					"--encryption=ENCRYPTION_ALGORITHM\n"
-					" Use specified encryption algorithm when creating a new volume.\n"
+					" Use specified encryption algorithm when creating a new volume. When cascading\n"
+					" algorithms, they must be separated by a dash. For example: AES-Twofish.\n"
 					"\n"
 					"--filesystem=TYPE\n"
 					" Filesystem type to mount. The TYPE argument is passed to mount(8) command\n"
@@ -1201,9 +1258,12 @@ namespace VeraCrypt
 					" used (non-recursively). Multiple keyfiles must be separated by comma.\n"
 					" Use double comma (,,) to specify a comma contained in keyfile's name.\n"
 					" Keyfile stored on a security token must be specified as\n"
-					" token://slot/SLOT_NUMBER/file/FILENAME. An empty keyfile (-k \"\") disables\n"
+					" token://slot/SLOT_NUMBER/file/FILENAME for a security token keyfile\n"
+                    " and emv://slot/SLOT_NUMBER for an EMV token keyfile.\n"
+                    " An empty keyfile (-k \"\") disables\n"
 					" interactive requests for keyfiles. See also options --import-token-keyfiles,\n"
-					" --list-token-keyfiles, --new-keyfiles, --protection-keyfiles.\n"
+					" --list-token-keyfiles, --list-securitytoken-keyfiles, --list-emvtoken-keyfiles,\n"
+                    " --new-keyfiles, --protection-keyfiles.\n"
 					"\n"
 					"--load-preferences\n"
 					" Load user preferences.\n"
@@ -1273,19 +1333,15 @@ namespace VeraCrypt
 					"--slot=SLOT\n"
 					" Use specified slot number when mounting, dismounting, or listing a volume.\n"
 					"\n"
-					"--size=SIZE[K|M|G|T]\n"
+					"--size=SIZE[K|KiB|M|MiB|G|GiB|T|TiB] or --size=max\n"
 					" Use specified size when creating a new volume. If no suffix is indicated,\n"
 					" then SIZE is interpreted in bytes. Suffixes K, M, G or T can be used to\n"
 					" indicate a value in KiB, MiB, GiB or TiB respectively.\n"
+					" If max is specified, the new volume will use all available free disk space.\n"
 					"\n"
 					"-t, --text\n"
 					" Use text user interface. Graphical user interface is used by default if\n"
 					" available. This option must be specified as the first argument.\n"
-					"\n"
-					"-tc, --truecrypt\n"
-					" Enable TrueCrypt compatibility mode to enable mounting volumes created\n"
-					" by TrueCrypt 6.x or 7.x. This option must be specified as the first\n"
-					" argument, or immediately after --text.\n"
 					"\n"
 					"--token-lib=LIB_PATH\n"
 					" Use specified PKCS #11 security token library.\n"
@@ -1357,17 +1413,25 @@ namespace VeraCrypt
 			}
 			return true;
 
-		case CommandId::ExportSecurityTokenKeyfile:
-			ExportSecurityTokenKeyfile();
+		case CommandId::ExportTokenKeyfile:
+			ExportTokenKeyfile();
 			return true;
 
-		case CommandId::ImportSecurityTokenKeyfiles:
-			ImportSecurityTokenKeyfiles();
+		case CommandId::ImportTokenKeyfiles:
+			ImportTokenKeyfiles();
 			return true;
 
-		case CommandId::ListSecurityTokenKeyfiles:
-			ListSecurityTokenKeyfiles();
+		case CommandId::ListTokenKeyfiles:
+			ListTokenKeyfiles();
 			return true;
+
+        case CommandId::ListSecurityTokenKeyfiles:
+             ListSecurityTokenKeyfiles();
+             return true;
+
+        case CommandId::ListEMVTokenKeyfiles:
+            ListEMVTokenKeyfiles();
+            return true;
 
 		case CommandId::ListVolumes:
 			if (Preferences.Verbose)
@@ -1473,7 +1537,7 @@ namespace VeraCrypt
 		EncryptionTest::TestAll();
 
 		// StringFormatter
-		if (StringFormatter (L"{9} {8} {7} {6} {5} {4} {3} {2} {1} {0} {{0}}", "1", L"2", '3', L'4', 5, 6, 7, 8, 9, 10) != L"10 9 8 7 6 5 4 3 2 1 {0}")
+		if (static_cast<wstring>(StringFormatter (L"{9} {8} {7} {6} {5} {4} {3} {2} {1} {0} {{0}}", "1", L"2", '3', L'4', 5, 6, 7, 8, 9, 10)) != L"10 9 8 7 6 5 4 3 2 1 {0}")
 			throw TestFailed (SRC_POS);
 		try
 		{
@@ -1550,7 +1614,7 @@ namespace VeraCrypt
 		return dateStr;
 	}
 
-	wxString UserInterface::VolumeTypeToString (VolumeType::Enum type, bool truecryptMode, VolumeProtection::Enum protection) const
+	wxString UserInterface::VolumeTypeToString (VolumeType::Enum type, VolumeProtection::Enum protection) const
 	{
 		wxString sResult;
 		switch (type)
@@ -1568,8 +1632,6 @@ namespace VeraCrypt
 			break;
 		}
 
-		if (truecryptMode)
-			sResult = wxT("TrueCrypt-") + sResult;
 		return sResult;
 	}
 
@@ -1622,6 +1684,7 @@ namespace VeraCrypt
 		VC_CONVERT_EXCEPTION (ParameterTooLarge);
 		VC_CONVERT_EXCEPTION (PartitionDeviceRequired);
 		VC_CONVERT_EXCEPTION (StringConversionFailed);
+		VC_CONVERT_EXCEPTION (TerminalNotFound);
 		VC_CONVERT_EXCEPTION (TestFailed);
 		VC_CONVERT_EXCEPTION (TimeOut);
 		VC_CONVERT_EXCEPTION (UnknownException);
@@ -1642,12 +1705,24 @@ namespace VeraCrypt
 		VC_CONVERT_EXCEPTION (SecurityTokenLibraryNotInitialized);
 		VC_CONVERT_EXCEPTION (SecurityTokenKeyfileAlreadyExists);
 		VC_CONVERT_EXCEPTION (SecurityTokenKeyfileNotFound);
-		VC_CONVERT_EXCEPTION (UnsupportedAlgoInTrueCryptMode);
-		VC_CONVERT_EXCEPTION (UnsupportedTrueCryptFormat);
 		VC_CONVERT_EXCEPTION (SystemException);
 		VC_CONVERT_EXCEPTION (CipherException);
 		VC_CONVERT_EXCEPTION (VolumeException);
 		VC_CONVERT_EXCEPTION (PasswordException);
+
+		VC_CONVERT_EXCEPTION (PCSCException);
+		VC_CONVERT_EXCEPTION (CommandAPDUNotValid);
+		VC_CONVERT_EXCEPTION (ExtendedAPDUNotSupported);
+		VC_CONVERT_EXCEPTION (ScardLibraryInitializationFailed);
+		VC_CONVERT_EXCEPTION (EMVUnknownCardType);
+		VC_CONVERT_EXCEPTION (EMVSelectAIDFailed);
+		VC_CONVERT_EXCEPTION (EMVIccCertNotFound);
+		VC_CONVERT_EXCEPTION (EMVIssuerCertNotFound);
+		VC_CONVERT_EXCEPTION (EMVCPLCNotFound);
+		VC_CONVERT_EXCEPTION (InvalidEMVPath);
+		VC_CONVERT_EXCEPTION (EMVKeyfileDataNotFound);
+		VC_CONVERT_EXCEPTION (EMVPANNotFound);
+
 		throw *ex;
 	}
 }

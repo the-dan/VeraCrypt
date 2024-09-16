@@ -30,7 +30,7 @@ namespace VeraCrypt
 
 		operator FilesystemPath () const { return Path; }
 		static shared_ptr <VolumePassword> ApplyListToPassword (shared_ptr <KeyfileList> keyfiles, shared_ptr <VolumePassword> password,
-			wstring tokenDescriptor);
+			wstring tokenDescriptor, bool emvSupportEnabled = false);
 		static shared_ptr <KeyfileList> DeserializeList (shared_ptr <Stream> stream, const string &name);
 		static void SerializeList (shared_ptr <Stream> stream, const string &name, shared_ptr <KeyfileList> keyfiles);
 		static bool WasHiddenFilePresentInKeyfilePath() { bool r = HiddenFileWasPresentInKeyfilePath; HiddenFileWasPresentInKeyfilePath = false; return r; }
@@ -41,8 +41,8 @@ namespace VeraCrypt
 		void RevealRedkey(FilePath redkey, wstring tokenKeyDescriptor);
 		static void CreateBluekey(FilePath bluekeyFile, wstring tokenKeyDescriptor, SecureBuffer &buffer);
 	protected:
-		void Apply (const BufferPtr &pool, wstring tokenKeyDescriptor = wstring()) const;
-		shared_ptr<Stream> PrepareStream(wstring tokenKeyDescriptor) const;
+		void Apply (const BufferPtr &pool, wstring tokenKeyDescriptor, bool emvSupportEnabled) const;
+		shared_ptr<Stream> PrepareStream(wstring tokenKeyDescriptor, bool emvSupportEnabled) const;
 		
 		static bool HiddenFileWasPresentInKeyfilePath;
 

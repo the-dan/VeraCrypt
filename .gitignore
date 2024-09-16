@@ -11,6 +11,8 @@ Tests/**/*.key
 **/*Testing
 !src/Testing
 
+# CLion
+.idea/
 
 # VC Linux build artifacts
 *.o
@@ -22,6 +24,8 @@ Tests/**/*.key
 *.txt.h
 *.h.gch
 src/Main/veracrypt
+*.osse41
+*.ossse3
 
 # VC macOS build artifacts
 src/Main/VeraCrypt

@@ -12,6 +12,9 @@
 
 #include "Volume/EncryptionMode.h"
 #include "Volume/EncryptionModeXTS.h"
+#ifdef WOLFCRYPT_BACKEND
+#include "Volume/EncryptionModeWolfCryptXTS.h"
+#endif
 #include "VolumeLayout.h"
 #include "Boot/Windows/BootCommon.h"
 
@@ -66,6 +69,7 @@ namespace VeraCrypt
 		HeaderSize = TC_VOLUME_HEADER_SIZE_LEGACY;
 
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new AES ()));
+        #ifndef WOLFCRYPT_BACKEND
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new Serpent ()));
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new Twofish ()));
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new Camellia ()));
@@ -75,7 +79,10 @@ namespace VeraCrypt
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new SerpentTwofishAES ()));
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new TwofishSerpent ()));
 
-		SupportedEncryptionModes.push_back (shared_ptr <EncryptionMode> (new EncryptionModeXTS ()));
+                SupportedEncryptionModes.push_back (shared_ptr <EncryptionMode> (new EncryptionModeXTS ()));
+        #else
+                SupportedEncryptionModes.push_back (shared_ptr <EncryptionMode> (new EncryptionModeWolfCryptXTS ()));
+        #endif
 	}
 
 	uint64 VolumeLayoutV1Normal::GetDataOffset (uint64 volumeHostSize) const
@@ -97,10 +104,10 @@ namespace VeraCrypt
 		BackupHeaderOffset = -TC_VOLUME_HEADER_GROUP_SIZE;
 
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new AES ()));
+        #ifndef WOLFCRYPT_BACKEND
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new Serpent ()));
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new Twofish ()));
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new Camellia ()));
-		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new GOST89 ()));
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new Kuznyechik ()));
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new AESTwofish ()));
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new AESTwofishSerpent ()));
@@ -112,9 +119,12 @@ namespace VeraCrypt
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new SerpentAES ()));
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new SerpentTwofishAES ()));
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new TwofishSerpent ()));
-
 		SupportedEncryptionModes.push_back (shared_ptr <EncryptionMode> (new EncryptionModeXTS ()));
-	}
+        #else
+		SupportedEncryptionModes.push_back (shared_ptr <EncryptionMode> (new EncryptionModeWolfCryptXTS ()));
+        #endif
+
+        }
 
 	uint64 VolumeLayoutV2Normal::GetDataOffset (uint64 volumeHostSize) const
 	{
@@ -143,10 +153,10 @@ namespace VeraCrypt
 		BackupHeaderOffset = -TC_HIDDEN_VOLUME_HEADER_OFFSET;
 
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new AES ()));
+        #ifndef WOLFCRYPT_BACKEND
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new Serpent ()));
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new Twofish ()));
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new Camellia ()));
-		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new GOST89 ()));
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new Kuznyechik ()));
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new AESTwofish ()));
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new AESTwofishSerpent ()));
@@ -160,6 +170,9 @@ namespace VeraCrypt
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new TwofishSerpent ()));
 
 		SupportedEncryptionModes.push_back (shared_ptr <EncryptionMode> (new EncryptionModeXTS ()));
+        #else
+		SupportedEncryptionModes.push_back (shared_ptr <EncryptionMode> (new EncryptionModeWolfCryptXTS ()));
+        #endif
 	}
 
 	uint64 VolumeLayoutV2Hidden::GetDataOffset (uint64 volumeHostSize) const
@@ -196,10 +209,10 @@ namespace VeraCrypt
 		HeaderSize = TC_BOOT_ENCRYPTION_VOLUME_HEADER_SIZE;
 
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new AES ()));
+        #ifndef WOLFCRYPT_BACKEND
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new Serpent ()));
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new Twofish ()));
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new Camellia ()));
-		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new GOST89 ()));
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new Kuznyechik ()));
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new AESTwofish ()));
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new AESTwofishSerpent ()));
@@ -211,9 +224,13 @@ namespace VeraCrypt
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new SerpentAES ()));
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new SerpentTwofishAES ()));
 		SupportedEncryptionAlgorithms.push_back (shared_ptr <EncryptionAlgorithm> (new TwofishSerpent ()));
-		
-		SupportedEncryptionModes.push_back (shared_ptr <EncryptionMode> (new EncryptionModeXTS ()));
-	}
+
+                SupportedEncryptionModes.push_back (shared_ptr <EncryptionMode> (new EncryptionModeXTS ()));
+        #else
+		SupportedEncryptionModes.push_back (shared_ptr <EncryptionMode> (new EncryptionModeWolfCryptXTS ()));
+        #endif
+
+        }
 
 	uint64 VolumeLayoutSystemEncryption::GetDataOffset (uint64 volumeHostSize) const
 	{
@@ -225,18 +242,16 @@ namespace VeraCrypt
 		return volumeHostSize;
 	}
 
-	Pkcs5KdfList VolumeLayoutSystemEncryption::GetSupportedKeyDerivationFunctions (bool truecryptMode) const
+	Pkcs5KdfList VolumeLayoutSystemEncryption::GetSupportedKeyDerivationFunctions () const
 	{
 		Pkcs5KdfList l;
-		if (!truecryptMode)
-			l.push_back (shared_ptr <Pkcs5Kdf> (new Pkcs5HmacSha256_Boot ()));
-		l.push_back (shared_ptr <Pkcs5Kdf> (new Pkcs5HmacRipemd160_1000 (truecryptMode)));
-		if (!truecryptMode)
-		{
-			l.push_back (shared_ptr <Pkcs5Kdf> (new Pkcs5HmacSha512 (false)));
-			l.push_back (shared_ptr <Pkcs5Kdf> (new Pkcs5HmacWhirlpool (false)));
-			l.push_back (shared_ptr <Pkcs5Kdf> (new Pkcs5HmacStreebog ()));
-		}
-		return l;
+		l.push_back (shared_ptr <Pkcs5Kdf> (new Pkcs5HmacSha256_Boot ()));
+		l.push_back (shared_ptr <Pkcs5Kdf> (new Pkcs5HmacSha512 ()));
+        #ifndef WOLFCRYPT_BACKEND
+		l.push_back (shared_ptr <Pkcs5Kdf> (new Pkcs5HmacBlake2s_Boot ()));
+		l.push_back (shared_ptr <Pkcs5Kdf> (new Pkcs5HmacWhirlpool ()));
+		l.push_back (shared_ptr <Pkcs5Kdf> (new Pkcs5HmacStreebog ()));
+        #endif
+                return l;
 	}
 }

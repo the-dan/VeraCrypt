@@ -53,7 +53,7 @@ enum
 	SHA512 = FIRST_PRF_ID,
 	WHIRLPOOL,
 	SHA256,
-	RIPEMD160,
+	BLAKE2S,
 	STREEBOG,
 	HASH_ENUM_END_ID
 };
@@ -61,8 +61,8 @@ enum
 // The last PRF to try when mounting and also the number of implemented PRFs
 #define LAST_PRF_ID			(HASH_ENUM_END_ID - 1)	
 
-#define RIPEMD160_BLOCKSIZE		64
-#define RIPEMD160_DIGESTSIZE	20
+#define BLAKE2S_BLOCKSIZE		64
+#define BLAKE2S_DIGESTSIZE		32
 
 #define SHA256_BLOCKSIZE		64
 #define SHA256_DIGESTSIZE		32
@@ -112,7 +112,6 @@ enum
 	SERPENT,			
 	TWOFISH,
 	CAMELLIA,
-	GOST89,
 	KUZNYECHIK
 };
 
@@ -173,7 +172,7 @@ typedef struct
 #ifdef TC_WINDOWS_BOOT
 #define MAX_EXPANDED_KEY	VC_MAX((AES_KS + SERPENT_KS + TWOFISH_KS), CAMELLIA_KS)
 #else
-#define MAX_EXPANDED_KEY	VC_MAX(VC_MAX(VC_MAX(VC_MAX((AES_KS + SERPENT_KS + TWOFISH_KS), GOST_KS), CAMELLIA_KS + KUZNYECHIK_KS + SERPENT_KS), KUZNYECHIK_KS + TWOFISH_KS), AES_KS + KUZNYECHIK_KS)
+#define MAX_EXPANDED_KEY	VC_MAX(VC_MAX(VC_MAX((AES_KS + SERPENT_KS + TWOFISH_KS), CAMELLIA_KS + KUZNYECHIK_KS + SERPENT_KS), KUZNYECHIK_KS + TWOFISH_KS), AES_KS + KUZNYECHIK_KS)
 #endif
 #endif
 
@@ -200,12 +199,11 @@ typedef struct
 #endif
 #include "Twofish.h"
 
-#include "Rmd160.h"
+#include "blake2.h"
 #ifndef TC_WINDOWS_BOOT
 #	include "Sha2.h"
 #	include "Whirlpool.h"
 #	include "Streebog.h"
-#	include "GostCipher.h"
 #	include "kuznyechik.h"
 #	include "Camellia.h"
 #if !defined (_UEFI)
@@ -252,14 +250,13 @@ typedef struct CRYPTO_INFO_t
 	uint16 HeaderVersion;
 
 #ifdef TC_WINDOWS_DRIVER
-	unsigned __int8 master_keydata_hash[RIPEMD160_DIGESTSIZE];
+	unsigned __int8 master_keydata_hash[BLAKE2S_DIGESTSIZE];
 #else
 	CRYPTOPP_ALIGN_DATA(16) unsigned __int8 master_keydata[MASTER_KEYDATA_SIZE];	/* This holds the volume header area containing concatenated master key(s) and secondary key(s) (XTS mode). For LRW (deprecated/legacy), it contains the tweak key before the master key(s). For CBC (deprecated/legacy), it contains the IV seed before the master key(s). */
 	CRYPTOPP_ALIGN_DATA(16) unsigned __int8 k2[MASTER_KEYDATA_SIZE];				/* For XTS, this contains the secondary key (if cascade, multiple concatenated). For LRW (deprecated/legacy), it contains the tweak key. For CBC (deprecated/legacy), it contains the IV seed. */
 #endif
 
 	int noIterations;	
-	BOOL bTrueCryptMode;
 	int volumePim;
 
 	BOOL bProtectHiddenVolume;			// Indicates whether the volume contains a hidden volume to be protected against overwriting
@@ -279,6 +276,8 @@ typedef struct CRYPTO_INFO_t
 	BOOL LegacyVolume;
 
 	uint32 SectorSize;
+
+	BOOL bVulnerableMasterKey; // TRUE if XTS primary key is identical to secondary key (i.e. the volume is vulnerable to attack on XTS mode)
 
 #endif // !TC_WINDOWS_BOOT
 
@@ -342,7 +341,7 @@ int EAGetFirst ();
 int EAGetCount (void);
 int EAGetNext (int previousEA);
 #ifndef TC_WINDOWS_BOOT
-wchar_t * EAGetName (wchar_t *buf, int ea, int guiDisplay);
+wchar_t * EAGetName (wchar_t *buf, size_t bufLen, int ea, int guiDisplay);
 int EAGetByName (wchar_t *name);
 #endif
 int EAGetKeySize (int ea);
@@ -373,7 +372,7 @@ const wchar_t *HashGetName (int hash_algo_id);
 int HashGetIdByName (wchar_t *name);
 #endif
 Hash *HashGet (int id);
-void HashGetName2 (wchar_t *buf, int hashId);
+void HashGetName2 (wchar_t *buf, size_t bufLen, int hashId);
 BOOL HashIsDeprecated (int hashId);
 BOOL HashForSystemEncryption (int hashId);
 int GetMaxPkcs5OutSize (void);

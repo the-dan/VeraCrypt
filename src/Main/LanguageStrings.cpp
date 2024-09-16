@@ -29,6 +29,9 @@ namespace VeraCrypt
 	{
 		if (Map.count (key) > 0)
 			return wxString (Map.find (key)->second);
+		// return "VeraCrypt" as it is
+		if (key == "VeraCrypt")
+			return L"VeraCrypt";
 
 		return wxString (L"?") + StringConverter::ToWide (key) + L"?";
 	}
@@ -40,8 +43,7 @@ namespace VeraCrypt
 
 	void LanguageStrings::Init ()
 	{
-#ifdef TC_LINUX
-		static byte LanguageXml[] =
+		static uint8 LanguageXml[] =
         {
 #           include "Common/Language.xml.h"
             , 0
@@ -53,13 +55,18 @@ namespace VeraCrypt
 			text.Replace (L"\\n", L"\n");
 			Map[StringConverter::ToSingle (wstring (node.Attributes[L"key"]))] = text;
 		}
-#endif
-		foreach (XmlNode node, XmlParser (Resources::GetLanguageXml()).GetNodes (L"entry"))
+
+		string translatedXml = Resources::GetLanguageXml();
+		foreach (XmlNode node, XmlParser (translatedXml).GetNodes (L"entry"))
 		{
 			wxString text = node.InnerText;
 			text.Replace (L"\\n", L"\n");
 			Map[StringConverter::ToSingle (wstring (node.Attributes[L"key"]))] = text;
 		}
+
+		XmlNode node = XmlParser (translatedXml).GetNodes (L"language").front();
+		Map["LANGUAGE_TRANSLATORS"] = wxString (node.Attributes[L"translators"]);
+		Map["CURRENT_LANGUAGE_PACK"] = wxString (node.Attributes[L"name"]);
 	}
 
 	LanguageStrings LangString;

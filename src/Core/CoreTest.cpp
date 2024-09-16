@@ -76,7 +76,7 @@ void TearDown() {
 
 shared_ptr<VolumePassword> GetPassword(string passwordString) {
     size_t ulen = passwordString.length();
-    return shared_ptr<VolumePassword>(new VolumePassword ((byte*)passwordString.c_str(), ulen));
+    return shared_ptr<VolumePassword>(new VolumePassword ((uint8*)passwordString.c_str(), ulen));
 }
 
 
@@ -86,7 +86,7 @@ shared_ptr<MountOptions> GetOptions(string name) {
     
 
     Sha512 *SelectedHash = new Sha512();
-    shared_ptr<Pkcs5Kdf> kdf = Pkcs5Kdf::GetAlgorithm (*SelectedHash, false);
+    shared_ptr<Pkcs5Kdf> kdf = Pkcs5Kdf::GetAlgorithm (*SelectedHash);
     shared_ptr<KeyfileList> keyfiles(new KeyfileList());
     VolumeProtection::Enum protection = VolumeProtection::None;
     shared_ptr<VolumePassword> protectionPassword;
@@ -249,11 +249,11 @@ void DumpVolume() {
 
     try {
         shared_ptr<Volume> vol = VeraCrypt::Core->OpenVolume(opts.Path,
-            true, opts.Password, 0, opts.Kdf, false,
-            opts.Keyfiles,
+            true, opts.Password, 0, opts.Kdf,
+            opts.Keyfiles, opts.SecurityTokenKeySpec, false,
             opts.Protection, opts.ProtectionPassword, 0, opts.ProtectionKdf, opts.ProtectionKeyfiles,
             opts.ProtectionSecurityTokenKeySpec,
-            false, VolumeType::Unknown, false, false, opts.SecurityTokenKeySpec);
+            false, VolumeType::Unknown, false, false);
 
         if (vol) {
             trace_msg(vol->GetSize());
@@ -320,11 +320,11 @@ void Read(char *buf, shared_ptr<Volume> v, size_t offset, size_t size) {
 
         // FuseService::ReadVolumeSectors (alignedBuffer, alignedOffset);
         v->ReadSectors(alignedBuffer, alignedOffset);
-        BufferPtr ((VeraCrypt::byte *) buf, size).CopyFrom (alignedBuffer.GetRange (offset % sectorSize, size));
+        BufferPtr ((uint8 *) buf, size).CopyFrom (alignedBuffer.GetRange (offset % sectorSize, size));
     }
     else
     {
-        v->ReadSectors(BufferPtr ((VeraCrypt::byte *) buf, size), offset);
+        v->ReadSectors(BufferPtr ((uint8 *) buf, size), offset);
         // FuseService::ReadVolumeSectors (, offset);
     }
 }
@@ -398,8 +398,8 @@ void ChangeSecurityParametersTest(shared_ptr<TestResult> r, VolumeTestParams *pa
     r->Phase("applying security parameters changes");
     try {
         VeraCrypt::Core->ChangePassword(volumePath, preserveTimestamps,
-        password, pim, kdf, truecryptMode, keyfiles, securityTokenKeySpec,
-        greenPassword, greenPim, greenKeyfiles, greenSecurityTokenKeySpec,
+        password, pim, kdf, keyfiles, securityTokenKeySpec,
+        greenPassword, greenPim, greenKeyfiles, greenSecurityTokenKeySpec, false,
         newPkcs5Kdf, wipeCount);
     } catch (exception &e) {
         r->Failed("unable to change security parameters");
@@ -543,7 +543,7 @@ void RevealRedkeyTest(shared_ptr<TestResult> r, VolumeTestParams *params) {
     redkey->Close();
 
     r->Phase("comparing the data bluekey is based on with revealed keyfile");
-    AssertEquals(r, BufferPtr((VeraCrypt::byte*)redkeyData.c_str(), redkeyData.size()), *redkeyBuffer);
+    AssertEquals(r, BufferPtr((uint8*)redkeyData.c_str(), redkeyData.size()), *redkeyBuffer);
 }
 
 void CreateBluekeyTest(shared_ptr<TestResult> r) {
@@ -816,7 +816,7 @@ void WriteBeyondSpaceTest(shared_ptr<TestResult> r, VolumeTestParams *params) {
     auto volumeSize = vi->Size;
 
 
-    auto smallFileSize = KB(60);
+    auto smallFileSize = KB(100);
     auto largeFileSize = volumeSize - smallFileSize;
 
     r->Phase("writing large file");
@@ -860,7 +860,7 @@ vector<VolumeTestParams> GenerateCombinations() {
         for (auto ha : hashAlgos) {
                 ea->GetName();
                 ha->GetName();
-                shared_ptr<Pkcs5Kdf> kdf = Pkcs5Kdf::GetAlgorithm (*ha, false);
+                shared_ptr<Pkcs5Kdf> kdf = Pkcs5Kdf::GetAlgorithm (*ha);
                 
                 wstringstream wname;
                 wname << ea->GetName() << "_" << ha->GetName() << "_" << kdf->GetName();

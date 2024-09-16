@@ -53,6 +53,8 @@
 #define TC_SECURITY_TOKEN_KEYFILE_URL_SLOT L"slot"
 #define TC_SECURITY_TOKEN_KEYFILE_URL_FILE L"file"
 
+#include "Token.h"
+
 namespace VeraCrypt
 {
 
@@ -61,34 +63,29 @@ namespace VeraCrypt
 		DECRYPT
 	};
 
-	struct SecurityTokenInfo
+	struct SecurityTokenInfo: TokenInfo
 	{
-		CK_SLOT_ID SlotId;
+		virtual ~SecurityTokenInfo() {};
+		virtual BOOL isEditable() const {return true;}
+
 		CK_FLAGS Flags;
-		wstring Label;
 		string LabelUtf8;
 	};
 
-	struct SecurityTokenKeyfilePath
+	struct SecurityTokenKeyfile: TokenKeyfile
 	{
-		SecurityTokenKeyfilePath () { }
-		SecurityTokenKeyfilePath (const wstring &path) : Path (path) { }
-		operator wstring () const { return Path; }
-		wstring Path;
-	};
+		SecurityTokenKeyfile();
 
-	struct SecurityTokenKeyfile
-	{
-		SecurityTokenKeyfile () : Handle(CK_INVALID_HANDLE), SlotId(CK_UNAVAILABLE_INFORMATION) { Token.SlotId = CK_UNAVAILABLE_INFORMATION; Token.Flags = 0; }
-		SecurityTokenKeyfile (const SecurityTokenKeyfilePath &path);
+		SecurityTokenKeyfile(const TokenKeyfilePath& path);
 
-		operator SecurityTokenKeyfilePath () const;
+		virtual ~SecurityTokenKeyfile() {}
 
-		CK_OBJECT_HANDLE Handle;
-		wstring Id;
+		operator TokenKeyfilePath () const;
+
+		void GetKeyfileData(vector<uint8>& keyfileData) const;
+
 		string IdUtf8;
-		CK_SLOT_ID SlotId;
-		SecurityTokenInfo Token;
+		CK_OBJECT_HANDLE Handle;
 	};
 
 	struct SecurityTokenKey
@@ -106,28 +103,28 @@ namespace VeraCrypt
 
 	struct Pkcs11Exception : public Exception
 	{
-		Pkcs11Exception (CK_RV errorCode = (CK_RV) -1)
-			: ErrorCode (errorCode),
-			SubjectErrorCodeValid (false),
-			SubjectErrorCode( (uint64) -1)
+		Pkcs11Exception(CK_RV errorCode = (CK_RV)-1)
+			: ErrorCode(errorCode),
+			SubjectErrorCodeValid(false),
+			SubjectErrorCode((uint64)-1)
 		{
 		}
 
-		Pkcs11Exception (CK_RV errorCode, uint64 subjectErrorCode)
-			: ErrorCode (errorCode),
-			SubjectErrorCodeValid (true),
-			SubjectErrorCode (subjectErrorCode)
+		Pkcs11Exception(CK_RV errorCode, uint64 subjectErrorCode)
+			: ErrorCode(errorCode),
+			SubjectErrorCodeValid(true),
+			SubjectErrorCode(subjectErrorCode)
 		{
 		}
 
 #ifdef TC_HEADER_Platform_Exception
-		virtual ~Pkcs11Exception () throw () { }
-		TC_SERIALIZABLE_EXCEPTION (Pkcs11Exception);
+		virtual ~Pkcs11Exception() throw () { }
+		TC_SERIALIZABLE_EXCEPTION(Pkcs11Exception);
 #else
-		void Show (HWND parent) const;
+		void Show(HWND parent) const;
 #endif
 		operator string () const;
-		CK_RV GetErrorCode () const { return ErrorCode; }
+		CK_RV GetErrorCode() const { return ErrorCode; }
 
 	protected:
 		CK_RV ErrorCode;
@@ -154,24 +151,24 @@ namespace VeraCrypt
 
 #else // !TC_HEADER_Platform_Exception
 
-	struct SecurityTokenLibraryNotInitialized : public Exception
+	struct SecurityTokenLibraryNotInitialized: public Exception
 	{
-		void Show (HWND parent) const { Error (SecurityTokenLibraryPath[0] == 0 ? "NO_PKCS11_MODULE_SPECIFIED" : "PKCS11_MODULE_INIT_FAILED", parent); }
+		void Show(HWND parent) const { Error(SecurityTokenLibraryPath[0] == 0 ? "NO_PKCS11_MODULE_SPECIFIED" : "PKCS11_MODULE_INIT_FAILED", parent); }
 	};
 
-	struct InvalidSecurityTokenKeyfilePath : public Exception
+	struct InvalidSecurityTokenKeyfilePath: public Exception
 	{
-		void Show (HWND parent) const { Error ("INVALID_TOKEN_KEYFILE_PATH", parent); }
+		void Show(HWND parent) const { Error("INVALID_TOKEN_KEYFILE_PATH", parent); }
 	};
 
-	struct SecurityTokenKeyfileAlreadyExists : public Exception
+	struct SecurityTokenKeyfileAlreadyExists: public Exception
 	{
-		void Show (HWND parent) const { Error ("TOKEN_KEYFILE_ALREADY_EXISTS", parent); }
+		void Show(HWND parent) const { Error("TOKEN_KEYFILE_ALREADY_EXISTS", parent); }
 	};
 
-	struct SecurityTokenKeyfileNotFound : public Exception
+	struct SecurityTokenKeyfileNotFound: public Exception
 	{
-		void Show (HWND parent) const { Error ("TOKEN_KEYFILE_NOT_FOUND", parent); }
+		void Show(HWND parent) const { Error("TOKEN_KEYFILE_NOT_FOUND", parent); }
 	};
 
 #endif // !TC_HEADER_Platform_Exception
@@ -179,7 +176,7 @@ namespace VeraCrypt
 
 	struct Pkcs11Session
 	{
-		Pkcs11Session () : Handle (CK_UNAVAILABLE_INFORMATION), UserLoggedIn (false) { }
+		Pkcs11Session(): Handle(CK_UNAVAILABLE_INFORMATION), UserLoggedIn(false) { }
 
 		CK_SESSION_HANDLE Handle;
 		bool UserLoggedIn;
@@ -187,33 +184,33 @@ namespace VeraCrypt
 
 	struct GetPinFunctor
 	{
-		virtual ~GetPinFunctor () { }
-		virtual void operator() (string &str) = 0;
-		virtual void notifyIncorrectPin () = 0;
+		virtual ~GetPinFunctor() { }
+		virtual void operator() (string& str) = 0;
+		virtual void notifyIncorrectPin() = 0;
 	};
 
 	struct SendExceptionFunctor
 	{
-		virtual ~SendExceptionFunctor () { }
-		virtual void operator() (const Exception &e) = 0;
+		virtual ~SendExceptionFunctor() { }
+		virtual void operator() (const Exception& e) = 0;
 	};
 
 	class SecurityTokenIface {
 		public:
 			virtual void CloseAllSessions () throw () = 0;
 			virtual void CloseLibrary () = 0;
-			virtual void CreateKeyfile (CK_SLOT_ID slotId, vector <byte> &keyfileData, const string &name) =0;
+			virtual void CreateKeyfile (CK_SLOT_ID slotId, vector <uint8> &keyfileData, const string &name) =0;
 			virtual void DeleteKeyfile (const SecurityTokenKeyfile &keyfile) =0;
 			virtual vector <SecurityTokenKeyfile> GetAvailableKeyfiles (CK_SLOT_ID *slotIdFilter = nullptr, const wstring keyfileIdFilter = wstring()) =0;
 
 			virtual vector <SecurityTokenKey> GetAvailablePrivateKeys(CK_SLOT_ID *slotIdFilterm = nullptr, const wstring keyIdFilter = wstring()) =0;
 			virtual vector <SecurityTokenKey> GetAvailablePublicKeys(CK_SLOT_ID *slotIdFilterm = nullptr, const wstring keyIdFilter = wstring()) =0;
 			virtual void GetSecurityTokenKey(wstring tokenKeyDescriptor, SecurityTokenKey &key, SecurityTokenKeyOperation mode) =0;
-			virtual void GetDecryptedData(SecurityTokenKey key, vector<byte> tokenDataToDecrypt, vector<byte> &decryptedData) =0;
-			virtual void GetEncryptedData(SecurityTokenKey key, vector<byte> plaintext, vector<byte> &ciphertext) =0;
+			virtual void GetDecryptedData(SecurityTokenKey key, vector<uint8> tokenDataToDecrypt, vector<uint8> &decryptedData) =0;
+			virtual void GetEncryptedData(SecurityTokenKey key, vector<uint8> plaintext, vector<uint8> &ciphertext) =0;
 
 
-			virtual void GetKeyfileData (const SecurityTokenKeyfile &keyfile, vector <byte> &keyfileData) =0;
+			virtual void GetKeyfileData (const SecurityTokenKeyfile &keyfile, vector <uint8> &keyfileData) =0;
 			virtual list <SecurityTokenInfo> GetAvailableTokens () =0;
 			virtual SecurityTokenInfo GetTokenInfo (CK_SLOT_ID slotId) =0;
 #ifdef TC_WINDOWS
@@ -232,18 +229,18 @@ namespace VeraCrypt
 
 		static void CloseAllSessions () throw () { impl->CloseAllSessions(); };
 		static void CloseLibrary () { impl-> CloseLibrary(); };
-		static void CreateKeyfile (CK_SLOT_ID slotId, vector <byte> &keyfileData, const string &name) { impl->CreateKeyfile (slotId, keyfileData, name); };
+		static void CreateKeyfile (CK_SLOT_ID slotId, vector <uint8> &keyfileData, const string &name) { impl->CreateKeyfile (slotId, keyfileData, name); };
 		static void DeleteKeyfile (const SecurityTokenKeyfile &keyfile) { impl->DeleteKeyfile (keyfile); };
 		static vector <SecurityTokenKeyfile> GetAvailableKeyfiles (CK_SLOT_ID *slotIdFilter = nullptr, const wstring keyfileIdFilter = wstring()) { return impl -> GetAvailableKeyfiles (slotIdFilter, keyfileIdFilter); };
 
 		static vector <SecurityTokenKey> GetAvailablePrivateKeys (CK_SLOT_ID *slotIdFilterm = nullptr, const wstring keyIdFilter = wstring()) { return impl->GetAvailablePrivateKeys (slotIdFilterm, keyIdFilter); };
 		static vector <SecurityTokenKey> GetAvailablePublicKeys (CK_SLOT_ID *slotIdFilterm = nullptr, const wstring keyIdFilter = wstring()) { return impl->GetAvailablePublicKeys (slotIdFilterm, keyIdFilter); };
 		static void GetSecurityTokenKey (wstring tokenKeyDescriptor, SecurityTokenKey &key, SecurityTokenKeyOperation mode) { impl->GetSecurityTokenKey (tokenKeyDescriptor, key, mode); };
-		static void GetDecryptedData (SecurityTokenKey key, vector<byte> tokenDataToDecrypt, vector<byte> &decryptedData) { impl->GetDecryptedData (key, tokenDataToDecrypt, decryptedData); };
-		static void GetEncryptedData (SecurityTokenKey key, vector<byte> plaintext, vector<byte> &ciphertext) { impl->GetEncryptedData (key, plaintext, ciphertext); };
+		static void GetDecryptedData (SecurityTokenKey key, vector<uint8> tokenDataToDecrypt, vector<uint8> &decryptedData) { impl->GetDecryptedData (key, tokenDataToDecrypt, decryptedData); };
+		static void GetEncryptedData (SecurityTokenKey key, vector<uint8> plaintext, vector<uint8> &ciphertext) { impl->GetEncryptedData (key, plaintext, ciphertext); };
 
 
-		static void GetKeyfileData (const SecurityTokenKeyfile &keyfile, vector <byte> &keyfileData) { impl->GetKeyfileData (keyfile, keyfileData); };
+		static void GetKeyfileData (const SecurityTokenKeyfile &keyfile, vector <uint8> &keyfileData) { impl->GetKeyfileData (keyfile, keyfileData); };
 		static list <SecurityTokenInfo> GetAvailableTokens () { return impl->GetAvailableTokens (); };
 		static SecurityTokenInfo GetTokenInfo (CK_SLOT_ID slotId) { return impl->GetTokenInfo (slotId); };
 #ifdef TC_WINDOWS
@@ -265,18 +262,18 @@ namespace VeraCrypt
 			SecurityTokenImpl() {} ;
 			void CloseAllSessions () throw ();
 			void CloseLibrary ();
-			void CreateKeyfile (CK_SLOT_ID slotId, vector <byte> &keyfileData, const string &name);
+			void CreateKeyfile (CK_SLOT_ID slotId, vector <uint8> &keyfileData, const string &name);
 			void DeleteKeyfile (const SecurityTokenKeyfile &keyfile);
 			vector <SecurityTokenKeyfile> GetAvailableKeyfiles (CK_SLOT_ID *slotIdFilter = nullptr, const wstring keyfileIdFilter = wstring());
 
 			vector <SecurityTokenKey> GetAvailablePrivateKeys(CK_SLOT_ID *slotIdFilterm = nullptr, const wstring keyIdFilter = wstring());
 			vector <SecurityTokenKey> GetAvailablePublicKeys(CK_SLOT_ID *slotIdFilterm = nullptr, const wstring keyIdFilter = wstring());
 			void GetSecurityTokenKey(wstring tokenKeyDescriptor, SecurityTokenKey &key, SecurityTokenKeyOperation mode);
-			void GetDecryptedData(SecurityTokenKey key, vector<byte> tokenDataToDecrypt, vector<byte> &decryptedData);
-			void GetEncryptedData(SecurityTokenKey key, vector<byte> plaintext, vector<byte> &ciphertext);
+			void GetDecryptedData(SecurityTokenKey key, vector<uint8> tokenDataToDecrypt, vector<uint8> &decryptedData);
+			void GetEncryptedData(SecurityTokenKey key, vector<uint8> plaintext, vector<uint8> &ciphertext);
 
 
-			void GetKeyfileData (const SecurityTokenKeyfile &keyfile, vector <byte> &keyfileData);
+			void GetKeyfileData (const SecurityTokenKeyfile &keyfile, vector <uint8> &keyfileData);
 			list <SecurityTokenInfo> GetAvailableTokens ();
 			SecurityTokenInfo GetTokenInfo (CK_SLOT_ID slotId);
 #ifdef TC_WINDOWS
@@ -290,9 +287,9 @@ namespace VeraCrypt
 	protected:
 			void CloseSession (CK_SLOT_ID slotId);
 			vector <CK_OBJECT_HANDLE> GetObjects (CK_SLOT_ID slotId, CK_ATTRIBUTE_TYPE objectClass);
-			void GetDecryptedData (CK_SLOT_ID slotId, CK_OBJECT_HANDLE tokenObject, vector<byte> edata, vector <byte> &keyfiledata);
-			void GetEncryptedData (CK_SLOT_ID slotId, CK_OBJECT_HANDLE tokenObject, vector <byte> plaintext, vector <byte> &ciphertext);
-			void GetObjectAttribute (CK_SLOT_ID slotId, CK_OBJECT_HANDLE tokenObject, CK_ATTRIBUTE_TYPE attributeType, vector <byte> &attributeValue);
+			void GetDecryptedData (CK_SLOT_ID slotId, CK_OBJECT_HANDLE tokenObject, vector<uint8> edata, vector <uint8> &keyfiledata);
+			void GetEncryptedData (CK_SLOT_ID slotId, CK_OBJECT_HANDLE tokenObject, vector <uint8> plaintext, vector <uint8> &ciphertext);
+			void GetObjectAttribute (CK_SLOT_ID slotId, CK_OBJECT_HANDLE tokenObject, CK_ATTRIBUTE_TYPE attributeType, vector <uint8> &attributeValue);
 			list <CK_SLOT_ID> GetTokenSlots ();
 			void Login (CK_SLOT_ID slotId, const char* pin);
 			void LoginUserIfRequired (CK_SLOT_ID slotId);
@@ -314,13 +311,13 @@ namespace VeraCrypt
 	
 			virtual CK_RV PKCS11Decrypt(
 				CK_SESSION_HANDLE hSession,
-				vector<byte> inEncryptedData,
-				vector<byte> &outData
+				vector<uint8> inEncryptedData,
+				vector<uint8> &outData
 			);
 			virtual CK_RV PKCS11Encrypt(
 				CK_SESSION_HANDLE hSession,
-				vector<byte> inEncryptedData,
-				vector<byte> &outData
+				vector<uint8> inEncryptedData,
+				vector<uint8> &outData
 			);
 	};
 }

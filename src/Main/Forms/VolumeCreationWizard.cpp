@@ -37,6 +37,19 @@
 
 namespace VeraCrypt
 {
+	class OpenOuterVolumeFunctor : public Functor
+	{
+		public:
+		OpenOuterVolumeFunctor (const DirectoryPath &outerVolumeMountPoint) : OuterVolumeMountPoint (outerVolumeMountPoint) { }
+
+		virtual void operator() ()
+		{
+			Gui->OpenExplorerWindow (OuterVolumeMountPoint);
+		}
+
+		DirectoryPath OuterVolumeMountPoint;
+	};
+
 #ifdef TC_MACOSX
 
 	bool VolumeCreationWizard::ProcessEvent(wxEvent& event)
@@ -338,18 +351,6 @@ namespace VeraCrypt
 					return new InfoWizardPage (GetPageParent());
 				}
 
-				struct OpenOuterVolumeFunctor : public Functor
-				{
-					OpenOuterVolumeFunctor (const DirectoryPath &outerVolumeMountPoint) : OuterVolumeMountPoint (outerVolumeMountPoint) { }
-
-					virtual void operator() ()
-					{
-						Gui->OpenExplorerWindow (OuterVolumeMountPoint);
-					}
-
-					DirectoryPath OuterVolumeMountPoint;
-				};
-
 				InfoWizardPage *page = new InfoWizardPage (GetPageParent(), LangString["LINUX_OPEN_OUTER_VOL"],
 					shared_ptr <Functor> (new OpenOuterVolumeFunctor (MountedOuterVolume->MountPoint)));
 
@@ -390,12 +391,12 @@ namespace VeraCrypt
 		event.Skip();
 		if (!IsWorkInProgress() && RandomNumberGenerator::IsRunning())
 		{
-			RandomNumberGenerator::AddToPool (ConstBufferPtr (reinterpret_cast <byte *> (&event), sizeof (event)));
+			RandomNumberGenerator::AddToPool (ConstBufferPtr (reinterpret_cast <uint8 *> (&event), sizeof (event)));
 
 			long coord = event.GetX();
-			RandomNumberGenerator::AddToPool (ConstBufferPtr (reinterpret_cast <byte *> (&coord), sizeof (coord)));
+			RandomNumberGenerator::AddToPool (ConstBufferPtr (reinterpret_cast <uint8 *> (&coord), sizeof (coord)));
 			coord = event.GetY();
-			RandomNumberGenerator::AddToPool (ConstBufferPtr (reinterpret_cast <byte *> (&coord), sizeof (coord)));
+			RandomNumberGenerator::AddToPool (ConstBufferPtr (reinterpret_cast <uint8 *> (&coord), sizeof (coord)));
 
 			VolumeCreationProgressWizardPage *page = dynamic_cast <VolumeCreationProgressWizardPage *> (GetCurrentPage());
 			if (page)
@@ -442,7 +443,7 @@ namespace VeraCrypt
 		if (!IsWorkInProgress())
 		{
 			wxLongLong time = wxGetLocalTimeMillis();
-			RandomNumberGenerator::AddToPool (ConstBufferPtr (reinterpret_cast <byte *> (&time), sizeof (time)));
+			RandomNumberGenerator::AddToPool (ConstBufferPtr (reinterpret_cast <uint8 *> (&time), sizeof (time)));
 		}
 	}
 
@@ -479,7 +480,6 @@ namespace VeraCrypt
 					mountOptions.Pim = Pim;
 					mountOptions.Keyfiles = Keyfiles;
 					mountOptions.Kdf = Kdf;
-					mountOptions.TrueCryptMode = false;
 
 					shared_ptr <VolumeInfo> volume = Core->MountVolume (mountOptions);
 					finally_do_arg (shared_ptr <VolumeInfo>, volume, { Core->DismountVolume (finally_arg, true); });
@@ -796,7 +796,7 @@ namespace VeraCrypt
 						shared_ptr <VolumePassword> hiddenPassword;
 						try
 						{
-							hiddenPassword = Keyfile::ApplyListToPassword (Keyfiles, Password, SecurityTokenKeySpec);
+							hiddenPassword = Keyfile::ApplyListToPassword (Keyfiles, Password, SecurityTokenKeySpec, Gui->GetPreferences().EMVSupportEnabled);
 						}
 						catch (...)
 						{
@@ -847,7 +847,7 @@ namespace VeraCrypt
 					shared_ptr <VolumePassword> hiddenPassword;
 					try
 					{
-						hiddenPassword = Keyfile::ApplyListToPassword (Keyfiles, Password, SecurityTokenKeySpec);
+						hiddenPassword = Keyfile::ApplyListToPassword (Keyfiles, Password, SecurityTokenKeySpec, Gui->GetPreferences().EMVSupportEnabled);
 					}
 					catch (...)
 					{
@@ -977,7 +977,7 @@ namespace VeraCrypt
 						if (OuterVolume && VolumeSize > TC_MAX_FAT_SECTOR_COUNT * SectorSize)
 						{
 							uint64 limit = TC_MAX_FAT_SECTOR_COUNT * SectorSize / BYTES_PER_TB;
-							wstring err = StringFormatter (LangString["LINUX_ERROR_SIZE_HIDDEN_VOL"], limit, limit * 1024);
+							wstring err = static_cast<wstring>(StringFormatter (LangString["LINUX_ERROR_SIZE_HIDDEN_VOL"], limit, limit * 1024));
 
 							if (SectorSize < 4096)
 							{
@@ -1033,7 +1033,9 @@ namespace VeraCrypt
 						options->Quick = QuickFormatEnabled;
 						options->Size = VolumeSize;
 						options->Type = OuterVolume ? VolumeType::Normal : SelectedVolumeType;
-						options->VolumeHeaderKdf = Pkcs5Kdf::GetAlgorithm (*SelectedHash, false);
+						options->VolumeHeaderKdf = Pkcs5Kdf::GetAlgorithm (*SelectedHash);
+						options->EMVSupportEnabled = Gui->GetPreferences().EMVSupportEnabled;
+
 
 						Creator.reset (new VolumeCreator);
 						VolumeCreatorThreadRoutine routine(options, Creator);
@@ -1127,7 +1129,7 @@ namespace VeraCrypt
 				});
 #endif
 
-				shared_ptr <Volume> outerVolume = Core->OpenVolume (make_shared <VolumePath> (SelectedVolumePath), true, Password, Pim, Kdf, false, Keyfiles, VolumeProtection::ReadOnly);
+				shared_ptr <Volume> outerVolume = Core->OpenVolume (make_shared <VolumePath> (SelectedVolumePath), true, Password, Pim, Kdf, Keyfiles, SecurityTokenKeySpec, VolumeProtection::ReadOnly);
 				try
 				{
 					MaxHiddenVolumeSize = Core->GetMaxHiddenVolumeSize (outerVolume);
@@ -1162,7 +1164,7 @@ namespace VeraCrypt
 				// remember Outer password and keyfiles in order to be able to compare it with those of Hidden volume
 				try
 				{
-					OuterPassword = Keyfile::ApplyListToPassword (Keyfiles, Password, SecurityTokenKeySpec);
+					OuterPassword = Keyfile::ApplyListToPassword (Keyfiles, Password, SecurityTokenKeySpec, Gui->GetPreferences().EMVSupportEnabled);
 				}
 				catch (...)
 				{

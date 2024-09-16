@@ -10,8 +10,8 @@
 </head>
 <body>
 
-<div>                      
-<a href="https://www.veracrypt.fr/en/Home.html"><img src="VeraCrypt128x128.png" alt="VeraCrypt"/></a>
+<div>
+<a href="Documentation.html"><img src="VeraCrypt128x128.png" alt="VeraCrypt"/></a>
 </div>
 
 <div id="menu">
@@ -27,7 +27,7 @@
 
 <div>
 <p>
-<a href="Documentation.html">Documentation</a>           
+<a href="Documentation.html">Documentation</a>
 <img src="arrow_right.gif" alt=">>" style="margin-top: 5px">
 <a href="Technical%20Details.html">Technical Details</a>
 <img src="arrow_right.gif" alt=">>" style="margin-top: 5px">
@@ -54,7 +54,7 @@ Hidden Operating System</a>). If there is a hidden volume within this volume (or
 <li>PRF used by the header key derivation function (as specified in PKCS #5 v2.0; see the section
 <a href="Header%20Key%20Derivation.html">
 <em>Header Key Derivation, Salt, and Iteration Count</em></a>), which can be one of the following:
-<p>HMAC-SHA-512, HMAC-SHA-256, HMAC-RIPEMD-160, HMAC-Whirlpool. If a PRF is explicitly specified by the user, it will be used directly without trying the other possibilities.</p>
+<p>HMAC-SHA-512, HMAC-SHA-256, HMAC-BLAKE2S-256, HMAC-Whirlpool. If a PRF is explicitly specified by the user, it will be used directly without trying the other possibilities.</p>
 <p>A password entered by the user (to which one or more keyfiles may have been applied &ndash; see the section
 <a href="Keyfiles%20in%20VeraCrypt.html">
 <em>Keyfiles</em></a>), a PIM value (if specified) and the salt read in (1) are passed to the header key derivation function, which produces a sequence of values (see the section
@@ -81,7 +81,7 @@ Hidden Operating System</a>). If there is a hidden volume within this volume (or
 <p>* If the size of the active partition is less than 256 MB, then the data is read from the
 <em>second</em> partition behind the active one (Windows 7 and later, by default, do not boot from the partition on which they are installed).</p>
 <p>&dagger; These parameters are kept secret <em>not</em> in order to increase the complexity of an attack, but primarily to make VeraCrypt volumes unidentifiable (indistinguishable from random data), which would be difficult to achieve if these parameters
- were stored unencrypted within the volume header. Also note that if a non-cascaded encryption algorithm is used for system encryption, the algorithm
+ were stored unencrypted within the volume header. Also note that in the case of legacy MBR boot mode, if a non-cascaded encryption algorithm is used for system encryption, the algorithm
 <em>is</em> known (it can be determined by analyzing the contents of the unencrypted VeraCrypt Boot Loader stored in the first logical drive track or on the VeraCrypt Rescue Disk).</p>
 <p>** The master keys were generated during the volume creation and cannot be changed later. Volume password change is accomplished by re-encrypting the volume header using a new header key (derived from a new password).</p>
 <p>&nbsp;</p>

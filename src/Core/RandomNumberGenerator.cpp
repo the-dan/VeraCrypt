@@ -54,21 +54,19 @@ namespace VeraCrypt
 			{
 				int rndCount = read (random, buffer, buffer.Size());
 				throw_sys_sub_if ((rndCount == -1) && errno != EAGAIN && errno != ERESTART && errno != EINTR, L"/dev/random");
-				if (rndCount == -1 && (!DevRandomSucceeded || (DevRandomBytesCount < 32)))
-				{
+				if (rndCount != -1) {
+					// We count returned bytes until 32-bytes threshold reached
+					if (DevRandomBytesCount < 32)
+						DevRandomBytesCount += rndCount;
+					break;
+				}
+				else if (DevRandomBytesCount >= 32) {
+					// allow /dev/random to fail gracefully since we have enough bytes
+					break;
+				}
+				else {
 					// wait 250ms before querying /dev/random again
 					::usleep (250 * 1000);
-				}
-				else
-				{
-					if (rndCount != -1)
-					{
-						// We count returned bytes untill 32-bytes treshold reached
-						if (DevRandomBytesCount < 32)
-							DevRandomBytesCount += rndCount;
-						DevRandomSucceeded = true;
-					}
-					break;
 				}
 			}
 			
@@ -116,7 +114,7 @@ namespace VeraCrypt
 
 		ScopeLock lock (AccessMutex);
 		size_t bufferLen = buffer.Size(), loopLen;
-		byte* pbBuffer = buffer.Get();
+		uint8* pbBuffer = buffer.Get();
 		
 		// Initialize JitterEntropy RNG for this call
 		if (0 == jent_entropy_init ())
@@ -187,18 +185,26 @@ namespace VeraCrypt
 	void RandomNumberGenerator::HashMixPool ()
 	{
 		BytesAddedSincePoolHashMix = 0;
+		size_t digestSize = PoolHash->GetDigestSize();
+		size_t poolSize = Pool.Size();
+		// pool size must be multiple of digest size
+		// this is always the case with default pool size value (320 bytes)
+		if (poolSize % digestSize)
+			throw AssertionFailed (SRC_POS);
 
-		for (size_t poolPos = 0; poolPos < Pool.Size(); )
+		for (size_t poolPos = 0; poolPos < poolSize; poolPos += digestSize)
 		{
 			// Compute the message digest of the entire pool using the selected hash function
-			SecureBuffer digest (PoolHash->GetDigestSize());
+			SecureBuffer digest (digestSize);
+			PoolHash->Init();
 			PoolHash->ProcessData (Pool);
 			PoolHash->GetDigest (digest);
 
-			// Add the message digest to the pool
-			for (size_t digestPos = 0; digestPos < digest.Size() && poolPos < Pool.Size(); ++digestPos)
+			/* XOR the resultant message digest to the pool at the poolIndex position. */
+			/* this matches the documentation: https://veracrypt.fr/en/Random%20Number%20Generator.html */
+			for (size_t digestIndex = 0; digestIndex < digestSize; digestIndex++)
 			{
-				Pool[poolPos++] += digest[digestPos];
+				Pool [poolPos + digestIndex] ^= digest [digestIndex];
 			}
 		}
 	}
@@ -245,32 +251,43 @@ namespace VeraCrypt
 
 		EnrichedByUser = false;
 		Running = false;
-		DevRandomSucceeded = false;
 		DevRandomBytesCount = 0;
 	}
 
 	void RandomNumberGenerator::Test ()
 	{
 		shared_ptr <Hash> origPoolHash = PoolHash;
-		PoolHash.reset (new Ripemd160());
+	    #ifndef WOLFCRYPT_BACKEND
+                PoolHash.reset (new Blake2s());
+            #else
+                PoolHash.reset (new Sha256());
+            #endif
 
 		Pool.Zero();
 		Buffer buffer (1);
 		for (size_t i = 0; i < PoolSize * 10; ++i)
 		{
-			buffer[0] = (byte) i;
+			buffer[0] = (uint8) i;
 			AddToPool (buffer);
 		}
 
-		if (Crc32::ProcessBuffer (Pool) != 0x2de46d17)
-			throw TestFailed (SRC_POS);
+	    #ifndef WOLFCRYPT_BACKEND
+ 		if (Crc32::ProcessBuffer (Pool) != 0x9c743238)
+            #else
+                if (Crc32::ProcessBuffer (Pool) != 0xac95ac1a)
+            #endif
+		        throw TestFailed (SRC_POS);
 
 		buffer.Allocate (PoolSize);
 		buffer.CopyFrom (PeekPool());
 		AddToPool (buffer);
 
-		if (Crc32::ProcessBuffer (Pool) != 0xcb88e019)
-			throw TestFailed (SRC_POS);
+	    #ifndef WOLFCRYPT_BACKEND
+                if (Crc32::ProcessBuffer (Pool) != 0xd2d09c8d)
+            #else
+                if (Crc32::ProcessBuffer (Pool) != 0xb79f3c12)
+            #endif
+		        throw TestFailed (SRC_POS);
 
 		PoolHash = origPoolHash;
 	}
@@ -284,6 +301,5 @@ namespace VeraCrypt
 	bool RandomNumberGenerator::Running = false;
 	size_t RandomNumberGenerator::WriteOffset;
 	struct rand_data *RandomNumberGenerator::JitterRngCtx = NULL;
-	bool RandomNumberGenerator::DevRandomSucceeded = false;
 	int RandomNumberGenerator::DevRandomBytesCount = 0;
 }

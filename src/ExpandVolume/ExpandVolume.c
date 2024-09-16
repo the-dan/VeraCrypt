@@ -37,6 +37,7 @@
 #include "InitDataArea.h"
 #include "ExpandVolume.h"
 #include "Resource.h"
+#include <strsafe.h>
 
 #ifndef SRC_POS
 #define SRC_POS (__FUNCTION__ ":" TC_TO_STRING(__LINE__))
@@ -104,7 +105,7 @@ int MountVolTemp (HWND hwndDlg, wchar_t *volumePath, int *driveNo, Password *pas
 	mountOptions.PartitionInInactiveSysEncScope = FALSE;
 	mountOptions.UseBackupHeader = FALSE;
 
-	if (MountVolume (hwndDlg, *driveNo, volumePath, password, pkcs5, pim, FALSE, FALSE, FALSE, TRUE, &mountOptions, FALSE, FALSE) < 1)
+	if (MountVolume (hwndDlg, *driveNo, volumePath, password, pkcs5, pim, FALSE, FALSE, TRUE, &mountOptions, FALSE, FALSE) < 1)
 	{
 		*driveNo = -3;
 		return ERR_VOL_MOUNT_FAILED;
@@ -389,7 +390,7 @@ int ExtendFileSystem (HWND hwndDlg , wchar_t *lpszVolume, Password *pVolumePassw
 
 	// mount and resize file system
 
-	DebugAddProgressDlgStatus (hwndDlg, L"Mounting volume ...\r\n");
+	DebugAddProgressDlgStatus (hwndDlg, GetString("EXPANDER_MOUNTING_VOLUME"));
 
 	nStatus=MountVolTemp(hwndDlg, lpszVolume, &driveNo, pVolumePassword, VolumePkcs5, VolumePim);
 	if (nStatus!=ERR_SUCCESS)
@@ -441,7 +442,13 @@ int ExtendFileSystem (HWND hwndDlg , wchar_t *lpszVolume, Password *pVolumePassw
 		goto error;
 	}
 
-	DebugAddProgressDlgStatus (hwndDlg, L"Extending file system ...\r\n");
+	if ((BytesPerSector == 0) || (BytesPerSector > (DWORD)INT_MAX))
+	{
+		nStatus = ERR_SECTOR_SIZE_INCOMPATIBLE;
+		goto error;
+	}
+
+	DebugAddProgressDlgStatus (hwndDlg, GetString("EXPANDER_EXTENDING_FILESYSTEM"));
 
 	// extend volume
 	nStatus = FsctlExtendVolume(szVolumeGUID, newDataAreaSize/BytesPerSector );
@@ -452,7 +459,7 @@ error:
 
 	if (driveNo>=0)
 	{
-		DebugAddProgressDlgStatus (hwndDlg, L"Unmounting volume ...\r\n");
+		DebugAddProgressDlgStatus (hwndDlg, GetString("EXPANDER_UNMOUNTING_VOLUME"));
 		UnmountVolume (hwndDlg, driveNo, TRUE);
 	}
 
@@ -501,6 +508,7 @@ static int ExpandVolume (HWND hwndDlg, wchar_t *lpszVolume, Password *pVolumePas
 	PCRYPTO_INFO cryptoInfo = NULL, ci = NULL;
 	void *dev = INVALID_HANDLE_VALUE;
 	DWORD dwError;
+	DWORD bytesRead;
 	BOOL bDevice;
 	uint64 hostSize=0, newDataAreaSize, currentVolSize;
 	DWORD HostSectorSize;
@@ -510,7 +518,7 @@ static int ExpandVolume (HWND hwndDlg, wchar_t *lpszVolume, Password *pVolumePas
 	BOOL bTimeStampValid = FALSE;
 	LARGE_INTEGER headerOffset;
 	BOOL backupHeader;
-	byte *wipeBuffer = NULL;
+	uint8 *wipeBuffer = NULL;
 	uint32 workChunkSize = TC_VOLUME_HEADER_GROUP_SIZE;
 #ifdef _WIN64
 	CRYPTO_INFO tmpCI;
@@ -526,7 +534,7 @@ static int ExpandVolume (HWND hwndDlg, wchar_t *lpszVolume, Password *pVolumePas
 
 	if (bDevice == FALSE)
 	{
-		wcscpy (szCFDevice, szDiskFile);
+		StringCchCopyW (szCFDevice, ARRAYSIZE(szCFDevice), szDiskFile);
 	}
 	else
 	{
@@ -665,8 +673,13 @@ static int ExpandVolume (HWND hwndDlg, wchar_t *lpszVolume, Password *pVolumePas
 	}
 
 	/* Read in volume header */
-	nStatus = _lread ((HFILE) dev, buffer, sizeof (buffer));
-	if (nStatus != sizeof (buffer))
+	if (!ReadEffectiveVolumeHeader (bDevice, dev, buffer, &bytesRead))
+	{
+		nStatus = ERR_OS_ERROR;
+		goto error;
+	}
+
+	if (bytesRead != sizeof (buffer))
 	{
 		// Windows may report EOF when reading sectors from the last cluster of a device formatted as NTFS
 		memset (buffer, 0, sizeof (buffer));
@@ -674,9 +687,15 @@ static int ExpandVolume (HWND hwndDlg, wchar_t *lpszVolume, Password *pVolumePas
 
 	/* Try to decrypt the header */
 
-	nStatus = ReadVolumeHeader (FALSE, buffer, pVolumePassword, VolumePkcs5, VolumePim, FALSE, &cryptoInfo, NULL);
+	nStatus = ReadVolumeHeader (FALSE, buffer, pVolumePassword, VolumePkcs5, VolumePim, &cryptoInfo, NULL);
 	if (nStatus == ERR_CIPHER_INIT_WEAK_KEY)
 		nStatus = 0;	// We can ignore this error here
+
+	// if the volume master key is vulnerable, print a warning to inform the user
+	if (cryptoInfo->bVulnerableMasterKey)
+	{
+		DebugAddProgressDlgStatus(hwndDlg, GetString ("ERR_XTS_MASTERKEY_VULNERABLE_SHORT"));
+	}
 
 	if (nStatus != 0)
 	{
@@ -811,7 +830,7 @@ static int ExpandVolume (HWND hwndDlg, wchar_t *lpszVolume, Password *pVolumePas
 			goto error;
 		}
 
-		DebugAddProgressDlgStatus(hwndDlg, L"Writing random data to new space ...\r\n");
+		DebugAddProgressDlgStatus(hwndDlg, GetString ("EXPANDER_WRITING_RANDOM_DATA"));
 
 		SetFormatSectorSize(HostSectorSize);
 		nStatus = FormatNoFs (hwndDlg, startSector, num_sectors, dev, cryptoInfo, FALSE);
@@ -852,9 +871,9 @@ static int ExpandVolume (HWND hwndDlg, wchar_t *lpszVolume, Password *pVolumePas
 	while ( !cryptoInfo->LegacyVolume )
 	{
 		if (backupHeader)
-			DebugAddProgressDlgStatus(hwndDlg, L"Writing re-encrypted backup header ...\r\n");
+			DebugAddProgressDlgStatus(hwndDlg, GetString("EXPANDER_WRITING_ENCRYPTED_BACKUP"));
 		else
-			DebugAddProgressDlgStatus(hwndDlg, L"Writing re-encrypted primary header ...\r\n");
+			DebugAddProgressDlgStatus(hwndDlg, GetString("EXPANDER_WRITING_ENCRYPTED_PRIMARY"));
 
 #ifdef _WIN64
 		if (bIsRamEncryptionEnabled)
@@ -1010,9 +1029,9 @@ static int ExpandVolume (HWND hwndDlg, wchar_t *lpszVolume, Password *pVolumePas
 	/* wipe old backup header */
 	if ( !cryptoInfo->LegacyVolume )
 	{
-		byte wipeRandChars [TC_WIPE_RAND_CHAR_COUNT];
-		byte wipeRandCharsUpdate [TC_WIPE_RAND_CHAR_COUNT];
-		byte wipePass;
+		uint8 wipeRandChars [TC_WIPE_RAND_CHAR_COUNT];
+		uint8 wipeRandCharsUpdate [TC_WIPE_RAND_CHAR_COUNT];
+		uint8 wipePass;
 		UINT64_STRUCT unitNo;
 		LARGE_INTEGER offset;
 		WipeAlgorithmId wipeAlgorithm = TC_WIPE_35_GUTMANN;
@@ -1025,9 +1044,9 @@ static int ExpandVolume (HWND hwndDlg, wchar_t *lpszVolume, Password *pVolumePas
 			goto error;
 		}
 
-		DebugAddProgressDlgStatus(hwndDlg, L"Wiping old backup header ...\r\n");
+		DebugAddProgressDlgStatus(hwndDlg, GetString("EXPANDER_WIPING_OLD_HEADER"));
 
-		wipeBuffer = (byte *) TCalloc (workChunkSize);
+		wipeBuffer = (uint8 *) TCalloc (workChunkSize);
 		if (!wipeBuffer)
 		{
 			nStatus = ERR_OUTOFMEMORY;

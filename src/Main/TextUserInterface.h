@@ -19,9 +19,11 @@
 
 namespace VeraCrypt
 {
+	class AdminPasswordTextRequestHandler;
 	class TextUserInterface : public UserInterface
 	{
 	public:
+		friend class AdminPasswordTextRequestHandler;
 		TextUserInterface ();
 		virtual ~TextUserInterface ();
 
@@ -36,7 +38,7 @@ namespace VeraCrypt
 		virtual bool AskYesNo (const wxString &message, bool defaultYes = false, bool warning = false) const;
 		virtual void BackupVolumeHeaders (shared_ptr <VolumePath> volumePath) const;
 		virtual void BeginBusyState () const { }
-		virtual void ChangePassword (shared_ptr <VolumePath> volumePath = shared_ptr <VolumePath>(), shared_ptr <VolumePassword> password = shared_ptr <VolumePassword>(), int pim = 0, shared_ptr <Hash> currentHash = shared_ptr <Hash>(), bool truecryptMode = false, shared_ptr <KeyfileList> keyfiles = shared_ptr <KeyfileList>(), shared_ptr <VolumePassword> newPassword = shared_ptr <VolumePassword>(), int newPim = 0, shared_ptr <KeyfileList> newKeyfiles = shared_ptr <KeyfileList>(), shared_ptr <Hash> newHash = shared_ptr <Hash>()) const;
+		virtual void ChangePassword (shared_ptr <VolumePath> volumePath = shared_ptr <VolumePath>(), shared_ptr <VolumePassword> password = shared_ptr <VolumePassword>(), int pim = 0, shared_ptr <Hash> currentHash = shared_ptr <Hash>(), shared_ptr <KeyfileList> keyfiles = shared_ptr <KeyfileList>(), wstring securityTokenKeySpec = wstring(), shared_ptr <VolumePassword> newPassword = shared_ptr <VolumePassword>(), int newPim = 0, shared_ptr <KeyfileList> newKeyfiles = shared_ptr <KeyfileList>(), shared_ptr <Hash> newHash = shared_ptr <Hash>()) const;
 		virtual void CreateKeyfile (shared_ptr <FilePath> keyfilePath = shared_ptr <FilePath>()) const;
 		virtual void CreateVolume (shared_ptr <VolumeCreationOptions> options) const;
 		virtual void DeleteSecurityTokenKeyfiles () const;
@@ -45,14 +47,16 @@ namespace VeraCrypt
 		virtual void DoShowString (const wxString &str) const;
 		virtual void DoShowWarning (const wxString &message) const;
 		virtual void EndBusyState () const { }
-		virtual void ExportSecurityTokenKeyfile () const;
+		virtual void ExportTokenKeyfile () const;
 		virtual shared_ptr <GetStringFunctor> GetAdminPasswordRequestHandler ();
-		virtual void ImportSecurityTokenKeyfiles () const;
+		virtual void ImportTokenKeyfiles () const;
 #ifndef TC_NO_GUI
 		virtual bool Initialize (int &argc, wxChar **argv) { return wxAppBase::Initialize(argc, argv); }
 #endif
 		virtual void InitSecurityTokenLibrary () const;
-		virtual void ListSecurityTokenKeyfiles () const;
+		virtual void ListTokenKeyfiles () const;
+        virtual void ListSecurityTokenKeyfiles () const;
+        virtual void ListEMVTokenKeyfiles () const;
 		virtual VolumeInfoList MountAllDeviceHostedVolumes (MountOptions &options) const;
 		virtual shared_ptr <VolumeInfo> MountVolume (MountOptions &options) const;
 		virtual bool OnInit ();

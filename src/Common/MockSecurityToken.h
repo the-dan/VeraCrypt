@@ -18,18 +18,18 @@ namespace VeraCrypt
                 virtual ~MockSecurityTokenImpl() {};
                 void CloseAllSessions () throw () {};
                 void CloseLibrary () {};
-                void CreateKeyfile (CK_SLOT_ID slotId, vector <byte> &keyfileData, const string &name) {};
+                void CreateKeyfile (CK_SLOT_ID slotId, vector <uint8> &keyfileData, const string &name) {};
                 void DeleteKeyfile (const SecurityTokenKeyfile &keyfile) {};
                 vector <SecurityTokenKeyfile> GetAvailableKeyfiles (CK_SLOT_ID *slotIdFilter = nullptr, const wstring keyfileIdFilter = wstring());
 
                 vector <SecurityTokenKey> GetAvailablePrivateKeys(CK_SLOT_ID *slotIdFilterm = nullptr, const wstring keyIdFilter = wstring());
                 vector <SecurityTokenKey> GetAvailablePublicKeys(CK_SLOT_ID *slotIdFilterm = nullptr, const wstring keyIdFilter = wstring());
                 void GetSecurityTokenKey(wstring tokenKeyDescriptor, SecurityTokenKey &key, SecurityTokenKeyOperation mode);
-                void GetDecryptedData(SecurityTokenKey key, vector<byte> tokenDataToDecrypt, vector<byte> &decryptedData);
-                void GetEncryptedData(SecurityTokenKey key, vector<byte> plaintext, vector<byte> &ciphertext);
+                void GetDecryptedData(SecurityTokenKey key, vector<uint8> tokenDataToDecrypt, vector<uint8> &decryptedData);
+                void GetEncryptedData(SecurityTokenKey key, vector<uint8> plaintext, vector<uint8> &ciphertext);
 
 
-                void GetKeyfileData (const SecurityTokenKeyfile &keyfile, vector <byte> &keyfileData) {};
+                void GetKeyfileData (const SecurityTokenKeyfile &keyfile, vector <uint8> &keyfileData) {};
                 list <SecurityTokenInfo> GetAvailableTokens ();
                 SecurityTokenInfo GetTokenInfo (CK_SLOT_ID slotId);
     #ifdef TC_WINDOWS

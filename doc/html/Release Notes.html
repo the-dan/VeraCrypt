@@ -10,8 +10,8 @@
 </head>
 <body>
 
-<div>                      
-<a href="https://www.veracrypt.fr/en/Home.html"><img src="VeraCrypt128x128.png" alt="VeraCrypt"/></a>
+<div>
+<a href="Documentation.html"><img src="VeraCrypt128x128.png" alt="VeraCrypt"/></a>
 </div>
 
 <div id="menu">
@@ -27,7 +27,7 @@
 
 <div>
 <p>
-<a href="Documentation.html">Documentation</a>           
+<a href="Documentation.html">Documentation</a>
 <img src="arrow_right.gif" alt=">>" style="margin-top: 5px">
 <a href="Release%20Notes.html">Version History</a>
 </p></div>
@@ -39,21 +39,300 @@
 <strong>Note to users who created volumes with 1.17 version of VeraCrypt or earlier: </strong><br/>
 <span style="color:#ff0000;">To avoid hinting whether your volumes contain a hidden volume or not, or if you depend on plausible deniability when using hidden volumes/OS, then you must recreate both the outer and hidden volumes including system encryption and hidden OS, discarding existing volumes created prior to 1.18a version of VeraCrypt.</span></li>
 </p>
-<p><strong style="text-align:left">1.24-Update9</strong> (XXXX XX<sup>th</sup>, 2021):</p>
+<p><strong style="text-align:left">1.26.13</strong> (August 17<sup>th</sup>, 2024):</p>
 <ul>
 <li><strong>All OSes:</strong>
 <ul>
-<li>speed optimization of Streebog.</li>
+<li>Update translations and documentation</li>
+<li>Implement language selection settings in non-Windows versions.</li>
+<li>Make codebase compatible with wxWidgets 3.3 in non-Windows versions.</li>
+<li>Implement detection of volumes affected by XTS master key vulnerability and warn user about it.</li>
+<li>Update mount failure error messages to mention removal of TrueCrypt support and old algorithms.</li>
+</ul>
+</li>
+<li><strong>Windows:</strong>
+	<ul>
+	<li>Better fix for Secure Desktop issues under Windows 11 22H2
+		<ul>
+			<li>IME is now disabled in Secure Desktop because it is known to cause issues</li>
+		</ul>
+	</li>
+	<li>VeraCrypt Expander: Fix expansion of volumes on disks with a sector size different from 512 (by skl0n6)</li>
+	<li>Fix writing wrong EFI System Encryption Advanced Options to registry</li>
+	<li>Don't close Setup when exiting VeraCrypt process through system tray Exit menu</li>
+	<li>Fix failure to format some disks (e.g. VHDX) caused by virtual partition offset not 4K aligned</li>
+	<li>Fallback to absolute positioning when accessing disks if relative positioning fails</li>
+	<li>Update zlib to version 1.3.1</li>
+	</ul>
+</li>
+<li><strong>Linux:</strong>
+	<ul>
+	<li>Focus PIM field when selected (#1239)</li>
+	<li>Fix generic installation script on Konsole in Wayland (#1244)</li>
+	<li>Added the ability to build using wolfCrypt as the cryptographic backend. Disabled by default. (Contributed by wolfSSL, GH PR #1227)</li>
+	<li>Allows GUI to launch in a Wayland-only environment (GH #1264)</li>
+	<li>CLI: Don't initially re-ask PIM if it was already specified (GH #1288)</li>
+	<li>CLI: Fix incorrect max hidden volume size for file containers (GH #1338))</li>
+	<li>Enhance ASLR security of generic installer binaries by adding linked flag for old GCC version (reported by @morton-f on Sourceforge)</li>
+	</ul>
+</li>
+<li><strong>macOS:</strong>
+	<ul>
+	<li>Fix corrupted disk icon in main UI (GH #1218)</li>
+	<li>Fix near zero width PIM input box and simplify wxTextValidator logic (GH #1274)</li>
+	<li>Use correct Disk Utility location when "check filesystem" is ran (GH #1273)</li>
+	<li>Add support for FUSE-T as an alternative to MacFUSE (GH #1055)</li>
+	</ul>
+</li>
+<li><strong>FreeBSD:</strong>
+	<ul>
+	<li>Fix privilege escalation prompts not showing up (GH #1349)</li>
+	<li>Support automatic detection and mounting of ext2/3/4, exFAT, NTFS filesystems (GH #1350)</li>
+	<li>Use correct Disk Utility location when "check filesystem" is ran (GH #1273)</li>
+	</ul>
+</li>
+</ul>
+
+<p><strong style="text-align:left">1.26.7</strong> (October 1<sup>st</sup>, 2023):</p>
+<ul>
+<li><strong>All OSes:</strong>
+<ul>
+<li>Security: Ensure that XTS primary key is different from the secondary key when creating volumes
+	<ul>
+		<li>Issue unlikely to happen thanks to random generator properties but this check must be added to prevent attacks</li>
+		<li>Reference: CCSS,NSA comment at page 3: <a href="https://csrc.nist.gov/csrc/media/Projects/crypto-publication-review-project/documents/initial-comments/sp800-38e-initial-public-comments-2021.pdf">https://csrc.nist.gov/csrc/media/Projects/crypto-publication-review-project/documents/initial-comments/sp800-38e-initial-public-comments-2021.pdf</a></li>
+	</ul>
+</li>
+<li>Remove TrueCrypt Mode support. Version 1.25.9 can be used to mount or convert TrueCrypt volumes.</li>
+<li>Complete removal of RIPEMD160 and GOST89 algorithms. Legacy volumes using any of them cannot be mounted by VeraCrypt anymore.</li>
+<li>Add support for BLAKE2s as new PRF algorithm for both system encryption and standard volumes.</li>
+<li>Introducing support for EMV banking smart cards as keyfiles for non-system volumes.
+	<ul>
+		<li>No need for a separate PKCS#11 module configuration.</li>
+		<li>Card PIN isn't required.</li>
+		<li>Generates secure keyfile content from unique, encoded data present on the banking card.</li>
+		<li>Supports all EMV standard-compliant banking cards.</li>
+		<li>Can be enabled in settings (go to Settings->Security Tokens).</li>
+		<li>Developed by a team of students from the <a href="https://www.insa-rennes.fr">Institut national des sciences appliquées de Rennes</a>.</li>
+		<li>More details about the team and the project are available at <a href="https://projets-info.insa-rennes.fr/projets/2022/VeraCrypt/index_en.html">https://projets-info.insa-rennes.fr/projets/2022/VeraCrypt/index_en.html</a>.</li>
+	</ul>
+</li>
+<li>When overwriting an existing file container during volume creation, add its current size to the available free space</li>
+<li>Add Corsican language support. Update several translations. </li>
+<li>Update documentation</li>
+</ul>
+</li>
+<li><strong>Windows:</strong>
+<ul>
+<li>Officially, the minimum supported version is now <strong>Windows 10</strong>. VeraCrypt may still run on Windows 7 and Windows 8/8.1, but no active tests are done on these platforms.</li>
+<li>EFI Bootloader:
+<ul>
+<li>Fix bug in PasswordTimeout value handling that caused it to be limited to 255 seconds.</li>
+<li>Rescue Disk: enhance "Boot Original Windows Loader" by using embedded backup of original Windows loader if it is missing from disk</li>
+<li>Addition of Blake2s and removal of RIPEMD160 & GOST89</li>
+</ul>
+</li>
+<li>Enable memory protection by default. Add option under Performance/Driver Configuration to disable it if needed.
+<ul>
+	<li>Memory protection blocks non-admin processes from reading VeraCrypt memory</li>
+	<li>It may block Screen Readers (Accessibility support) from reading VeraCrypt UI, in which case it can be disabled</li>
+	<li>It can be disabled by setting registry value "VeraCryptEnableMemoryProtection" to 0 under "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\veracrypt"</li>
+</ul>
+</li>
+<li>Add process mitigation policy to prevent VeraCrypt from being injected by other processes</li>
+<li>Minor enhancements to RAM Encryption implementation</li>
+<li>Fix Secure Desktop issues under Windows 11 22H2</li>
+<li>Implement support for mounting partially encrypted system partitions.</li>
+<li>Fix false positive detection of new device insertion when Clear Encryption Keys option is enable (System Encryption case only)</li>
+<li>Better implementation of Fast Create when creating file containers that uses UAC to request required privilege if not already held</li>
+<li>Allow choosing Fast Create in Format Wizard UI when creating file containers</li>
+<li>Fix formatting issues during volume creation on some machines.</li>
+<li>Fix stall issue caused by Quick Format of large file containers</li>
+<li>Add dropdown menu to Mount button to allow mounting without using the cache.</li>
+<li>Possible workaround for logarithmic slowdown for Encrypt-In-Place on large volumes.</li>
+<li>Make Expander first check file existence before proceeding further</li>
+<li>Allow selecting size unit (KB/MB/GB) for generated keyfiles</li>
+<li>Display full list of supported cluster sizes for NTFS, ReFS and exFAT filesystems when creating volumes</li>
+<li>Support drag-n-drop of files and keyfiles in Expander.</li>
+<li>Implement translation of Expander UI</li>
+<li>Replace legacy file/dir selection APIs with modern IFileDialog interface for better Windows 11 compatibility</li>
+<li>Enhancements to dependency dlls safe loading, including delay loading.</li>
+<li>Remove recommendation of keyfiles files extensions and update documentation to mention risks of third-party file extensions.</li>
+<li>Add support for more language in the setup installer</li>
+<li>Update LZMA library to version 23.01</li>
+<li>Update libzip to version 1.10.1 and zlib to version 1.3</li>
+</ul>
+</li>
+<li><strong>Linux:</strong>
+<ul>
+<li>Fix bug in Random generator on Linux when used with Blake2s that was triggering a self test failure.</li>
+<li>Modify Random Generator on Linux to exactly match official documentation and the Windows implementation.</li> 
+<li>Fix compatibility issues with Ubuntu 23.04.</li>
+<li>Fix assert messages displayed when using wxWidgets 3.1.6 and newer.</li>
+<li>Fix issues launching fsck on Linux.</li>
+<li>Fix privilege escalation prompts being ignored.</li>
+<li>Fix wrong size for hidden volume when selecting the option to use all free space.</li>
+<li>Fix failure to create hidden volume on a disk using CLI caused by wrong maximum size detection.</li>
+<li>Fix various issues when running in Text mode:
+<ul>
+<li>Don't allow selecting exFAT/BTRFS filesytem if they are not present or not compatible with the created volume.</li>
+<li>Fix wrong dismount message displayed when mounting a volume.</li>
+<li>Hide PIM during entry and re-ask PIM when user entered a wrong value.</li>
+<li>Fix printing error when checking free space during volume creation in path doesn't exist.</li>
+</ul>
+</li>
+<li>Use wxWidgets 3.2.2.1 for static builds (e.g. console only version)</li>
+<li>Fix compatibility of generic installers with old Linux distros</li>
+<li>Update help message to indicate that when cascading algorithms they must be separated by dash</li>
+<li>Better compatibility with building under Alpine Linux and musl libc</li>
+</ul>
+</li>
+<li><strong>macOS:</strong>
+	<ul>
+	<li>Fix issue of VeraCrypt window becoming unusable in use cases involving multiple monitors and change in resolution.</li>
+	</ul>
+</li>
+</ul>
+
+<p><strong style="text-align:left">1.25.9</strong> (February 19<sup>th</sup>, 2022):</p>
+<ul>
+<li><strong>All OSes:</strong>
+<ul>
+<li>Update translations (Chinese, Dutch, French, German, Turkish).</li>
+</ul>
+</li>
+<li><strong>Windows:</strong>
+<ul>
+<li>Make MSI installer compatible with system encryption.</li>
+<li>Set minimum support for MSI installation to Windows 7.</li>
+<li>Fix failure to create Traveler Disk when VeraCrypt is installed using MSI.</li>
+<li>Don't cache the outer volume password when mounting with hidden volume protection if wrong hidden volume password was specified.</li> 
+<li>Reduce the size of EXE installers by almost 50% by using LZMA compression instead of DEFLATE.</li>
+<li>Fix double-clicking mounted drive in VeraCrypt UI not working in some special Windows configurations.</li>
+<li>Add registry key to fix BSOD during shutdown/reboot on some machines when using system encryption.
+<ul>
+<li>Under "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\veracrypt", create a REG_DWORD value named "VeraCryptEraseKeysShutdown".</li>
+<li>Setting this registry value to 0 disables erasing system encryption keys which is the cause of BSOD during shutdown on some machines.</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>Linux:</strong>
+<ul>
+<li>Fix hidden volume settings not correctly displayed when enabling hidden volume protection in mount options window.</li>
+<li>Fix generic Linux installer overwriting /usr/sbin if it is a symlink.</li>
+<li>Fix crash when building with _GLIBCXX_ASSERTIONS defined.</li>
+<li>Enable building from source without AES-NI support.</li>
+</ul>
+</li>
+<li><strong>MacOSX:</strong>
+<ul>
+<li>Fix hidden volume settings not correctly displayed when enabling hidden volume protection in mount options window.</li>
+</ul>
+</li>
+</ul>
+<p><strong style="text-align:left">1.25.7</strong> (January 7<sup>th</sup>, 2022):</p>
+<ul>
+<li><strong>All OSes:</strong>
+<ul>
+<li>Update translations.</li>
+</ul>
+</li>
+<li><strong>Windows:</strong>
+<ul>
+<li>Restore support of Windows Vista, Windows 7 and Windows 8/8.1.
+<ul>
+<li>Windows 7 support requires that either KB3033929 or KB4474419 is installed.</li>
+<li>Windows Vista support requires that either KB4039648 or KB4474419 is installed.</li>
+</ul>
+</li>
+<li>MSI installation only: Fix double-clicking .hc file container inserting %1 instead of volume name in path field.</li>
+<li>Advanced users: Add registry settings to control driver internal encryption queue to allow tuning performance for SSD disks and having better stability under heavy load.
+<ul>
+<li>Under registry key HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\veracrypt:
+<ul>
+<li>VeraCryptEncryptionFragmentSize (REG_DWORD): size of encryption data fragment in KiB. Default is 256. Maximum is 2048.</li>
+<li>VeraCryptEncryptionIoRequestCount (REG_DWORD): maximum number of parallel I/O requests. Default is 16. Maximum is 8192.</li>
+<li>VeraCryptEncryptionItemCount (REG_DWORD): maximum number of encryption queue items processed in parallel. Default as well as maximum is half of VeraCryptEncryptionIoRequestCount.</li>
+</ul>
+</li>
+<li>The triplet (FragmentSize=512, IoRequestCount=128, ItemCount=64) is an example of parameters that enhance sequential read speed on some SSD NVMe systems.</li>
+<li>Fix truncate text in installer for some languages.</li>
+</ul>
+</li>
+</ul>
+<li><strong>MacOSX:</strong>
+<ul>
+<li>Fix resource files inside VeraCrypt application bundle (e.g. HTML documentation, languages XML files) being world-writable. (Reported by Niall O'Reilly)</li>
+</ul>
+</li>
+</ul>
+<p><strong style="text-align:left">1.25.4</strong> (December 3<sup>rd</sup>, 2021):</p>
+<ul>
+<li><strong>All OSes:</strong>
+<ul>
+<li>Speed optimization of Streebog.</li>
+<li>Update translations.</li>
 </ul>
 </li>
 <li><strong>Windows:</strong>
 <ul>
 <li>Add support for Windows on ARM64 (e.g. Microsoft Surface Pro X) but system encryption not yet supported.</li>
+<li>Add MSI installer for silent mode deployment (ACCEPTLICENSE=YES must be set in msiexec command line).
+<ul>
+<li>For now, MSI installer cannot be used if system partition is encrypted with VeraCrypt</li>
+<li>MSI installer requires Windows 10 or newer</li>
+</ul>
+</li>
+<li>Drop support of Windows Vista, Windows 7, Windows 8 and Windows 8.1 because of new requirement for driver code signing.</li>
+<li>Reduce time of mount when PRF auto-detection is selected.</li>
+<li>Fix potential memory corruption in driver caused by integer overflow in IOCTL_STORAGE_MANAGE_DATA_SET_ATTRIBUTES (reported by Ilja van Sprundel).</li>
+<li>Replace insecure wcscpy/wcscat/strcpy runtime functions with secure equivalents.</li>
+<li>Changes to EFI bootloader:
+<ul>
+<li>Fix memory leak in some cases caused by wrong check of pointer for calling MEM_FREE</li>
+<li>Clear bootParams variable that may contain sensitive information when halting the system in case of fatal error</li>
+<li>Add option "KeyboardInputDelay" in DcsProp to control the minimum delay supported between two key strokes</li>
+</ul></li>
+<li>Try to workaround Windows Feature Updates issues with system encryption by fixing of bootloader and SetupConfig.ini when system resumes or when session is opened/unlocked</li>
+<li>Fix failure to load local HTML documentation if application running with administrative privileges</li>
+<li>Fix freeze when password dialog displayed in secure desktop and try to access token keyfiles protected by PIN</li>
+<li>Fix failure to launch keyfile generator in secure desktop mode</li>
+<li>Block Windows from resizing system partition if it is encrypted</li>
+<li>Add keyboard shortcut to "TrueCrypt mode" in the mount dialog.</li>
+
+</ul>
+</li>
+<li><strong>MacOSX:</strong>
+<ul>
+<li>Native support of Apple Silicon M1.</li>
+<li>Drop official support of Mac OS X 10.7 Lion and Mac OS X 10.8 Mountain Lion.</li>
+<li>Add UI language support using installed XML files. Language is automatically detected using "LANG" environment variable</li>
+<li>Add CLI switch (--size=max) and UI option to give a file container all available free space on the disk where it is created.</li>
+<li>Return error if unknown filesystem value specified in CLI --filesystem switch instead of silently skipping filesystem creation.</li>
 </ul>
 </li>
 <li><strong>Linux:</strong>
 <ul>
 <li>Add UI language support using installed XML files. Language is automatically detected using "LANG" environment variable</li>
+<li>Compatiblity with with pam_tmpdir.</li>
+<li>Display icon in notification area on Ubuntu 18.04 and newer (contibuted by https://unit193.net/).</li>
+<li>Add CLI switch (--size=max) and UI option to give a file container all available free space on the disk where it is created.</li>
+<li>Return error if unknown filesystem value specified in CLI --filesystem switch instead of silently skipping filesystem creation.</li>
+</ul>
+</li>
+<li><strong>FreeBSD:</strong>
+<ul>
+<li>Make system devices work under FreeBSD</li>
+<li>Add CLI switch (--size=max) and UI option to give a file container all available free space on the disk where it is created.</li>
+<li>Return error if unknown filesystem value specified in CLI --filesystem switch instead of silently skipping filesystem creation.</li>
+</ul>
+</li>
+<li><strong>OpenBSD:</strong>
+<ul>
+<li>Add basic support of OpenBSD</li>
+<li>Add CLI switch (--size=max) and UI option to give a file container all available free space on the disk where it is created.</li>
+<li>Return error if unknown filesystem value specified in CLI --filesystem switch instead of silently skipping filesystem creation.</li>
 </ul>
 </li>
 </ul>
@@ -320,7 +599,7 @@
 <li>Enable selection of Quick Format for file containers creation. Separate Quick Format and Dynamic Volume options in the wizard UI.</li>
 <li>Fix editor of EFI system encryption configuration file not accepting ENTER key to add new lines.</li>
 <li>Avoid simultaneous calls of favorites mounting, for example if corresponding hotkey is pressed multiple times.</li>
-<li>Ensure that only one thread at a time can create a secure desktop.</li> 
+<li>Ensure that only one thread at a time can create a secure desktop.</li>
 <li>Resize some dialogs in Format and Mount Options to to fix some text truncation issues with non-English languages.</li>
 <li>Fix high CPU usage when using favorites and add switch to disable periodic check on devices to reduce CPU load.</li>
 <li>Minor UI changes.</li>

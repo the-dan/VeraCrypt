@@ -39,6 +39,32 @@
 
 namespace VeraCrypt
 {
+	class AdminPasswordGUIRequestHandler : public GetStringFunctor
+	{
+		public:
+		virtual void operator() (string &passwordStr)
+		{
+
+			wxString sValue;
+			if (Gui->GetWaitDialog())
+			{
+				Gui->GetWaitDialog()->RequestAdminPassword(sValue);
+				if (sValue.IsEmpty())
+					throw UserAbort (SRC_POS);
+			}
+			else
+			{
+				wxPasswordEntryDialog dialog (Gui->GetActiveWindow(), LangString["LINUX_ADMIN_PW_QUERY"], LangString["LINUX_ADMIN_PW_QUERY_TITLE"]);
+				if (dialog.ShowModal() != wxID_OK)
+					throw UserAbort (SRC_POS);
+				sValue = dialog.GetValue();
+			}
+			wstring wPassword (sValue);	// A copy of the password is created here by wxWidgets, which cannot be erased
+			finally_do_arg (wstring *, &wPassword, { StringConverter::Erase (*finally_arg); });
+
+			StringConverter::ToSingle (wPassword, passwordStr);
+		}
+	};
 #ifdef TC_MACOSX
 	int GraphicUserInterface::g_customIdCmdV = 0;
 	int GraphicUserInterface::g_customIdCmdA = 0;
@@ -206,6 +232,7 @@ namespace VeraCrypt
 		hiddenVolumeMountOptions.Path = volumePath;
 
 		VolumeType::Enum volumeType = VolumeType::Normal;
+		bool masterKeyVulnerable = false;
 
 		// Open both types of volumes
 		while (true)
@@ -232,9 +259,9 @@ namespace VeraCrypt
 						options->Password,
 						options->Pim,
 						options->Kdf,
-						false,
 						options->Keyfiles,
 						options->SecurityTokenKeySpec,
+						options->EMVSupportEnabled,
 						options->Protection,
 						options->ProtectionPassword,
 						options->ProtectionPim,
@@ -262,9 +289,9 @@ namespace VeraCrypt
 								options->Password,
 								options->Pim,
 								options->Kdf,
-								false,
 								options->Keyfiles,
 								options->SecurityTokenKeySpec,
+								options->EMVSupportEnabled,
 								options->Protection,
 								options->ProtectionPassword,
 								options->ProtectionPim,
@@ -290,6 +317,13 @@ namespace VeraCrypt
 					else
 						ShowWarning ("HEADER_DAMAGED_AUTO_USED_HEADER_BAK");
 				}
+			}
+
+			// check if volume master key is vulnerable
+			if (volume->IsMasterKeyVulnerable())
+			{
+				masterKeyVulnerable = true;
+				ShowWarning ("ERR_XTS_MASTERKEY_VULNERABLE");
 			}
 
 			if (volumeType == VolumeType::Hidden)
@@ -360,7 +394,7 @@ namespace VeraCrypt
 
 			// Re-encrypt volume header
 			SecureBuffer newHeaderBuffer (normalVolume->GetLayout()->GetHeaderSize());
-			ReEncryptHeaderThreadRoutine routine(newHeaderBuffer, normalVolume->GetHeader(), normalVolumeMountOptions.Password, normalVolumeMountOptions.Pim, normalVolumeMountOptions.Keyfiles, normalVolumeMountOptions.SecurityTokenKeySpec);
+			ReEncryptHeaderThreadRoutine routine(newHeaderBuffer, normalVolume->GetHeader(), normalVolumeMountOptions.Password, normalVolumeMountOptions.Pim, normalVolumeMountOptions.Keyfiles, normalVolumeMountOptions.SecurityTokenKeySpec, normalVolumeMountOptions.EMVSupportEnabled);
 
 			ExecuteWaitThreadRoutine (parent, &routine);
 
@@ -369,7 +403,7 @@ namespace VeraCrypt
 			if (hiddenVolume)
 			{
 				// Re-encrypt hidden volume header
-				ReEncryptHeaderThreadRoutine hiddenRoutine(newHeaderBuffer, hiddenVolume->GetHeader(), hiddenVolumeMountOptions.Password, hiddenVolumeMountOptions.Pim, hiddenVolumeMountOptions.Keyfiles, hiddenVolumeMountOptions.SecurityTokenKeySpec);
+				ReEncryptHeaderThreadRoutine hiddenRoutine(newHeaderBuffer, hiddenVolume->GetHeader(), hiddenVolumeMountOptions.Password, hiddenVolumeMountOptions.Pim, hiddenVolumeMountOptions.Keyfiles, hiddenVolumeMountOptions.SecurityTokenKeySpec, hiddenVolumeMountOptions.EMVSupportEnabled);
 
 				ExecuteWaitThreadRoutine (parent, &hiddenRoutine);
 			}
@@ -385,6 +419,10 @@ namespace VeraCrypt
 		}
 
 		ShowWarning ("VOL_HEADER_BACKED_UP");
+
+		// display again warning that master key is vulnerable
+		if (masterKeyVulnerable)
+			ShowWarning ("ERR_XTS_MASTERKEY_VULNERABLE");
 	}
 
 	void GraphicUserInterface::BeginInteractiveBusyState (wxWindow *window)
@@ -497,33 +535,7 @@ namespace VeraCrypt
 
 	shared_ptr <GetStringFunctor> GraphicUserInterface::GetAdminPasswordRequestHandler ()
 	{
-		struct AdminPasswordRequestHandler : public GetStringFunctor
-		{
-			virtual void operator() (string &passwordStr)
-			{
-
-				wxString sValue;
-				if (Gui->GetWaitDialog())
-				{
-					Gui->GetWaitDialog()->RequestAdminPassword(sValue);
-					if (sValue.IsEmpty())
-						throw UserAbort (SRC_POS);
-				}
-				else
-				{
-					wxPasswordEntryDialog dialog (Gui->GetActiveWindow(), LangString["LINUX_ADMIN_PW_QUERY"], LangString["LINUX_ADMIN_PW_QUERY_TITLE"]);
-					if (dialog.ShowModal() != wxID_OK)
-						throw UserAbort (SRC_POS);
-					sValue = dialog.GetValue();
-				}
-				wstring wPassword (sValue);	// A copy of the password is created here by wxWidgets, which cannot be erased
-				finally_do_arg (wstring *, &wPassword, { StringConverter::Erase (*finally_arg); });
-
-				StringConverter::ToSingle (wPassword, passwordStr);
-			}
-		};
-
-		return shared_ptr <GetStringFunctor> (new AdminPasswordRequestHandler);
+		return shared_ptr <GetStringFunctor> (new AdminPasswordGUIRequestHandler);
 	}
 
 	int GraphicUserInterface::GetCharHeight (wxWindow *window) const
@@ -722,11 +734,21 @@ namespace VeraCrypt
 		return true;
 	}
 
-	void GraphicUserInterface::ListSecurityTokenKeyfiles () const
+	void GraphicUserInterface::ListTokenKeyfiles () const
 	{
 		SecurityTokenKeyfilesDialog dialog (nullptr);
 		dialog.ShowModal();
 	}
+    void GraphicUserInterface::ListSecurityTokenKeyfiles () const
+    {
+        SecurityTokenKeyfilesDialog dialog (nullptr);
+        dialog.ShowModal();
+    }
+    void GraphicUserInterface::ListEMVTokenKeyfiles () const
+    {
+        SecurityTokenKeyfilesDialog dialog (nullptr);
+        dialog.ShowModal();
+    }
 
 #ifdef TC_MACOSX
 	void GraphicUserInterface::MacOpenFiles (const wxArrayString &fileNames)
@@ -868,7 +890,7 @@ namespace VeraCrypt
 				options.Keyfiles = make_shared <KeyfileList> (GetPreferences().DefaultKeyfiles);
 
 			if ((options.Password && !options.Password->IsEmpty())
-				|| (options.Keyfiles && !options.Keyfiles->empty() && (options.TrueCryptMode || options.Password)))
+				|| (options.Keyfiles && !options.Keyfiles->empty() && options.Password))
 			{
 				try
 				{
@@ -1027,7 +1049,7 @@ namespace VeraCrypt
 					int showFifo = open (string (MainFrame::GetShowRequestFifoPath()).c_str(), O_WRONLY | O_NONBLOCK);
 					throw_sys_if (showFifo == -1);
 
-					byte buf[1] = { 1 };
+					uint8 buf[1] = { 1 };
 					if (write (showFifo, buf, 1) == 1)
 					{
 						close (showFifo);
@@ -1063,7 +1085,7 @@ namespace VeraCrypt
 
 				wxLog::FlushActive();
 				Application::SetExitCode (1);
-				Gui->ShowInfo (LangStrin["LINUX_VC_RUNNING_ALREADY"]);
+				Gui->ShowInfo (LangString["LINUX_VC_RUNNING_ALREADY"]);
 				return false;
 #endif
 			}
@@ -1362,7 +1384,14 @@ namespace VeraCrypt
 			{
 				/* check if local file exists */
 				wxFileName htmlFile = htmlPath + url;
-				htmlFile.Normalize();
+				htmlFile.Normalize (
+					wxPATH_NORM_ENV_VARS |
+					wxPATH_NORM_DOTS     |
+					wxPATH_NORM_CASE     |
+					wxPATH_NORM_LONG     |
+					wxPATH_NORM_SHORTCUT |
+					wxPATH_NORM_TILDE
+				);
 				localFile = htmlFile.FileExists();
 			}
 
@@ -1468,6 +1497,7 @@ namespace VeraCrypt
 		/* force the display of the random enriching interface */
 		RandomNumberGenerator::SetEnrichedByUserStatus (false);
 
+		bool masterKeyVulnerable = false;
 		if (restoreInternalBackup)
 		{
 			// Restore header from the internal backup
@@ -1492,9 +1522,9 @@ namespace VeraCrypt
 						options.Password,
 						options.Pim,
 						options.Kdf,
-						options.TrueCryptMode,
 						options.Keyfiles,
 						options.SecurityTokenKeySpec,
+						options.EMVSupportEnabled,
 						options.Protection,
 						options.ProtectionPassword,
 						options.ProtectionPim,
@@ -1522,13 +1552,15 @@ namespace VeraCrypt
 				return;
 			}
 
+			masterKeyVulnerable = volume->IsMasterKeyVulnerable();
+
 			RandomNumberGenerator::Start();
 			UserEnrichRandomPool (nullptr);
 
 			// Re-encrypt volume header
 			wxBusyCursor busy;
 			SecureBuffer newHeaderBuffer (volume->GetLayout()->GetHeaderSize());
-			ReEncryptHeaderThreadRoutine routine(newHeaderBuffer, volume->GetHeader(), options.Password, options.Pim, options.Keyfiles, options.SecurityTokenKeySpec);
+			ReEncryptHeaderThreadRoutine routine(newHeaderBuffer, volume->GetHeader(), options.Password, options.Pim, options.Keyfiles, options.SecurityTokenKeySpec, options.EMVSupportEnabled);
 
 			ExecuteWaitThreadRoutine (parent, &routine);
 
@@ -1609,17 +1641,18 @@ namespace VeraCrypt
 						backupFile.ReadAt (headerBuffer, layout->GetType() == VolumeType::Hidden ? layout->GetHeaderSize() : 0);
 
 						// Decrypt header
-						shared_ptr <VolumePassword> passwordKey = Keyfile::ApplyListToPassword (options.Keyfiles, options.Password, options.SecurityTokenKeySpec);
-						Pkcs5KdfList keyDerivationFunctions = layout->GetSupportedKeyDerivationFunctions(options.TrueCryptMode);
+						shared_ptr <VolumePassword> passwordKey = Keyfile::ApplyListToPassword (options.Keyfiles, options.Password, options.SecurityTokenKeySpec, options.EMVSupportEnabled);
+						Pkcs5KdfList keyDerivationFunctions = layout->GetSupportedKeyDerivationFunctions();
 						EncryptionAlgorithmList encryptionAlgorithms = layout->GetSupportedEncryptionAlgorithms();
 						EncryptionModeList encryptionModes = layout->GetSupportedEncryptionModes();
 
-						DecryptThreadRoutine decryptRoutine(layout->GetHeader(), headerBuffer, *passwordKey, options.Pim, options.Kdf, options.TrueCryptMode, keyDerivationFunctions, encryptionAlgorithms, encryptionModes);
+						DecryptThreadRoutine decryptRoutine(layout->GetHeader(), headerBuffer, *passwordKey, options.Pim, options.Kdf, keyDerivationFunctions, encryptionAlgorithms, encryptionModes);
 
 						ExecuteWaitThreadRoutine (parent, &decryptRoutine);
 
 						if (decryptRoutine.m_bResult)
 						{
+							masterKeyVulnerable = layout->GetHeader()->IsMasterKeyVulnerable();
 							decryptedLayout = layout;
 							break;
 						}
@@ -1643,7 +1676,7 @@ namespace VeraCrypt
 			// Re-encrypt volume header
 			wxBusyCursor busy;
 			SecureBuffer newHeaderBuffer (decryptedLayout->GetHeaderSize());
-			ReEncryptHeaderThreadRoutine routine(newHeaderBuffer, decryptedLayout->GetHeader(), options.Password, options.Pim, options.Keyfiles, options.SecurityTokenKeySpec);
+			ReEncryptHeaderThreadRoutine routine(newHeaderBuffer, decryptedLayout->GetHeader(), options.Password, options.Pim, options.Keyfiles, options.SecurityTokenKeySpec, options.EMVSupportEnabled);
 
 			ExecuteWaitThreadRoutine (parent, &routine);
 
@@ -1659,7 +1692,7 @@ namespace VeraCrypt
 			if (decryptedLayout->HasBackupHeader())
 			{
 				// Re-encrypt backup volume header
-				ReEncryptHeaderThreadRoutine backupRoutine(newHeaderBuffer, decryptedLayout->GetHeader(), options.Password, options.Pim, options.Keyfiles, options.SecurityTokenKeySpec);
+				ReEncryptHeaderThreadRoutine backupRoutine(newHeaderBuffer, decryptedLayout->GetHeader(), options.Password, options.Pim, options.Keyfiles, options.SecurityTokenKeySpec, options.EMVSupportEnabled);
 
 				ExecuteWaitThreadRoutine (parent, &backupRoutine);
 
@@ -1675,6 +1708,12 @@ namespace VeraCrypt
 		}
 
 		ShowInfo ("VOL_HEADER_RESTORED");
+
+		// display warning if the volume master key is vulnerable
+		if (masterKeyVulnerable)
+		{
+			ShowWarning ("ERR_XTS_MASTERKEY_VULNERABLE");
+		}
 	}
 
 	DevicePath GraphicUserInterface::SelectDevice (wxWindow *parent) const
@@ -1801,6 +1840,10 @@ namespace VeraCrypt
 		}
 
 		BackgroundMode = state;
+
+#ifdef HAVE_INDICATORS
+		gtk_menu_item_set_label ((GtkMenuItem*) ((MainFrame*) mMainFrame)->indicator_item_showhide, LangString[Gui->IsInBackgroundMode() ? "SHOW_TC" : "HIDE_TC"].mb_str());
+#endif
 	}
 
 	void GraphicUserInterface::SetListCtrlColumnWidths (wxListCtrl *listCtrl, list <int> columnWidthPermilles, bool hasVerticalScrollbar) const

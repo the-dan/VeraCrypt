@@ -23,6 +23,7 @@
 #include "Random.h"
 
 #include <io.h>
+#include <strsafe.h>
 
 #ifndef SRC_POS
 #define SRC_POS (__FUNCTION__ ":" TC_TO_STRING(__LINE__))
@@ -167,7 +168,7 @@ BOOL CheckPasswordLength (HWND hwndDlg, unsigned __int32 passwordLength, int pim
 	return TRUE;
 }
 
-int ChangePwd (const wchar_t *lpszVolume, Password *oldPassword, int old_pkcs5, int old_pim, BOOL truecryptMode, Password *newPassword, int pkcs5, int pim, int wipePassCount, HWND hwndDlg)
+int ChangePwd (const wchar_t *lpszVolume, Password *oldPassword, int old_pkcs5, int old_pim, Password *newPassword, int pkcs5, int pim, int wipePassCount, HWND hwndDlg)
 {
 	int nDosLinkCreated = 1, nStatus = ERR_OS_ERROR;
 	wchar_t szDiskFile[TC_MAX_PATH], szCFDevice[TC_MAX_PATH];
@@ -190,7 +191,7 @@ int ChangePwd (const wchar_t *lpszVolume, Password *oldPassword, int old_pkcs5, 
 
 	if (oldPassword->Length == 0 || newPassword->Length == 0) return -1;
 
-	if ((wipePassCount <= 0) || (truecryptMode && (old_pkcs5 == SHA256)))
+	if (wipePassCount <= 0)
 	{
       nStatus = ERR_PARAMETER_INCORRECT;
       handleError (hwndDlg, nStatus, SRC_POS);
@@ -210,7 +211,7 @@ int ChangePwd (const wchar_t *lpszVolume, Password *oldPassword, int old_pkcs5, 
 
 	if (bDevice == FALSE)
 	{
-		wcscpy (szCFDevice, szDiskFile);
+		StringCchCopyW (szCFDevice, ARRAYSIZE(szCFDevice), szDiskFile);
 	}
 	else
 	{
@@ -366,9 +367,13 @@ int ChangePwd (const wchar_t *lpszVolume, Password *oldPassword, int old_pkcs5, 
 
 		/* Try to decrypt the header */
 
-		nStatus = ReadVolumeHeader (FALSE, buffer, oldPassword, old_pkcs5, old_pim, truecryptMode, &cryptoInfo, NULL);
+		nStatus = ReadVolumeHeader (FALSE, buffer, oldPassword, old_pkcs5, old_pim, &cryptoInfo, NULL);
 		if (nStatus == ERR_CIPHER_INIT_WEAK_KEY)
 			nStatus = 0;	// We can ignore this error here
+
+		// if the XTS master key is vulnerable, return error and do not allow the user to change the password since the master key will not be changed
+		if (cryptoInfo->bVulnerableMasterKey)
+			nStatus = ERR_XTS_MASTERKEY_VULNERABLE;
 
 		if (nStatus == ERR_PASSWORD_WRONG)
 		{
@@ -439,7 +444,7 @@ int ChangePwd (const wchar_t *lpszVolume, Password *oldPassword, int old_pkcs5, 
 				(volumeType == TC_VOLUME_TYPE_HIDDEN) ? cryptoInfo->hiddenVolumeSize : 0,
 				cryptoInfo->EncryptedAreaStart.Value,
 				cryptoInfo->EncryptedAreaLength.Value,
-				truecryptMode? 0 : cryptoInfo->RequiredProgramVersion,
+				cryptoInfo->RequiredProgramVersion,
 				cryptoInfo->HeaderFlags,
 				cryptoInfo->SectorSize,
 				wipePass < wipePassCount - 1);
@@ -493,7 +498,7 @@ int ChangePwd (const wchar_t *lpszVolume, Password *oldPassword, int old_pkcs5, 
 					cryptoInfo->VolumeSize.Value,
 					cryptoInfo->EncryptedAreaStart.Value,
 					cryptoInfo->EncryptedAreaLength.Value,
-					truecryptMode? 0 : cryptoInfo->RequiredProgramVersion,
+					cryptoInfo->RequiredProgramVersion,
 					cryptoInfo->HeaderFlags,
 					cryptoInfo->SectorSize,
 					wipePass < wipePassCount - 1);

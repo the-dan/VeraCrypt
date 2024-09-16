@@ -24,6 +24,7 @@
 
 #define TC_ENC_IO_QUEUE_PREALLOCATED_ITEM_COUNT 8
 #define TC_ENC_IO_QUEUE_PREALLOCATED_IO_REQUEST_COUNT 16
+#define TC_ENC_IO_QUEUE_PREALLOCATED_IO_REQUEST_MAX_COUNT 8192
 
 
 typedef struct EncryptedIoQueueBufferStruct
@@ -48,6 +49,7 @@ typedef struct
 
 	// File-handle-based IO
 	HANDLE HostFileHandle;
+	BOOL bSupportPartialEncryption;
 	int64 VirtualDeviceLength;
 	SECURITY_CLIENT_CONTEXT *SecurityClientContext;
 
@@ -81,8 +83,8 @@ typedef struct
 	KEVENT CompletionThreadQueueNotEmptyEvent;
 
 	// Fragment buffers
-	byte *FragmentBufferA;
-	byte *FragmentBufferB;
+	uint8 *FragmentBufferA;
+	uint8 *FragmentBufferB;
 	KEVENT FragmentBufferAFreeEvent;
 	KEVENT FragmentBufferBFreeEvent;
 
@@ -92,7 +94,7 @@ typedef struct
 	ULONG LastReadLength;
 	LARGE_INTEGER ReadAheadOffset;
 	ULONG ReadAheadLength;
-	byte *ReadAheadBuffer;
+	uint8 *ReadAheadBuffer;
 	LARGE_INTEGER MaxReadAheadOffset;
 
 	LONG OutstandingIoCount;
@@ -117,10 +119,12 @@ typedef struct
 	LARGE_INTEGER LastPerformanceCounter;
 #endif
 
- 	byte*  SecRegionData;
+ 	uint8*  SecRegionData;
  	SIZE_T SecRegionSize;
 
 	volatile BOOL ThreadBlockReadWrite;
+
+	int FragmentSize;
 }  EncryptedIoQueue;
 
 
@@ -149,8 +153,8 @@ typedef struct
 	ULONG Length;
 	int64 EncryptedOffset;
 	ULONG EncryptedLength;
-	byte *Data;
-	byte *OrigDataBufferFragment;
+	uint8 *Data;
+	uint8 *OrigDataBufferFragment;
 
 	LIST_ENTRY ListEntry;
 	LIST_ENTRY CompletionListEntry;

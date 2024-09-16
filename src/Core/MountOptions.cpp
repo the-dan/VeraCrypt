@@ -53,7 +53,6 @@ namespace VeraCrypt
 		TC_CLONE (SharedAccessAllowed);
 		TC_CLONE (SlotNumber);
 		TC_CLONE (UseBackupHeaders);
-		TC_CLONE (TrueCryptMode);
 		TC_CLONE (SecurityTokenKeySpec);
 	}
 
@@ -104,7 +103,6 @@ namespace VeraCrypt
 		sr.Deserialize ("SlotNumber", SlotNumber);
 		sr.Deserialize ("UseBackupHeaders", UseBackupHeaders);
 
-		sr.Deserialize ("TrueCryptMode", TrueCryptMode);
 		sr.Deserialize("SecurityTokenKeySpec", SecurityTokenKeySpec);
 
 		try
@@ -112,7 +110,7 @@ namespace VeraCrypt
 			if (!sr.DeserializeBool ("KdfNull"))
 			{
 				sr.Deserialize ("Kdf", nameValue);
-				Kdf = Pkcs5Kdf::GetAlgorithm (nameValue, TrueCryptMode);
+				Kdf = Pkcs5Kdf::GetAlgorithm (nameValue);
 			}
 		}
 		catch(...) {}
@@ -122,7 +120,7 @@ namespace VeraCrypt
 			if (!sr.DeserializeBool ("ProtectionKdfNull"))
 			{
 				sr.Deserialize ("ProtectionKdf", nameValue);
-				ProtectionKdf = Pkcs5Kdf::GetAlgorithm (nameValue, TrueCryptMode);
+				ProtectionKdf = Pkcs5Kdf::GetAlgorithm (nameValue);
 			}
 		}
 		catch(...) {}
@@ -172,10 +170,7 @@ namespace VeraCrypt
 		sr.Serialize ("SlotNumber", SlotNumber);
 		sr.Serialize ("UseBackupHeaders", UseBackupHeaders);
 
-		sr.Serialize ("TrueCryptMode", TrueCryptMode);
-
 		sr.Serialize("SecurityTokenKeySpec", SecurityTokenKeySpec);
-
 		sr.Serialize ("KdfNull", Kdf == nullptr);
 		if (Kdf)
 			sr.Serialize ("Kdf", Kdf->GetName());

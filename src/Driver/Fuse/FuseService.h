@@ -27,6 +27,7 @@ namespace VeraCrypt
 	protected:
 		class ExecFunctor : public ProcessExecFunctor
 		{
+		public:
 			ExecFunctor (shared_ptr <Volume> openVolume, VolumeSlotNumber slotNumber)
 				: MountedVolume (openVolume), SlotNumber (slotNumber)
 			{

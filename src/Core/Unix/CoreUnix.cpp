@@ -24,6 +24,11 @@
 
 namespace VeraCrypt
 {
+#ifdef TC_LINUX
+	static string GetTmpUser ();
+	static bool SamePath (const string& path1, const string& path2);
+#endif
+
 	CoreUnix::CoreUnix ()
 	{
 		signal (SIGPIPE, SIG_IGN);
@@ -73,10 +78,8 @@ namespace VeraCrypt
 			if (stat("/usr/bin/konsole", &sb) == 0)
 			{
 				args.clear ();
-				args.push_back ("--title");
-				args.push_back ("fsck");
-				args.push_back ("--caption");
-				args.push_back ("fsck");
+				args.push_back ("-p");
+				args.push_back ("tabtitle=fsck");
 				args.push_back ("-e");
 				args.push_back ("sh");
 				args.push_back ("-c");
@@ -86,8 +89,22 @@ namespace VeraCrypt
 					Process::Execute ("konsole", args, 1000);
 				} catch (TimeOut&) { }
 			}
+			else if (stat("/usr/bin/gnome-terminal", &sb) == 0 && stat("/usr/bin/dbus-launch", &sb) == 0)
+			{
+				args.clear ();
+				args.push_back ("--title");
+				args.push_back ("fsck");
+				args.push_back ("--");
+				args.push_back ("sh");
+				args.push_back ("-c");
+				args.push_back (xargs);
+				try
+				{
+					Process::Execute ("gnome-terminal", args, 1000);
+				} catch (TimeOut&) { }
+			}
 			else
-				throw;
+				throw TerminalNotFound();
 		}
 #endif
 	}
@@ -224,7 +241,7 @@ namespace VeraCrypt
 		device.SeekAt (0);
 		device.ReadCompleteBuffer (bootSector);
 
-		byte *b = bootSector.Ptr();
+		uint8 *b = bootSector.Ptr();
 
 		return memcmp (b + 3,  "NTFS", 4) != 0
 			&& memcmp (b + 54, "FAT", 3) != 0
@@ -286,17 +303,45 @@ namespace VeraCrypt
 				continue;
 
 			shared_ptr <VolumeInfo> mountedVol;
-			try
+			// Introduce a retry mechanism with a timeout for control file access
+			// This workaround is limited to FUSE-T mounted volume under macOS for
+			// which md.Device starts with "fuse-t:"
+#ifdef VC_MACOSX_FUSET
+			bool isFuseT = wstring(mf.Device).find(L"fuse-t:") == 0;
+			int controlFileRetries = 10; // 10 retries with 500ms sleep each, total 5 seconds
+			while (!mountedVol && (controlFileRetries-- > 0))
+#endif
 			{
-				shared_ptr <File> controlFile (new File);
-				controlFile->Open (string (mf.MountPoint) + FuseService::GetControlPath());
+				try 
+				{
+					shared_ptr <File> controlFile (new File);
+					controlFile->Open (string (mf.MountPoint) + FuseService::GetControlPath());
 
-				shared_ptr <Stream> controlFileStream (new FileStream (controlFile));
-				mountedVol = Serializable::DeserializeNew <VolumeInfo> (controlFileStream);
+					shared_ptr <Stream> controlFileStream (new FileStream (controlFile));
+					mountedVol = Serializable::DeserializeNew <VolumeInfo> (controlFileStream);
+				}
+				catch (const std::exception& e)
+				{
+#ifdef VC_MACOSX_FUSET
+					// if exception starts with "VeraCrypt::Serializer::ValidateName", then 
+					// serialization is not ready yet and we need to wait before retrying
+					// this happens when FUSE-T is used under macOS and if it is the first time
+					// the volume is mounted
+					if (isFuseT && string (e.what()).find ("VeraCrypt::Serializer::ValidateName") != string::npos)
+					{
+						Thread::Sleep(500); // Wait before retrying
+					}
+					else
+					{
+						break; // Control file not found or other error
+					}
+#endif
+				}
 			}
-			catch (...)
+
+			if (!mountedVol) 
 			{
-				continue;
+				continue; // Skip to the next mounted filesystem
 			}
 
 			if (!volumePath.IsEmpty() && wstring (mountedVol->Path).compare (volumePath) != 0)
@@ -355,9 +400,98 @@ namespace VeraCrypt
 
 	string CoreUnix::GetTempDirectory () const
 	{
-		char *envDir = getenv ("TMPDIR");
-		return envDir ? envDir : "/tmp";
+		const char *tmpdir = getenv ("TMPDIR");
+		string envDir = tmpdir ? tmpdir : "/tmp";
+
+#ifdef TC_LINUX
+		/*
+		 * If pam_tmpdir.so is in use, a different temporary directory is
+		 * allocated for each user ID. We need to mount to the directory used
+		 * by the non-root user.
+		 */
+		if (getuid () == 0 && envDir.size () >= 2
+			&& envDir.substr (envDir.size () - 2) == "/0") {
+			string tmpuser = GetTmpUser ();
+			if (SamePath (envDir, tmpuser + "/0")) {
+				/* Substitute the sudo'ing user for 0 */
+				char uid[40];
+				FILE *fp = fopen ("/proc/self/loginuid", "r");
+				if (fp != NULL) {
+					if (fgets (uid, sizeof (uid), fp) != nullptr) {
+						envDir = tmpuser + "/" + uid;
+					}
+					fclose (fp);
+				}
+			}
+		}
+#endif
+
+		return envDir;
 	}
+
+#ifdef TC_LINUX
+	static string GetTmpUser ()
+	{
+		string tmpuser = "/tmp/user";
+		FILE *fp = fopen ("/etc/security/tmpdir.conf", "r");
+		if (fp == NULL) {
+			return tmpuser;
+		}
+		while (true) {
+			/* Parses the same way as pam_tmpdir */
+			char line[1024];
+			if (fgets (line, sizeof (line), fp) == nullptr) {
+				break;
+			}
+			if (line[0] == '#') {
+				continue;
+			}
+			size_t len = strlen (line);
+			if (len > 0 && line[len-1] == '\n') {
+				line[len-1] = '\0';
+			}
+			char *eq = strchr (line, '=');
+			if (eq == nullptr) {
+				continue;
+			}
+			*eq = '\0';
+			const char *key = line;
+			const char *value = eq + 1;
+			if (strcmp (key, "tmpdir") == 0) {
+				tmpuser = value;
+				break;
+			}
+		}
+		fclose (fp);
+		return tmpuser;
+	}
+
+	static bool SamePath (const string& path1, const string& path2)
+	{
+		size_t i1 = 0;
+		size_t i2 = 0;
+		while (i1 < path1.size () && i2 < path2.size ()) {
+			if (path1[i1] != path2[i2]) {
+				return false;
+			}
+			/* Any two substrings consisting entirely of slashes compare equal */
+			if (path1[i1] == '/') {
+				while (i1 < path1.size () && path1[i1] == '/') {
+					++i1;
+				}
+				while (i2 < path2.size () && path2[i2] == '/') {
+					++i2;
+				}
+			}
+			else
+			{
+				++i1;
+				++i2;
+			}
+		}
+		return (i1 == path1.size () && i2 == path2.size ());
+	}
+#endif
 
 	bool CoreUnix::IsMountPointAvailable (const DirectoryPath &mountPoint) const
 	{
@@ -440,8 +574,9 @@ namespace VeraCrypt
 					options.Password,
 					options.Pim,
 					options.Kdf,
-					options.TrueCryptMode,
 					options.Keyfiles,
+					options.SecurityTokenKeySpec,
+					options.EMVSupportEnabled,
 					options.Protection,
 					options.ProtectionPassword,
 					options.ProtectionPim,
@@ -451,8 +586,7 @@ namespace VeraCrypt
 					options.SharedAccessAllowed,
 					VolumeType::Unknown,
 					options.UseBackupHeaders,
-					options.PartitionInSystemEncryptionScope,
-					options.SecurityTokenKeySpec
+					options.PartitionInSystemEncryptionScope
 					);
 
 				options.Password.reset();
@@ -587,7 +721,7 @@ namespace VeraCrypt
 				{
 					try
 					{
-						chown (mountPoint.c_str(), GetRealUserId(), GetRealGroupId());
+						throw_sys_sub_if (chown (mountPoint.c_str(), GetRealUserId(), GetRealGroupId()) == -1, mountPoint);
 					} catch (...) { }
 				}
 			}

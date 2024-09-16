@@ -16,13 +16,11 @@
 #include "Crypto/SerpentFast.h"
 #include "Crypto/Twofish.h"
 #include "Crypto/Camellia.h"
-#include "Crypto/GostCipher.h"
 #include "Crypto/kuznyechik.h"
 
 #ifdef TC_AES_HW_CPU
 #	include "Crypto/Aes_hw_cpu.h"
 #endif
-#include "Crypto/cpu.h"
 
 extern "C" int IsAesHwCpuSupported ()
 {
@@ -32,7 +30,7 @@ extern "C" int IsAesHwCpuSupported ()
 
 	if (!stateValid)
 	{
-		state = g_hasAESNI ? true : false;
+		state = HasAESNI() ? true : false;
 		stateValid = true;
 	}
 	return state && VeraCrypt::Cipher::IsHwSupportEnabled();
@@ -51,7 +49,7 @@ namespace VeraCrypt
 	{
 	}
 
-	void Cipher::DecryptBlock (byte *data) const
+	void Cipher::DecryptBlock (uint8 *data) const
 	{
 		if (!Initialized)
 			throw NotInitialized (SRC_POS);
@@ -59,7 +57,7 @@ namespace VeraCrypt
 		Decrypt (data);
 	}
 
-	void Cipher::DecryptBlocks (byte *data, size_t blockCount) const
+	void Cipher::DecryptBlocks (uint8 *data, size_t blockCount) const
 	{
 		if (!Initialized)
 			throw NotInitialized (SRC_POS);
@@ -71,7 +69,7 @@ namespace VeraCrypt
 		}
 	}
 
-	void Cipher::EncryptBlock (byte *data) const
+	void Cipher::EncryptBlock (uint8 *data) const
 	{
 		if (!Initialized)
 			throw NotInitialized (SRC_POS);
@@ -79,7 +77,7 @@ namespace VeraCrypt
 		Encrypt (data);
 	}
 
-	void Cipher::EncryptBlocks (byte *data, size_t blockCount) const
+	void Cipher::EncryptBlocks (uint8 *data, size_t blockCount) const
 	{
 		if (!Initialized)
 			throw NotInitialized (SRC_POS);
@@ -96,12 +94,12 @@ namespace VeraCrypt
 		CipherList l;
 
 		l.push_back (shared_ptr <Cipher> (new CipherAES ()));
+        #ifndef WOLFCRYPT_BACKEND
 		l.push_back (shared_ptr <Cipher> (new CipherSerpent ()));
 		l.push_back (shared_ptr <Cipher> (new CipherTwofish ()));
 		l.push_back (shared_ptr <Cipher> (new CipherCamellia ()));
-		l.push_back (shared_ptr <Cipher> (new CipherGost89 ()));
 		l.push_back (shared_ptr <Cipher> (new CipherKuznyechik ()));
-
+        #endif
 		return l;
 	}
 
@@ -118,6 +116,37 @@ namespace VeraCrypt
 		Initialized = true;
 	}
 
+    #ifdef WOLFCRYPT_BACKEND
+        void Cipher::SetKeyXTS (const ConstBufferPtr &key)
+	{
+		if (key.Size() != GetKeySize ())
+			throw ParameterIncorrect (SRC_POS);
+
+		if (!Initialized)
+			ScheduledKey.Allocate (GetScheduledKeySize ());
+
+		SetCipherKeyXTS (key);
+		Key.CopyFrom (key);
+		Initialized = true;
+	}
+
+         void Cipher::EncryptBlockXTS (uint8 *data, uint64 length, uint64 startDataUnitNo) const
+	{
+		if (!Initialized)
+			throw NotInitialized (SRC_POS);
+
+		EncryptXTS (data, length, startDataUnitNo);
+	}
+
+        void Cipher::DecryptBlockXTS (uint8 *data, uint64 length, uint64 startDataUnitNo) const
+	{
+		if (!Initialized)
+			throw NotInitialized (SRC_POS);
+
+		DecryptXTS (data, length, startDataUnitNo);
+	}
+    #endif
+
 #define TC_EXCEPTION(TYPE) TC_SERIALIZER_FACTORY_ADD(TYPE)
 #undef TC_EXCEPTION_NODECL
 #define TC_EXCEPTION_NODECL(TYPE) TC_SERIALIZER_FACTORY_ADD(TYPE)
@@ -126,7 +155,7 @@ namespace VeraCrypt
 
 
 	// AES
-	void CipherAES::Decrypt (byte *data) const
+	void CipherAES::Decrypt (uint8 *data) const
 	{
 #ifdef TC_AES_HW_CPU
 		if (IsHwSupportAvailable())
@@ -136,7 +165,7 @@ namespace VeraCrypt
 			aes_decrypt (data, data, (aes_decrypt_ctx *) (ScheduledKey.Ptr() + sizeof (aes_encrypt_ctx)));
 	}
 
-	void CipherAES::DecryptBlocks (byte *data, size_t blockCount) const
+	void CipherAES::DecryptBlocks (uint8 *data, size_t blockCount) const
 	{
 		if (!Initialized)
 			throw NotInitialized (SRC_POS);
@@ -158,7 +187,7 @@ namespace VeraCrypt
 			Cipher::DecryptBlocks (data, blockCount);
 	}
 
-	void CipherAES::Encrypt (byte *data) const
+	void CipherAES::Encrypt (uint8 *data) const
 	{
 #ifdef TC_AES_HW_CPU
 		if (IsHwSupportAvailable())
@@ -168,7 +197,7 @@ namespace VeraCrypt
 			aes_encrypt (data, data, (aes_encrypt_ctx *) ScheduledKey.Ptr());
 	}
 
-	void CipherAES::EncryptBlocks (byte *data, size_t blockCount) const
+	void CipherAES::EncryptBlocks (uint8 *data, size_t blockCount) const
 	{
 		if (!Initialized)
 			throw NotInitialized (SRC_POS);
@@ -189,6 +218,26 @@ namespace VeraCrypt
 #endif
 			Cipher::EncryptBlocks (data, blockCount);
 	}
+    #ifdef WOLFCRYPT_BACKEND
+        void CipherAES::EncryptXTS (uint8 *data, uint64 length, uint64 startDataUnitNo) const
+	{
+	    xts_encrypt (data, data, length, startDataUnitNo, (aes_encrypt_ctx *) ScheduledKey.Ptr());
+	}
+
+        void CipherAES::DecryptXTS (uint8 *data, uint64 length, uint64 startDataUnitNo) const
+	{
+	    xts_decrypt (data, data, length, startDataUnitNo, (aes_decrypt_ctx *) (ScheduledKey.Ptr() + sizeof (aes_encrypt_ctx)));
+	}
+
+        void CipherAES::SetCipherKeyXTS (const uint8 *key)
+	{
+		if (xts_encrypt_key256 (key, (aes_encrypt_ctx *) ScheduledKey.Ptr()) != EXIT_SUCCESS)
+			throw CipherInitError (SRC_POS);
+
+		if (xts_decrypt_key256 (key, (aes_decrypt_ctx *) (ScheduledKey.Ptr() + sizeof (aes_encrypt_ctx))) != EXIT_SUCCESS)
+			throw CipherInitError (SRC_POS);
+	}
+    #endif
 
 	size_t CipherAES::GetScheduledKeySize () const
 	{
@@ -203,7 +252,7 @@ namespace VeraCrypt
 
 		if (!stateValid)
 		{
-			state = g_hasAESNI ? true : false;
+			state = HasAESNI() ? true : false;
 			stateValid = true;
 		}
 		return state && HwSupportEnabled;
@@ -212,7 +261,7 @@ namespace VeraCrypt
 #endif
 	}
 
-	void CipherAES::SetCipherKey (const byte *key)
+	void CipherAES::SetCipherKey (const uint8 *key)
 	{
 		if (aes_encrypt_key256 (key, (aes_encrypt_ctx *) ScheduledKey.Ptr()) != EXIT_SUCCESS)
 			throw CipherInitError (SRC_POS);
@@ -221,13 +270,14 @@ namespace VeraCrypt
 			throw CipherInitError (SRC_POS);
 	}
 
+    #ifndef WOLFCRYPT_BACKEND
 	// Serpent
-	void CipherSerpent::Decrypt (byte *data) const
+	void CipherSerpent::Decrypt (uint8 *data) const
 	{
 		serpent_decrypt (data, data, ScheduledKey);
 	}
 
-	void CipherSerpent::Encrypt (byte *data) const
+	void CipherSerpent::Encrypt (uint8 *data) const
 	{
 		serpent_encrypt (data, data, ScheduledKey);
 	}
@@ -237,12 +287,12 @@ namespace VeraCrypt
 		return 140*4;
 	}
 
-	void CipherSerpent::SetCipherKey (const byte *key)
+	void CipherSerpent::SetCipherKey (const uint8 *key)
 	{
 		serpent_set_key (key, ScheduledKey);
 	}
 	
-	void CipherSerpent::EncryptBlocks (byte *data, size_t blockCount) const
+	void CipherSerpent::EncryptBlocks (uint8 *data, size_t blockCount) const
 	{
 		if (!Initialized)
 			throw NotInitialized (SRC_POS);
@@ -258,7 +308,7 @@ namespace VeraCrypt
 			Cipher::EncryptBlocks (data, blockCount);
 	}
 	
-	void CipherSerpent::DecryptBlocks (byte *data, size_t blockCount) const
+	void CipherSerpent::DecryptBlocks (uint8 *data, size_t blockCount) const
 	{
 		if (!Initialized)
 			throw NotInitialized (SRC_POS);
@@ -293,12 +343,12 @@ namespace VeraCrypt
 
 
 	// Twofish
-	void CipherTwofish::Decrypt (byte *data) const
+	void CipherTwofish::Decrypt (uint8 *data) const
 	{
 		twofish_decrypt ((TwofishInstance *) ScheduledKey.Ptr(), (unsigned int *)data, (unsigned int *)data);
 	}
 
-	void CipherTwofish::Encrypt (byte *data) const
+	void CipherTwofish::Encrypt (uint8 *data) const
 	{
 		twofish_encrypt ((TwofishInstance *) ScheduledKey.Ptr(), (unsigned int *)data, (unsigned int *)data);
 	}
@@ -308,12 +358,12 @@ namespace VeraCrypt
 		return TWOFISH_KS;
 	}
 
-	void CipherTwofish::SetCipherKey (const byte *key)
+	void CipherTwofish::SetCipherKey (const uint8 *key)
 	{
 		twofish_set_key ((TwofishInstance *) ScheduledKey.Ptr(), (unsigned int *) key);
 	}
 	
-	void CipherTwofish::EncryptBlocks (byte *data, size_t blockCount) const
+	void CipherTwofish::EncryptBlocks (uint8 *data, size_t blockCount) const
 	{
 		if (!Initialized)
 			throw NotInitialized (SRC_POS);
@@ -325,7 +375,7 @@ namespace VeraCrypt
 #endif
 	}
 	
-	void CipherTwofish::DecryptBlocks (byte *data, size_t blockCount) const
+	void CipherTwofish::DecryptBlocks (uint8 *data, size_t blockCount) const
 	{
 		if (!Initialized)
 			throw NotInitialized (SRC_POS);
@@ -347,12 +397,12 @@ namespace VeraCrypt
 	}
 	
 	// Camellia
-	void CipherCamellia::Decrypt (byte *data) const
+	void CipherCamellia::Decrypt (uint8 *data) const
 	{
 		camellia_decrypt (data, data, ScheduledKey.Ptr());
 	}
 
-	void CipherCamellia::Encrypt (byte *data) const
+	void CipherCamellia::Encrypt (uint8 *data) const
 	{
 		camellia_encrypt (data, data, ScheduledKey.Ptr());
 	}
@@ -362,12 +412,12 @@ namespace VeraCrypt
 		return CAMELLIA_KS;
 	}
 
-	void CipherCamellia::SetCipherKey (const byte *key)
+	void CipherCamellia::SetCipherKey (const uint8 *key)
 	{
 		camellia_set_key (key, ScheduledKey.Ptr());
 	}
 	
-	void CipherCamellia::EncryptBlocks (byte *data, size_t blockCount) const
+	void CipherCamellia::EncryptBlocks (uint8 *data, size_t blockCount) const
 	{
 		if (!Initialized)
 			throw NotInitialized (SRC_POS);
@@ -379,7 +429,7 @@ namespace VeraCrypt
 #endif
 	}
 	
-	void CipherCamellia::DecryptBlocks (byte *data, size_t blockCount) const
+	void CipherCamellia::DecryptBlocks (uint8 *data, size_t blockCount) const
 	{
 		if (!Initialized)
 			throw NotInitialized (SRC_POS);
@@ -400,55 +450,13 @@ namespace VeraCrypt
 #endif
 	}
 
-	// GOST89
-	void CipherGost89::Decrypt (byte *data) const
-	{
-		gost_decrypt (data, data, (gost_kds *) ScheduledKey.Ptr(), 1);
-	}
-
-	void CipherGost89::Encrypt (byte *data) const
-	{
-		gost_encrypt (data, data, (gost_kds *) ScheduledKey.Ptr(), 1);
-	}
-
-	size_t CipherGost89::GetScheduledKeySize () const
-	{
-		return GOST_KS;
-	}
-
-	void CipherGost89::SetCipherKey (const byte *key)
-	{
-		gost_set_key (key, (gost_kds *) ScheduledKey.Ptr(), 1);
-	}
-	
-	// GOST89 with static SBOX
-	void CipherGost89StaticSBOX::Decrypt (byte *data) const
-	{
-		gost_decrypt (data, data, (gost_kds *) ScheduledKey.Ptr(), 1);
-	}
-
-	void CipherGost89StaticSBOX::Encrypt (byte *data) const
-	{
-		gost_encrypt (data, data, (gost_kds *) ScheduledKey.Ptr(), 1);
-	}
-
-	size_t CipherGost89StaticSBOX::GetScheduledKeySize () const
-	{
-		return GOST_KS;
-	}
-
-	void CipherGost89StaticSBOX::SetCipherKey (const byte *key)
-	{
-		gost_set_key (key, (gost_kds *) ScheduledKey.Ptr(), 0);
-	}
-
 	// Kuznyechik
-	void CipherKuznyechik::Decrypt (byte *data) const
+	void CipherKuznyechik::Decrypt (uint8 *data) const
 	{
 		kuznyechik_decrypt_block (data, data, (kuznyechik_kds *) ScheduledKey.Ptr());
 	}
 
-	void CipherKuznyechik::Encrypt (byte *data) const
+	void CipherKuznyechik::Encrypt (uint8 *data) const
 	{
 		kuznyechik_encrypt_block (data, data, (kuznyechik_kds *) ScheduledKey.Ptr());
 	}
@@ -458,11 +466,11 @@ namespace VeraCrypt
 		return KUZNYECHIK_KS;
 	}
 
-	void CipherKuznyechik::SetCipherKey (const byte *key)
+	void CipherKuznyechik::SetCipherKey (const uint8 *key)
 	{
 		kuznyechik_set_key (key, (kuznyechik_kds *) ScheduledKey.Ptr());
 	}
-	void CipherKuznyechik::EncryptBlocks (byte *data, size_t blockCount) const
+	void CipherKuznyechik::EncryptBlocks (uint8 *data, size_t blockCount) const
 	{
 		if (!Initialized)
 			throw NotInitialized (SRC_POS);
@@ -478,7 +486,7 @@ namespace VeraCrypt
 			Cipher::EncryptBlocks (data, blockCount);
 	}
 	
-	void CipherKuznyechik::DecryptBlocks (byte *data, size_t blockCount) const
+	void CipherKuznyechik::DecryptBlocks (uint8 *data, size_t blockCount) const
 	{
 		if (!Initialized)
 			throw NotInitialized (SRC_POS);
@@ -510,5 +518,6 @@ namespace VeraCrypt
 		return false;
 #endif
 	}
-	bool Cipher::HwSupportEnabled = true;
+    #endif	
+        bool Cipher::HwSupportEnabled = true;
 }

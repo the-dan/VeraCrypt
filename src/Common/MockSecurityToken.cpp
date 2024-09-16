@@ -46,12 +46,12 @@ namespace VeraCrypt
 		testKey->Token.Label = L"Mock security token";
 		key = *testKey;
 	}
-	void MockSecurityTokenImpl::GetDecryptedData(SecurityTokenKey key, vector<byte> tokenDataToDecrypt, vector<byte> &decryptedData)
+	void MockSecurityTokenImpl::GetDecryptedData(SecurityTokenKey key, vector<uint8> tokenDataToDecrypt, vector<uint8> &decryptedData)
 	{
 		decryptedData = tokenDataToDecrypt;
 	}
 
-	void MockSecurityTokenImpl::GetEncryptedData(SecurityTokenKey key, vector<byte> plaintext, vector<byte> &ciphertext)
+	void MockSecurityTokenImpl::GetEncryptedData(SecurityTokenKey key, vector<uint8> plaintext, vector<uint8> &ciphertext)
 	{
 		ciphertext = plaintext;
 	}
