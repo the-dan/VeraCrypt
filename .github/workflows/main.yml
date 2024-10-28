@@ -76,6 +76,9 @@ jobs:
           
       - name: Build and install pkg-config
         run: tar xvf pkg-config-0.28.tar.gz && cd pkg-config-0.28 && ./configure && make && sudo make install
+
+      - name: Install yasm
+        run: brew install yasm
       
       - uses: actions/cache@v2
         name: Cache/restore wxWidgets
