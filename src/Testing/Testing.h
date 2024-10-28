@@ -1,6 +1,7 @@
 #ifndef TC_HEADER_Testing
 #define TC_HEADER_Testing
 
+#include <memory>
 #include <vector>
 #include <stdexcept>
 #include <iostream>
