@@ -94,7 +94,7 @@ jobs:
         name: Checkout wxWidgets
         with:
           repository: 'wxWidgets/wxWidgets'
-          ref: 'v3.1.5'
+          ref: 'v3.2.5'
           path: ${{ env.WX_ROOT }}
           submodules: 'recursive'
 
