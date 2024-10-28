@@ -106,10 +106,10 @@ jobs:
         if: steps.cache-wxwidgets.outputs.cache-hit != 'true'
         run: |
           ls -l ${{env.WX_ROOT}}
-          (cd src && make WXSTATIC=1 WX_ROOT=${{env.WX_ROOT}} WX_BUILD_DIR=${{env.WX_BUILD_DIR}} wxbuild); cat ${{ env.WX_BUILD_DIR }}/config.log
+          (cd src && make WXSTATIC=FULL WX_ROOT=${{env.WX_ROOT}} WX_BUILD_DIR=${{env.WX_BUILD_DIR}} wxbuild); cat ${{ env.WX_BUILD_DIR }}/config.log
 
       - name: Build Veracrypt
-        run: cd src && make WXSTATIC=1 WX_ROOT=${{env.WX_ROOT}} WX_BUILD_DIR=${{env.WX_BUILD_DIR}} && make WXSTATIC=1 package
+        run: cd src && make WXSTATIC=FULL WX_ROOT=${{env.WX_ROOT}} WX_BUILD_DIR=${{env.WX_BUILD_DIR}} && make WXSTATIC=1 package
 
       - name: Show directory structure
         run: |
