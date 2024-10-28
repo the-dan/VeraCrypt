@@ -97,6 +97,11 @@ jobs:
           ref: 'v3.1.5'
           path: ${{ env.WX_ROOT }}
           submodules: 'recursive'
+
+      - name: Show Xcode used
+        run: |
+          xcrun --show-sdk-version
+          xcrun --show-sdk-path
           
       - name: Build wxWidgets
         if: steps.cache-wxwidgets.outputs.cache-hit != 'true'
@@ -104,17 +109,9 @@ jobs:
           ls -l ${{env.WX_ROOT}}
           (cd src && make WXSTATIC=1 VC_OSX_SDK_PATH= WX_ROOT=${{env.WX_ROOT}} WX_BUILD_DIR=${{env.WX_BUILD_DIR}} wxbuild); cat ${{ env.WX_BUILD_DIR }}/config.log
 
-      # Runs a single command using the runners shell
-      #- name: Run a one-line script
-      #  run: ./src/Build/build_veracrypt_macosx.sh
-      - name: Show Xcode used
-        run: |
-          xcrun --show-sdk-version
-          xcrun --show-sdk-path
       - name: Build Veracrypt
         run: cd src && make WXSTATIC=1 WX_ROOT=${{env.WX_ROOT}} WX_BUILD_DIR=${{env.WX_BUILD_DIR}} && make WXSTATIC=1 package
 
-      # Runs a set of commands using the runners shell
       - name: Show directory structure
         run: |
           ls -R .
