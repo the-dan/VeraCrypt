@@ -100,8 +100,7 @@ jobs:
 
       - name: Show Xcode used
         run: |
-          xcrun --show-sdk-version
-          xcrun --show-sdk-path
+          SDK_VERSION=$(xcrun --show-sdk-version); xcrun --show-sdk-path; xcrun --sdk macosx${SDK_VERSION} --show-sdk-path
           
       - name: Build wxWidgets
         if: steps.cache-wxwidgets.outputs.cache-hit != 'true'
