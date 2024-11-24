@@ -143,5 +143,5 @@ endif
 $(NAME)Testing: $(TEST_OBJS) $(OBJS) $(OBJSEX) $(OBJSNOOPT) $(LIBS) $(TEST_LIBS)
 ifneq "$(TEST_OBJS)" ""
 	@echo Compiling $(NAME)Testing
-	$(CXX) -o $(NAME)Testing -framework Foundation $(TEST_OBJS) $(OBJS) $(LIBS) $(TEST_LIBS) $(TEST_EXT_LIBS) $(LFLAGS)
+	$(CXX) -o $(NAME)Testing $(TEST_OBJS) $(OBJS) $(LIBS) $(TEST_LIBS) $(TEST_EXT_LIBS) $(LFLAGS)
 endif
