@@ -429,7 +429,7 @@ namespace VeraCrypt
 				throw;
 			}
 
-			foreach(const CK_OBJECT_HANDLE & dataHandle, GetObjects(slotId, CKO_DATA))
+			for(const CK_OBJECT_HANDLE & dataHandle: GetObjects(slotId, CKO_DATA))
 			{
 				SecurityTokenKeyfile keyfile;
 				keyfile.Handle = dataHandle;
@@ -564,7 +564,7 @@ namespace VeraCrypt
 		while (true)
 		{
 			CK_OBJECT_HANDLE object;
-			CK_RV status = Pkcs11Functions->C_FindObjects(Sessions[slotId].Handle, &object, 1, &objectCount);
+			status = Pkcs11Functions->C_FindObjects(Sessions[slotId].Handle, &object, 1, &objectCount);
 			if (status != CKR_OK)
 				throw Pkcs11Exception(status);
 

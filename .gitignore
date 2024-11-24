@@ -26,6 +26,7 @@ Tests/**/*.key
 src/Main/veracrypt
 *.osse41
 *.ossse3
+*.oshani
 
 # VC macOS build artifacts
 src/Main/VeraCrypt

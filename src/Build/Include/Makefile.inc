@@ -23,7 +23,7 @@ lib: $(NAME).a $(NAME)Testing $(NAME)Test.a
 
 clean:
 	@echo Cleaning $(NAME)
-	rm -f $(APPNAME) $(NAME).a $(OBJS) $(OBJSEX) $(OBJSNOOPT) $(OBJSSSE41) $(OBJSSSSE3) $(OBJS:.o=.d) $(OBJSEX:.oo=.d) $(OBJSNOOPT:.o0=.d) $(OBJSSSE41:.osse41=.d) $(OBJSSSSE3:.ossse3=.d) *.gch
+	rm -f $(APPNAME) $(NAME).a $(OBJS) $(OBJSEX) $(OBJSNOOPT) $(OBJSHANI) $(OBJSSSE41) $(OBJSSSSE3) $(OBJS:.o=.d) $(OBJSEX:.oo=.d) $(OBJSNOOPT:.o0=.d) $(OBJSHANI:.oshani=.d) $(OBJSSSE41:.osse41=.d) $(OBJSSSSE3:.ossse3=.d) *.gch
 
 %.o: %.c
 	@echo Compiling $(<F)
@@ -36,6 +36,10 @@ clean:
 %.osse41: %.c
 	@echo Compiling $(<F)
 	$(CC) $(CFLAGS) -mssse3 -msse4.1 -c $< -o $@
+
+%.oshani: %.c
+	@echo Compiling $(<F)
+	$(CC) $(CFLAGS) -mssse3 -msse4.1 -msha -c $< -o $@
 	
 %.ossse3: %.c
 	@echo Compiling $(<F)
@@ -56,6 +60,10 @@ clean:
 %.osse41: %.cpp
 	@echo Compiling $(<F)
 	$(CXX) $(CXXFLAGS) -mssse3 -msse4.1 -c $< -o $@
+
+%.oshani: %.cpp
+	@echo Compiling $(<F)
+	$(CXX) $(CXXFLAGS) -mssse3 -msse4.1 -msha -c $< -o $@
 	
 %.ossse3: %.cpp
 	@echo Compiling $(<F)
@@ -115,13 +123,13 @@ TR_SED_BIN := tr '\n' ' ' | tr -s ' ' ',' | sed -e 's/^,//g' -e 's/,$$/n/' | tr 
 
 
 # Dependencies
--include $(OBJS:.o=.d) $(OBJSEX:.oo=.d) $(OBJSNOOPT:.o0=.d) $(OBJSSSE41:.osse41=.d) $(OBJSSSSE3:.ossse3=.d)
+-include $(OBJS:.o=.d) $(OBJSEX:.oo=.d) $(OBJSNOOPT:.o0=.d) $(OBJSHANI:.oshani=.d) $(OBJSSSE41:.osse41=.d) $(OBJSSSSE3:.ossse3=.d)
 
 
-$(NAME).a: $(OBJS) $(OBJSEX) $(OBJSNOOPT) $(OBJSSSE41) $(OBJSSSSE3)
+$(NAME).a: $(OBJS) $(OBJSEX) $(OBJSNOOPT) $(OBJSHANI) $(OBJSSSE41) $(OBJSSSSE3)
 ifneq "$(OBJS)" ""
 	@echo Updating library $@
-	$(AR) $(AFLAGS) -rcu $@ $(OBJS) $(OBJSEX) $(OBJSNOOPT) $(OBJSSSE41) $(OBJSSSSE3)
+	$(AR) $(AFLAGS) -rcu $@ $(OBJS) $(OBJSEX) $(OBJSNOOPT) $(OBJSHANI) $(OBJSSSE41) $(OBJSSSSE3)
 	$(RANLIB) $@
 endif
 
