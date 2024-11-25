@@ -26,7 +26,7 @@ size_t ReadFully(shared_ptr<Stream> s, Buffer *rb, int chunkSize = 10) {
     Buffer *buffer = new Buffer(tot);
     size_t offset = 0;
     for (size_t i = 0; i < buffers.size(); i++) {
-        std::memcpy(buffer->Ptr()+offset, buffers[i]->GetRange(0, lengths[i]), lengths[i]);
+        memcpy(buffer->Ptr()+offset, buffers[i]->GetRange(0, lengths[i]), lengths[i]);
         offset += lengths[i];
     }
     rb = buffer;

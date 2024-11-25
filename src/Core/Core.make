@@ -31,6 +31,7 @@ TEST_OBJS :=
 TEST_OBJS += CoreTest.o
 
 TEST_EXT_LIBS += $(shell pkg-config fuse --libs)
+TEST_LFLAGS += -ldl
 
 include $(BUILD_INC)/Makefile.inc
 

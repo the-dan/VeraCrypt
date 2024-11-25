@@ -38,5 +38,6 @@ OBJS += Unix/Thread.o
 OBJS += Unix/Time.o
 
 TEST_OBJS := PipelineStreamTest.o
+TEST_LFLAGS := -lpthread
 
 include $(BUILD_INC)/Makefile.inc

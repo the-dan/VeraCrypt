@@ -552,7 +552,7 @@ WX_CONFIGURE_FLAGS += --disable-protocol --disable-protocols --disable-url --dis
 	--disable-xrc --disable-aui --disable-postscript --disable-printarch \
 	--disable-arcstream --disable-fs_archive --disable-fs_zip --disable-tarstream --disable-zipstream \
 	--disable-animatectrl --disable-bmpcombobox --disable-calendar --disable-caret --disable-checklst --disable-collpane --disable-colourpicker --disable-comboctrl \
-	--disable-datepick --disable-timepick --disable-display --disable-filepicker --disable-fontpicker --disable-grid --disable-dataviewctrl \
+	--disable-datepick --disable-timepick --disable-display --disable-fontpicker --disable-grid --disable-dataviewctrl \
 	--disable-listbook --disable-odcombobox --disable-sash --disable-searchctrl --disable-slider --disable-splitter --disable-togglebtn \
 	--disable-toolbar --disable-tbarnative --disable-treebook --disable-toolbook --disable-tipwindow --disable-popupwin \
 	--disable-commondlg --disable-aboutdlg --disable-coldlg --disable-finddlg --disable-fontdlg --disable-numberdlg --disable-splash \
@@ -595,10 +595,10 @@ all clean:
 		PROJ=$$(echo $$DIR | cut -d/ -f1); \
 		echo "Building $$PROJ"; \
 		$(MAKE) -C $$DIR -f $$PROJ.make NAME=$$PROJ $(MAKECMDGOALS) || exit $?; \
-		if [[ -e $(BASE_DIR)/$$DIR/$$PROJ.a ]]; then \
+		if [ -e $(BASE_DIR)/$$DIR/$$PROJ.a ]; then \
 			export LIBS="$(BASE_DIR)/$$DIR/$$PROJ.a $$LIBS"; \
 		fi; \
-		if [[ -e $(BASE_DIR)/$$DIR/$${PROJ}Test.a ]]; then \
+		if [ -e $(BASE_DIR)/$$DIR/$${PROJ}Test.a ]; then \
 			export TEST_LIBS="$(BASE_DIR)/$$DIR/$${PROJ}Test.a $$TEST_LIBS"; \
 		fi; \
 	done
