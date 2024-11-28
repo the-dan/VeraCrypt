@@ -38,7 +38,7 @@ namespace VeraCrypt
 		
 		while ((readLength = s->Read (keyfileBuf)) > 0)
 		{
-			for (int i = 0; i < readLength; i++) {
+			for (uint64 i = 0; i < readLength; i++) {
 				uint32 crc = crc32.Process (keyfileBuf[i]);
 
 				pool[poolPos++] += (uint8)(crc >> 24);

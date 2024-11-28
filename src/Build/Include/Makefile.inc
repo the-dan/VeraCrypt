@@ -19,11 +19,12 @@ $(NAME): lib
 endif
 
 test-only: $(NAME)Testing $(NAME)Test.a
-lib: $(NAME).a $(NAME)Testing $(NAME)Test.a
+lib: $(NAME).a $(NAME)Test.a $(NAME)Testing
 
 clean:
 	@echo Cleaning $(NAME)
-	rm -f $(APPNAME) $(NAME).a $(OBJS) $(OBJSEX) $(OBJSNOOPT) $(OBJSHANI) $(OBJSSSE41) $(OBJSSSSE3) $(OBJS:.o=.d) $(OBJSEX:.oo=.d) $(OBJSNOOPT:.o0=.d) $(OBJSHANI:.oshani=.d) $(OBJSSSE41:.osse41=.d) $(OBJSSSSE3:.ossse3=.d) *.gch
+	rm -f $(APPNAME) $(NAME).a $(NAME)Test.a $(NAME)Testing $(OBJS) $(TEST_OBJS) $(OBJSEX) $(OBJSNOOPT) $(OBJSHANI) $(OBJSSSE41) $(OBJSSSSE3) $(OBJS:.o=.d) $(OBJSEX:.oo=.d) $(OBJSNOOPT:.o0=.d) $(OBJSHANI:.oshani=.d) $(OBJSSSE41:.osse41=.d) $(OBJSSSSE3:.ossse3=.d) *.gch
+	rm -f $(NAME)Testing.a $(NAME)Test.a
 
 %.o: %.c
 	@echo Compiling $(<F)
@@ -44,10 +45,6 @@ clean:
 %.ossse3: %.c
 	@echo Compiling $(<F)
 	$(CC) $(CFLAGS) -mssse3 -c $< -o $@
-
-%Test.o: %Test.cpp
-	@echo Compiling test $(<F)
-	$(CXX) $(CXXFLAGS) -I$(BASE_DIR)/Testing -c $< -o $@
 
 %Test.o: %Test.cpp
 	@echo Compiling test $(<F)
@@ -140,8 +137,13 @@ ifneq "$(TEST_OBJS)" ""
 	$(RANLIB) $@
 endif
 
-$(NAME)Testing: $(TEST_OBJS) $(OBJS) $(OBJSEX) $(OBJSNOOPT) $(LIBS) $(TEST_LIBS)
-ifneq "$(TEST_OBJS)" ""
-	@echo Compiling $(NAME)Testing
-	$(CXX) -o $(NAME)Testing $(TEST_LFLAGS) $(TEST_OBJS) $(OBJS) $(LIBS) $(TEST_LIBS) $(TEST_EXT_LIBS) $(LFLAGS)
+$(NAME)Testing: $(TEST_EXECS) $(OBJS) $(OBJSEX) $(OBJSNOOPT) $(LIBS) $(TEST_LIBS) $(TEST_OBJS)
+ifneq "$(TEST_EXECS)" ""
+	echo $(TEST_EXECS)
+	@for TE in $(TEST_EXECS); do \
+			export EXEC_NAME=`basename "$$TE" .o`; \
+			echo Compiling $${EXEC_NAME}Run; \
+			echo "Flags: $(TEST_LFLAGS), objs: $(OBJS) libs: $(LIBS), test libs $(TEST_LIBS)"; \
+			$(CXX) -o $${EXEC_NAME}Run $${TE} $(TEST_LIBS) $(TEST_OBJS) $(OBJS) $(LIBS) $(TEST_EXT_LIBS) $(LFLAGS) $(TEST_LFLAGS); \
+	done
 endif

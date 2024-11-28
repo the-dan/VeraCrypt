@@ -27,8 +27,7 @@ ifeq "$(PLATFORM)" "MacOSX"
 OBJS += Unix/FreeBSD/CoreFreeBSD.o
 endif
 
-TEST_OBJS :=
-TEST_OBJS += CoreTest.o
+TEST_EXECS := CoreTest.o
 
 TEST_EXT_LIBS += $(shell pkg-config fuse --libs)
 TEST_LFLAGS += -ldl

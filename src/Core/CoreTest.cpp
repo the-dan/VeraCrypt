@@ -1,13 +1,16 @@
 #include <Testing.h>
+
+#include "VolumeCreator.h"
 #include "Unix/CoreService.h"
 #include "RandomNumberGenerator.h"
+#include "CoreException.h"
+
 #include "Volume/EncryptionThreadPool.h"
 #include "Platform/SerializerFactory.h"
+#include "Platform/Functor.h"
+#include "Platform/FileStream.h"
 #include "Common/SecurityToken.h"
 #include "Common/MockSecurityToken.h"
-#include "Platform/FileStream.h"
-#include "Core/Unix/FreeBSD/CoreFreeBSD.h"
-#include "Core/Unix/MacOSX/CoreMacOSX.h"
 
 #include <sys/stat.h>
 #include <sys/statvfs.h>
@@ -40,6 +43,15 @@ struct VolumeTestParams {
 
 template ParameterizedFunctionalTest<VolumeTestParams>::ParameterizedFunctionalTest(string name, paramTestFunc<VolumeTestParams> func, VolumeTestParams *param);
 
+class AdminPasswordRequestHandler : public GetStringFunctor
+{
+    public:
+    virtual void operator() (string &str)
+    {
+        throw ElevationFailed (SRC_POS, "sudo", 1, "");
+    }
+};
+
 FilesystemPath TestFile(string name) {
     struct stat fstat;
 
@@ -47,7 +59,7 @@ FilesystemPath TestFile(string name) {
     while (!found) {
         if (stat ("Tests", &fstat) == 0) {
             auto *wd = getcwd(NULL, 0);
-            return FilesystemPath(string(wd) + "/Tests/" + name);
+            return FilesystemPath(string(wd)).Append(L"Tests").Append(StringConverter::ToWide(name));
         }
         chdir("..");
     }
@@ -58,13 +70,14 @@ void SetUp() {
 
     SecurityToken::UseImpl(shared_ptr<SecurityTokenIface>(new MockSecurityTokenImpl()));
 
-    CoreService::Start();
+    VeraCrypt::CoreService::Start();
 
     RandomNumberGenerator::Start();
 
     // this is from UserInterface.cpp
     // LangString.Init();
-    VeraCrypt::Core->Init();    
+    VeraCrypt::Core->Init();
+    VeraCrypt::Core->SetAdminPasswordCallback (shared_ptr <GetStringFunctor> (new AdminPasswordRequestHandler));
 }
 
 void TearDown() {
@@ -194,7 +207,7 @@ shared_ptr<Keyfile> CreateBluekey(size_t size) {
 
     File redkeyOriginal;
     redkeyOriginal.Open(TestFile("redkey_origin.key"), File::FileOpenMode::CreateWrite);
-    redkeyOriginal.Write(buffer);
+    redkeyOriginal.Write(*redkeyBuffer);
     redkeyOriginal.Close();
 
     FilePath bluekeyPath(TestFile("bluekey.key"));
@@ -614,7 +627,7 @@ void CreateVolumeWithBluekeySizeLessThanEncryptionKeySizeTest(shared_ptr<TestRes
     try {
         MountWithBlueKeyTest(r, params, DEFAULT_REDKEY_DATA_SIZE - 92);
         r->Failed("shouldn't use keyfiles less than encryption key size");
-    } catch (InsufficientData e) {
+    } catch (InsufficientData &e) {
         r->Success();
     }
 }
