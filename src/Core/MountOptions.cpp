@@ -4,7 +4,7 @@
  by the TrueCrypt License 3.0.
 
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2017 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2025 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
@@ -48,12 +48,12 @@ namespace VeraCrypt
 		else
 			ProtectionKdf.reset();
 		TC_CLONE_SHARED (KeyfileList, ProtectionKeyfiles);
-		TC_CLONE (ProtectionSecurityTokenKeySpec);
+		TC_CLONE (ProtectionSecurityTokenSchemeSpec);
 		TC_CLONE (Removable);
 		TC_CLONE (SharedAccessAllowed);
 		TC_CLONE (SlotNumber);
 		TC_CLONE (UseBackupHeaders);
-		TC_CLONE (SecurityTokenKeySpec);
+		TC_CLONE (SecurityTokenSchemeSpec);
 	}
 
 	void MountOptions::Deserialize (shared_ptr <Stream> stream)
@@ -97,13 +97,13 @@ namespace VeraCrypt
 			ProtectionPassword.reset();
 
 		ProtectionKeyfiles = Keyfile::DeserializeList (stream, "ProtectionKeyfiles");
-		sr.Deserialize ("ProtectionSecurityTokenKeySpec", ProtectionSecurityTokenKeySpec);
+		sr.Deserialize ("ProtectionSecurityTokenSchemeSpec", ProtectionSecurityTokenSchemeSpec);
 		sr.Deserialize ("Removable", Removable);
 		sr.Deserialize ("SharedAccessAllowed", SharedAccessAllowed);
 		sr.Deserialize ("SlotNumber", SlotNumber);
 		sr.Deserialize ("UseBackupHeaders", UseBackupHeaders);
 
-		sr.Deserialize("SecurityTokenKeySpec", SecurityTokenKeySpec);
+		sr.Deserialize("SecurityTokenSchemeSpec", SecurityTokenSchemeSpec);
 
 		try
 		{
@@ -164,13 +164,13 @@ namespace VeraCrypt
 			ProtectionPassword->Serialize (stream);
 
 		Keyfile::SerializeList (stream, "ProtectionKeyfiles", ProtectionKeyfiles);
-		sr.Serialize ("ProtectionSecurityTokenKeySpec", ProtectionSecurityTokenKeySpec);
+		sr.Serialize ("ProtectionSecurityTokenSchemeSpec", ProtectionSecurityTokenSchemeSpec);
 		sr.Serialize ("Removable", Removable);
 		sr.Serialize ("SharedAccessAllowed", SharedAccessAllowed);
 		sr.Serialize ("SlotNumber", SlotNumber);
 		sr.Serialize ("UseBackupHeaders", UseBackupHeaders);
 
-		sr.Serialize("SecurityTokenKeySpec", SecurityTokenKeySpec);
+		sr.Serialize("SecurityTokenSchemeSpec", SecurityTokenSchemeSpec);
 		sr.Serialize ("KdfNull", Kdf == nullptr);
 		if (Kdf)
 			sr.Serialize ("Kdf", Kdf->GetName());

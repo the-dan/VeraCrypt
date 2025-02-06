@@ -6,7 +6,7 @@
  Encryption for the Masses 2.02a, which is Copyright (c) 1998-2000 Paul Le Roux
  and which is governed by the 'License Agreement for Encryption for the Masses'
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2017 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2025 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages. */
@@ -765,6 +765,9 @@ BOOL DoFilesInstall (HWND hwndDlg, wchar_t *szDestDir)
 	BOOL bOK = TRUE;
 	int i, x, fileNo;
 	wchar_t curFileName [TC_MAX_PATH] = {0};
+#ifndef PORTABLE
+	PRIVILEGE_STATE originalPrivileges = { 0 };
+#endif
 
 	if (!bUninstall && !bDevm)
 	{
@@ -782,6 +785,10 @@ BOOL DoFilesInstall (HWND hwndDlg, wchar_t *szDestDir)
 
 	if (szDestDir[x - 1] != L'\\')
 		StringCbCatW (szDestDir, MAX_PATH, L"\\");
+
+#ifndef PORTABLE
+	EnableRequiredSetupPrivileges(&originalPrivileges);
+#endif
 
 	for (i = 0; i < sizeof (szFiles) / sizeof (szFiles[0]); i++)
 	{
@@ -1114,10 +1121,19 @@ err:
 
 			if (lpMsgBuf) LocalFree (lpMsgBuf);
 
-			if (!Silent && MessageBoxW (hwndDlg, szTmp2, lpszTitle, MB_YESNO | MB_ICONHAND) != IDYES)
+			if (!Silent && MessageBoxW(hwndDlg, szTmp2, lpszTitle, MB_YESNO | MB_ICONHAND) != IDYES)
+			{
+#ifndef PORTABLE
+				RestorePrivilegeState(&originalPrivileges);
+#endif
 				return FALSE;
+			}
 		}
 	}
+
+#ifndef PORTABLE
+	RestorePrivilegeState(&originalPrivileges);
+#endif
 	
 	if (bUninstall == FALSE)
 	{
@@ -1704,7 +1720,7 @@ BOOL DoDriverUnload (HWND hwndDlg)
 				if (volumesMounted != 0)
 				{
 					bOK = FALSE;
-					MessageBoxW (hwndDlg, GetString ("DISMOUNT_ALL_FIRST"), lpszTitle, MB_ICONHAND);
+					MessageBoxW (hwndDlg, GetString ("UNMOUNT_ALL_FIRST"), lpszTitle, MB_ICONHAND);
 				}
 			}
 			else

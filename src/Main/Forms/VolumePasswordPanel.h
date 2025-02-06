@@ -4,7 +4,7 @@
  by the TrueCrypt License 3.0.
 
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2017 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2025 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
@@ -23,13 +23,13 @@ namespace VeraCrypt
 	class VolumePasswordPanel : public VolumePasswordPanelBase
 	{
 	public:
-		VolumePasswordPanel (wxWindow* parent, MountOptions* options, shared_ptr <VolumePassword> password, shared_ptr <KeyfileList> keyfiles, wstring securityTokenKeySpec, SecurityTokenKeyOperation mode, bool enableCache = false, bool enablePassword = true, bool enableKeyfiles = true, bool enableConfirmation = false, bool enablePkcs5Prf = false, bool isMountPassword = false, const wxString &passwordLabel = wxString());
+		VolumePasswordPanel (wxWindow* parent, MountOptions* options, shared_ptr <VolumePassword> password, shared_ptr <KeyfileList> keyfiles, wstring securityTokenSchemeSpec, SecurityTokenKeyOperation mode, bool enableCache = false, bool enablePassword = true, bool enableKeyfiles = true, bool enableConfirmation = false, bool enablePkcs5Prf = false, bool isMountPassword = false, const wxString &passwordLabel = wxString());
 		virtual ~VolumePasswordPanel ();
 
 		void AddKeyfile (shared_ptr <Keyfile> keyfile);
 		shared_ptr <KeyfileList> GetKeyfiles () const { return UseKeyfilesCheckBox->IsChecked() ? Keyfiles : shared_ptr <KeyfileList> (); }
 		shared_ptr <VolumePassword> GetPassword (bool bForceLegacyPassword = false) const;
-		wstring GetSecurityTokenKeySpec () const;
+		wstring GetSecurityTokenSchemeSpec () const;
 		shared_ptr <Pkcs5Kdf> GetPkcs5Kdf () const;
 		int GetVolumePim () const;
 		int GetHeaderWipeCount () const;
@@ -63,7 +63,7 @@ namespace VeraCrypt
 		void OnUpdate () { UpdateEvent.Raise(); }
 		void OnUseKeyfilesCheckBoxClick (wxCommandEvent& event) { OnUpdate(); }
 		void WipeTextCtrl (wxTextCtrl *textCtrl);
-		void OnSecurityTokenKeySpecButtonClick( wxMouseEvent& event );
+		void OnSecurityTokenSchemeSpecButtonClick( wxMouseEvent& event );
 
 		shared_ptr <KeyfileList> Keyfiles;
 		shared_ptr <Functor> UpdateCallback;

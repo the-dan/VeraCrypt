@@ -1,4 +1,4 @@
-![build](https://github.com/the-dan/VeraCrypt/actions/workflows/main.yml/badge.svg)
+![build](./actions/workflows/build-macos.yml/badge.svg)
 
 This archive contains the source code of VeraCrypt.
 It is based on the original TrueCrypt 7.1a with security enhancements and modifications.
@@ -209,10 +209,10 @@ https://www.veracrypt.fr/
 ## Copyright Information
 
 This software as a whole:  
-Copyright (c) 2013-2024 IDRIX. All rights reserved.  
+Copyright (c) 2013-2025 IDRIX. All rights reserved.  
 
 Portions of this software:  
-Copyright (c) 2013-2024 IDRIX. All rights reserved.  
+Copyright (c) 2013-2025 IDRIX. All rights reserved.  
 Copyright (c) 2003-2012 TrueCrypt Developers Association. All rights reserved.  
 Copyright (c) 1998-2000 Paul Le Roux. All rights reserved.  
 Copyright (c) 1998-2008 Brian Gladman, Worcester, UK. All rights reserved.  

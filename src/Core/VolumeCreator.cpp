@@ -4,7 +4,7 @@
  by the TrueCrypt License 3.0.
 
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2017 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2025 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
@@ -315,7 +315,7 @@ namespace VeraCrypt
 
 			// Header key
 			HeaderKey.Allocate (VolumeHeader::GetLargestSerializedKeySize());
-			PasswordKey = Keyfile::ApplyListToPassword (options->Keyfiles, options->Password, options->SecurityTokenKeySpec, options->EMVSupportEnabled);
+			PasswordKey = Keyfile::ApplyListToPassword (options->Keyfiles, options->Password, options->SecurityTokenSchemeSpec, options->EMVSupportEnabled);
 			options->VolumeHeaderKdf->DeriveKey (HeaderKey, *PasswordKey, options->Pim, salt);
 			headerOptions.HeaderKey = HeaderKey;
 

@@ -4,7 +4,7 @@
  by the TrueCrypt License 3.0.
 
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2017 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2025 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
@@ -43,7 +43,7 @@ int main (int argc, char **argv)
 
 		setenv ("PATH", sysPathStr.c_str(), 1);
 
-		SecurityToken::UseImpl(shared_ptr<SecurityTokenImpl>(new SecurityTokenImpl()));
+		SecurityToken::UseImpl(make_shared<SecurityTokenImpl>());
 
 		if (argc > 1 && strcmp (argv[1], TC_CORE_SERVICE_CMDLINE_OPTION) == 0)
 		{

@@ -4,7 +4,7 @@
  by the TrueCrypt License 3.0.
 
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2017 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2025 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
@@ -97,11 +97,11 @@ namespace VeraCrypt
 			else
 			{
 				MountOptions newOptions = options;
-				newOptions.Password = Keyfile::ApplyListToPassword (options.Keyfiles, options.Password, options.SecurityTokenKeySpec, options.EMVSupportEnabled);
+				newOptions.Password = Keyfile::ApplyListToPassword (options.Keyfiles, options.Password, options.SecurityTokenSchemeSpec, options.EMVSupportEnabled);
 				if (newOptions.Keyfiles)
 					newOptions.Keyfiles->clear();
 
-				newOptions.ProtectionPassword = Keyfile::ApplyListToPassword (options.ProtectionKeyfiles, options.ProtectionPassword, options.ProtectionSecurityTokenKeySpec, options.EMVSupportEnabled);
+				newOptions.ProtectionPassword = Keyfile::ApplyListToPassword (options.ProtectionKeyfiles, options.ProtectionPassword, options.ProtectionSecurityTokenSchemeSpec, options.EMVSupportEnabled);
 				if (newOptions.ProtectionKeyfiles)
 					newOptions.ProtectionKeyfiles->clear();
 
@@ -125,7 +125,7 @@ namespace VeraCrypt
 				if (options.CachePassword
 					&& ((options.Password && !options.Password->IsEmpty()) || (options.Keyfiles && !options.Keyfiles->empty())))
 				{
-					VolumePasswordCache::Store (*Keyfile::ApplyListToPassword (options.Keyfiles, options.Password, options.SecurityTokenKeySpec, options.EMVSupportEnabled));
+					VolumePasswordCache::Store (*Keyfile::ApplyListToPassword (options.Keyfiles, options.Password, options.SecurityTokenSchemeSpec, options.EMVSupportEnabled));
 				}
 			}
 

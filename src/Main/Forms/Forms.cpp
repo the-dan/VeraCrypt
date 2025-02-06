@@ -1464,9 +1464,9 @@ KeyfileGeneratorDialogBase::KeyfileGeneratorDialogBase( wxWindow* parent, wxWind
 	
 	fgSizer8->Add( m_staticText66, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
 
-	SecurityTokenKeyDesc = new wxTextCtrl( this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0);
+	SecurityTokenSchemeDesc = new wxTextCtrl( this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0);
 	ChooseSecurityTokenButton = new wxButton( this, wxID_ANY, _("IDC_SECURITY_TOKEN_KEY"), wxDefaultPosition, wxDefaultSize, 0 );
-	fgSizer8->Add(SecurityTokenKeyDesc, 0, wxALL, 5 );
+	fgSizer8->Add(SecurityTokenSchemeDesc, 0, wxALL, 5 );
 	fgSizer8->Add(ChooseSecurityTokenButton, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5);
 	
 	
@@ -1510,7 +1510,7 @@ KeyfileGeneratorDialogBase::KeyfileGeneratorDialogBase( wxWindow* parent, wxWind
 	ShowRandomPoolCheckBox->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( KeyfileGeneratorDialogBase::OnShowRandomPoolCheckBoxClicked ), NULL, this );
 	RandomSizeCheckBox->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( KeyfileGeneratorDialogBase::OnRandomSizeCheckBoxClicked ), NULL, this );
 	GenerateButton->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( KeyfileGeneratorDialogBase::OnGenerateButtonClick ), NULL, this );
-	ChooseSecurityTokenButton->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( KeyfileGeneratorDialogBase::OnSelectSecurityTokenKeyClick ), NULL, this);
+	ChooseSecurityTokenButton->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( KeyfileGeneratorDialogBase::OnSelectSecurityTokenSchemeClick ), NULL, this);
 }
 
 KeyfileGeneratorDialogBase::~KeyfileGeneratorDialogBase()
@@ -1521,7 +1521,7 @@ KeyfileGeneratorDialogBase::~KeyfileGeneratorDialogBase()
 	ShowRandomPoolCheckBox->Disconnect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( KeyfileGeneratorDialogBase::OnShowRandomPoolCheckBoxClicked ), NULL, this );
 	RandomSizeCheckBox->Disconnect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( KeyfileGeneratorDialogBase::OnRandomSizeCheckBoxClicked ), NULL, this );
 	GenerateButton->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( KeyfileGeneratorDialogBase::OnGenerateButtonClick ), NULL, this );
-	ChooseSecurityTokenButton->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( KeyfileGeneratorDialogBase::OnSelectSecurityTokenKeyClick ), NULL, this);
+	ChooseSecurityTokenButton->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( KeyfileGeneratorDialogBase::OnSelectSecurityTokenSchemeClick ), NULL, this);
 }
 
 LegalNoticesDialogBase::LegalNoticesDialogBase( wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style ) : wxDialog( parent, id, title, pos, size, style )
@@ -1842,15 +1842,15 @@ PreferencesDialogBase::PreferencesDialogBase( wxWindow* parent, wxWindowID id, c
 	wxBoxSizer* bSizer33;
 	bSizer33 = new wxBoxSizer( wxVERTICAL );
 
-	AutoDismountSizer = new wxStaticBoxSizer( new wxStaticBox( SecurityPage, wxID_ANY, _("IDT_AUTO_DISMOUNT") ), wxVERTICAL );
+	AutoDismountSizer = new wxStaticBoxSizer( new wxStaticBox( SecurityPage, wxID_ANY, _("IDT_AUTO_UNMOUNT") ), wxVERTICAL );
 
 	wxStaticBoxSizer* sbSizer13;
-	sbSizer13 = new wxStaticBoxSizer( new wxStaticBox( AutoDismountSizer->GetStaticBox(), wxID_ANY, _("LINUX_DISMOUNT_ALL_WHEN") ), wxVERTICAL );
+	sbSizer13 = new wxStaticBoxSizer( new wxStaticBox( AutoDismountSizer->GetStaticBox(), wxID_ANY, _("LINUX_UNMOUNT_ALL_WHEN") ), wxVERTICAL );
 
-	DismountOnLogOffCheckBox = new wxCheckBox( sbSizer13->GetStaticBox(), wxID_ANY, _("IDC_PREF_DISMOUNT_LOGOFF"), wxDefaultPosition, wxDefaultSize, 0 );
+	DismountOnLogOffCheckBox = new wxCheckBox( sbSizer13->GetStaticBox(), wxID_ANY, _("IDC_PREF_UNMOUNT_LOGOFF"), wxDefaultPosition, wxDefaultSize, 0 );
 	sbSizer13->Add( DismountOnLogOffCheckBox, 0, wxALL, 5 );
 
-	DismountOnScreenSaverCheckBox = new wxCheckBox( sbSizer13->GetStaticBox(), wxID_ANY, _("IDC_PREF_DISMOUNT_SCREENSAVER"), wxDefaultPosition, wxDefaultSize, 0 );
+	DismountOnScreenSaverCheckBox = new wxCheckBox( sbSizer13->GetStaticBox(), wxID_ANY, _("IDC_PREF_UNMOUNT_SCREENSAVER"), wxDefaultPosition, wxDefaultSize, 0 );
 	sbSizer13->Add( DismountOnScreenSaverCheckBox, 0, wxALL, 5 );
 
 	DismountOnPowerSavingCheckBox = new wxCheckBox( sbSizer13->GetStaticBox(), wxID_ANY, _("LINUX_ENTERING_POVERSAWING"), wxDefaultPosition, wxDefaultSize, 0 );
@@ -1862,7 +1862,7 @@ PreferencesDialogBase::PreferencesDialogBase( wxWindow* parent, wxWindowID id, c
 	wxBoxSizer* bSizer34;
 	bSizer34 = new wxBoxSizer( wxHORIZONTAL );
 
-	DismountOnInactivityCheckBox = new wxCheckBox( AutoDismountSizer->GetStaticBox(), wxID_ANY, _("IDC_PREF_DISMOUNT_INACTIVE"), wxDefaultPosition, wxDefaultSize, 0 );
+	DismountOnInactivityCheckBox = new wxCheckBox( AutoDismountSizer->GetStaticBox(), wxID_ANY, _("IDC_PREF_UNMOUNT_INACTIVE"), wxDefaultPosition, wxDefaultSize, 0 );
 	bSizer34->Add( DismountOnInactivityCheckBox, 0, wxTOP|wxBOTTOM|wxLEFT|wxALIGN_CENTER_VERTICAL, 5 );
 
 	DismountOnInactivitySpinCtrl = new wxSpinCtrl( AutoDismountSizer->GetStaticBox(), wxID_ANY, wxT("1"), wxDefaultPosition, wxSize( -1,-1 ), wxSP_ARROW_KEYS, 1, 9999, 1 );
@@ -1878,7 +1878,7 @@ PreferencesDialogBase::PreferencesDialogBase( wxWindow* parent, wxWindowID id, c
 
 	AutoDismountSizer->Add( bSizer34, 0, wxEXPAND, 5 );
 
-	ForceAutoDismountCheckBox = new wxCheckBox( AutoDismountSizer->GetStaticBox(), wxID_ANY, _("IDC_PREF_FORCE_AUTO_DISMOUNT"), wxDefaultPosition, wxDefaultSize, 0 );
+	ForceAutoDismountCheckBox = new wxCheckBox( AutoDismountSizer->GetStaticBox(), wxID_ANY, _("IDC_PREF_FORCE_AUTO_UNMOUNT"), wxDefaultPosition, wxDefaultSize, 0 );
 	AutoDismountSizer->Add( ForceAutoDismountCheckBox, 0, wxALL, 5 );
 
 
@@ -1898,7 +1898,7 @@ PreferencesDialogBase::PreferencesDialogBase( wxWindow* parent, wxWindowID id, c
 	WipeCacheOnCloseCheckBox = new wxCheckBox( sbSizer14->GetStaticBox(), wxID_ANY, _("IDC_PREF_WIPE_CACHE_ON_EXIT"), wxDefaultPosition, wxDefaultSize, 0 );
 	sbSizer14->Add( WipeCacheOnCloseCheckBox, 0, wxALL, 5 );
 
-	WipeCacheOnAutoDismountCheckBox = new wxCheckBox( sbSizer14->GetStaticBox(), wxID_ANY, _("IDC_PREF_WIPE_CACHE_ON_AUTODISMOUNT"), wxDefaultPosition, wxDefaultSize, 0 );
+	WipeCacheOnAutoDismountCheckBox = new wxCheckBox( sbSizer14->GetStaticBox(), wxID_ANY, _("IDC_PREF_WIPE_CACHE_ON_AUTOUNMOUNT"), wxDefaultPosition, wxDefaultSize, 0 );
 	sbSizer14->Add( WipeCacheOnAutoDismountCheckBox, 0, wxALL, 5 );
 
 
@@ -2004,7 +2004,7 @@ PreferencesDialogBase::PreferencesDialogBase( wxWindow* parent, wxWindowID id, c
 	BackgroundTaskMenuOpenItemsEnabledCheckBox = new wxCheckBox( sbSizer26->GetStaticBox(), wxID_ANY, _("TASKICON_PREF_OPEN_VOL"), wxDefaultPosition, wxDefaultSize, 0 );
 	sbSizer26->Add( BackgroundTaskMenuOpenItemsEnabledCheckBox, 0, wxALL, 5 );
 
-	BackgroundTaskMenuDismountItemsEnabledCheckBox = new wxCheckBox( sbSizer26->GetStaticBox(), wxID_ANY, _("TASKICON_PREF_DISMOUNT_VOL"), wxDefaultPosition, wxDefaultSize, 0 );
+	BackgroundTaskMenuDismountItemsEnabledCheckBox = new wxCheckBox( sbSizer26->GetStaticBox(), wxID_ANY, _("TASKICON_PREF_UNMOUNT_VOL"), wxDefaultPosition, wxDefaultSize, 0 );
 	sbSizer26->Add( BackgroundTaskMenuDismountItemsEnabledCheckBox, 0, wxALL, 5 );
 
 
@@ -2047,7 +2047,7 @@ PreferencesDialogBase::PreferencesDialogBase( wxWindow* parent, wxWindowID id, c
 	OpenExplorerWindowAfterMountCheckBox = new wxCheckBox( ExplorerSizer->GetStaticBox(), wxID_ANY, _("IDC_PREF_OPEN_EXPLORER"), wxDefaultPosition, wxDefaultSize, 0 );
 	ExplorerSizer->Add( OpenExplorerWindowAfterMountCheckBox, 0, wxALL, 5 );
 
-	CloseExplorerWindowsOnDismountCheckBox = new wxCheckBox( ExplorerSizer->GetStaticBox(), wxID_ANY, _("LINUX_CLOSE_EXPL_ON_DISMOUNT"), wxDefaultPosition, wxDefaultSize, 0 );
+	CloseExplorerWindowsOnDismountCheckBox = new wxCheckBox( ExplorerSizer->GetStaticBox(), wxID_ANY, _("LINUX_CLOSE_EXPL_ON_UNMOUNT"), wxDefaultPosition, wxDefaultSize, 0 );
 	ExplorerSizer->Add( CloseExplorerWindowsOnDismountCheckBox, 0, wxALL, 5 );
 
 
@@ -2259,7 +2259,7 @@ PreferencesDialogBase::PreferencesDialogBase( wxWindow* parent, wxWindowID id, c
 	BeepAfterHotkeyMountDismountCheckBox = new wxCheckBox( sbSizer24->GetStaticBox(), wxID_ANY, _("LINUX_SOUND_NOTIFICATION"), wxDefaultPosition, wxDefaultSize, 0 );
 	sbSizer24->Add( BeepAfterHotkeyMountDismountCheckBox, 0, wxALL, 5 );
 
-	DisplayMessageAfterHotkeyDismountCheckBox = new wxCheckBox( sbSizer24->GetStaticBox(), wxID_ANY, _("LINUX_CONFIRM_AFTER_DISMOUNT"), wxDefaultPosition, wxDefaultSize, 0 );
+	DisplayMessageAfterHotkeyDismountCheckBox = new wxCheckBox( sbSizer24->GetStaticBox(), wxID_ANY, _("LINUX_CONFIRM_AFTER_UNMOUNT"), wxDefaultPosition, wxDefaultSize, 0 );
 	sbSizer24->Add( DisplayMessageAfterHotkeyDismountCheckBox, 0, wxALL, 5 );
 
 
@@ -2611,7 +2611,7 @@ SecurityTokenKeyfilesDialogBase::~SecurityTokenKeyfilesDialogBase()
 
 }
 
-SecurityTokenKeysDialogBase::SecurityTokenKeysDialogBase( wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style )  : wxDialog( parent, id, title, pos, size, style )
+SecurityTokenSchemesDialogBase::SecurityTokenSchemesDialogBase( wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style )  : wxDialog( parent, id, title, pos, size, style )
 {
 	this->SetSizeHints( wxSize( -1,-1 ), wxDefaultSize );
 	this->SetExtraStyle( GetExtraStyle() | wxWS_EX_VALIDATE_RECURSIVELY );
@@ -2628,8 +2628,8 @@ SecurityTokenKeysDialogBase::SecurityTokenKeysDialogBase( wxWindow* parent, wxWi
 	wxBoxSizer* bSizer142;
 	bSizer142 = new wxBoxSizer( wxVERTICAL );
 	
-	SecurityTokenKeyListCtrl = new wxListCtrl( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLC_NO_SORT_HEADER|wxLC_REPORT|wxLC_VRULES|wxSUNKEN_BORDER );
-	bSizer142->Add( SecurityTokenKeyListCtrl, 1, wxALL|wxEXPAND, 5 );
+	SecurityTokenSchemeListCtrl = new wxListCtrl( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLC_NO_SORT_HEADER|wxLC_REPORT|wxLC_VRULES|wxSUNKEN_BORDER );
+	bSizer142->Add( SecurityTokenSchemeListCtrl, 1, wxALL|wxEXPAND, 5 );
 
 
 	bSizer138->Add( bSizer142, 1, wxEXPAND, 5 );
@@ -2656,18 +2656,18 @@ SecurityTokenKeysDialogBase::SecurityTokenKeysDialogBase( wxWindow* parent, wxWi
 	bSizer3->Fit( this );
 	
 	// Connect Events
-	SecurityTokenKeyListCtrl->Connect( wxEVT_COMMAND_LIST_ITEM_ACTIVATED, wxListEventHandler( SecurityTokenKeysDialogBase::OnListItemActivated ), NULL, this );
-	SecurityTokenKeyListCtrl->Connect( wxEVT_COMMAND_LIST_ITEM_DESELECTED, wxListEventHandler( SecurityTokenKeysDialogBase::OnListItemDeselected ), NULL, this );
-	SecurityTokenKeyListCtrl->Connect( wxEVT_COMMAND_LIST_ITEM_SELECTED, wxListEventHandler( SecurityTokenKeysDialogBase::OnListItemSelected ), NULL, this );
-	OKButton->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( SecurityTokenKeysDialogBase::OnOKButtonClick ), NULL, this );
+	SecurityTokenSchemeListCtrl->Connect( wxEVT_COMMAND_LIST_ITEM_ACTIVATED, wxListEventHandler( SecurityTokenSchemesDialogBase::OnListItemActivated ), NULL, this );
+	SecurityTokenSchemeListCtrl->Connect( wxEVT_COMMAND_LIST_ITEM_DESELECTED, wxListEventHandler( SecurityTokenSchemesDialogBase::OnListItemDeselected ), NULL, this );
+	SecurityTokenSchemeListCtrl->Connect( wxEVT_COMMAND_LIST_ITEM_SELECTED, wxListEventHandler( SecurityTokenSchemesDialogBase::OnListItemSelected ), NULL, this );
+	OKButton->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( SecurityTokenSchemesDialogBase::OnOKButtonClick ), NULL, this );
 }
 
-SecurityTokenKeysDialogBase::~SecurityTokenKeysDialogBase()
+SecurityTokenSchemesDialogBase::~SecurityTokenSchemesDialogBase()
 {
-	SecurityTokenKeyListCtrl->Disconnect( wxEVT_COMMAND_LIST_ITEM_ACTIVATED, wxListEventHandler( SecurityTokenKeysDialogBase::OnListItemActivated ), NULL, this );
-	SecurityTokenKeyListCtrl->Disconnect( wxEVT_COMMAND_LIST_ITEM_DESELECTED, wxListEventHandler( SecurityTokenKeysDialogBase::OnListItemDeselected ), NULL, this );
-	SecurityTokenKeyListCtrl->Disconnect( wxEVT_COMMAND_LIST_ITEM_SELECTED, wxListEventHandler( SecurityTokenKeysDialogBase::OnListItemSelected ), NULL, this );
-	OKButton->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( SecurityTokenKeysDialogBase::OnOKButtonClick ), NULL, this );
+	SecurityTokenSchemeListCtrl->Disconnect( wxEVT_COMMAND_LIST_ITEM_ACTIVATED, wxListEventHandler( SecurityTokenSchemesDialogBase::OnListItemActivated ), NULL, this );
+	SecurityTokenSchemeListCtrl->Disconnect( wxEVT_COMMAND_LIST_ITEM_DESELECTED, wxListEventHandler( SecurityTokenSchemesDialogBase::OnListItemDeselected ), NULL, this );
+	SecurityTokenSchemeListCtrl->Disconnect( wxEVT_COMMAND_LIST_ITEM_SELECTED, wxListEventHandler( SecurityTokenSchemesDialogBase::OnListItemSelected ), NULL, this );
+	OKButton->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( SecurityTokenSchemesDialogBase::OnOKButtonClick ), NULL, this );
 }
 
 VolumePropertiesDialogBase::VolumePropertiesDialogBase( wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style ) : wxDialog( parent, id, title, pos, size, style )
@@ -3487,10 +3487,10 @@ VolumePasswordPanelBase::VolumePasswordPanelBase( wxWindow* parent, wxWindowID i
 	KeyfilesButton = new wxButton( this, wxID_ANY, _("IDC_KEYFILES_HIDVOL_PROT"), wxDefaultPosition, wxDefaultSize, 0 );
 	GridBagSizer->Add( KeyfilesButton, wxGBPosition( 7, 2 ), wxGBSpan( 1, 1 ), wxALIGN_RIGHT|wxALIGN_BOTTOM|wxLEFT, 5 );
 
-	SecurityTokenKeySpecText = new wxTextCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0);
-	SecurityTokenKeySpecButton = new wxButton(this, wxID_ANY, _("IDC_SECURITY_TOKEN_KEY"), wxDefaultPosition, wxDefaultSize, 0);
-	GridBagSizer->Add (SecurityTokenKeySpecText, wxGBPosition(8, 1), wxGBSpan( 1, 1), wxTOP | wxRIGHT | wxLEFT, 5);
-	GridBagSizer->Add (SecurityTokenKeySpecButton, wxGBPosition (8, 2), wxGBSpan( 1, 1), wxALIGN_RIGHT|wxALIGN_BOTTOM|wxLEFT, 5);
+	SecurityTokenSchemeSpecText = new wxTextCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0);
+	SecurityTokenSchemeSpecButton = new wxButton(this, wxID_ANY, _("IDC_SECURITY_TOKEN_KEY"), wxDefaultPosition, wxDefaultSize, 0);
+	GridBagSizer->Add (SecurityTokenSchemeSpecText, wxGBPosition(8, 1), wxGBSpan( 1, 1), wxTOP | wxRIGHT | wxLEFT, 5);
+	GridBagSizer->Add (SecurityTokenSchemeSpecButton, wxGBPosition (8, 2), wxGBSpan( 1, 1), wxALIGN_RIGHT|wxALIGN_BOTTOM|wxLEFT, 5);
 
 	Pkcs5PrfSizer = new wxBoxSizer( wxVERTICAL );
 
@@ -3542,7 +3542,7 @@ VolumePasswordPanelBase::VolumePasswordPanelBase( wxWindow* parent, wxWindowID i
 	KeyfilesButton->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( VolumePasswordPanelBase::OnKeyfilesButtonClick ), NULL, this );
 	KeyfilesButton->Connect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( VolumePasswordPanelBase::OnKeyfilesButtonRightDown ), NULL, this );
 	KeyfilesButton->Connect( wxEVT_RIGHT_UP, wxMouseEventHandler( VolumePasswordPanelBase::OnKeyfilesButtonRightClick ), NULL, this );
-	SecurityTokenKeySpecButton->Connect(wxEVT_COMMAND_BUTTON_CLICKED,  wxMouseEventHandler( VolumePasswordPanelBase::OnSecurityTokenKeySpecButtonClick ), NULL, this );
+	SecurityTokenSchemeSpecButton->Connect(wxEVT_COMMAND_BUTTON_CLICKED,  wxMouseEventHandler( VolumePasswordPanelBase::OnSecurityTokenSchemeSpecButtonClick ), NULL, this );
 }
 
 VolumePasswordPanelBase::~VolumePasswordPanelBase()
@@ -3557,7 +3557,7 @@ VolumePasswordPanelBase::~VolumePasswordPanelBase()
 	KeyfilesButton->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( VolumePasswordPanelBase::OnKeyfilesButtonClick ), NULL, this );
 	KeyfilesButton->Disconnect( wxEVT_RIGHT_DOWN, wxMouseEventHandler( VolumePasswordPanelBase::OnKeyfilesButtonRightDown ), NULL, this );
 	KeyfilesButton->Disconnect( wxEVT_RIGHT_UP, wxMouseEventHandler( VolumePasswordPanelBase::OnKeyfilesButtonRightClick ), NULL, this );
-	SecurityTokenKeySpecButton->Disconnect(wxEVT_COMMAND_BUTTON_CLICKED,  wxMouseEventHandler( VolumePasswordPanelBase::OnSecurityTokenKeySpecButtonClick ), NULL, this );
+	SecurityTokenSchemeSpecButton->Disconnect(wxEVT_COMMAND_BUTTON_CLICKED,  wxMouseEventHandler( VolumePasswordPanelBase::OnSecurityTokenSchemeSpecButtonClick ), NULL, this );
 }
 
 VolumePasswordWizardPageBase::VolumePasswordWizardPageBase( wxWindow* parent, wxWindowID id, const wxPoint& pos, const wxSize& size, long style, const wxString& name ) : WizardPage( parent, id, pos, size, style, name )

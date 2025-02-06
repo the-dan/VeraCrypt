@@ -4,7 +4,7 @@
  by the TrueCrypt License 3.0.
 
  Modifications and additions to the original source code (contained in this file)
- and all other portions of this file are Copyright (c) 2013-2017 IDRIX
+ and all other portions of this file are Copyright (c) 2013-2025 IDRIX
  and are governed by the Apache License 2.0 the full text of which is
  contained in the file License.txt included in VeraCrypt binary and source
  code distribution packages.
@@ -24,8 +24,8 @@ namespace VeraCrypt
 		VolumePasswordWizardPage (wxPanel* parent, shared_ptr <VolumePassword> password, shared_ptr <KeyfileList> keyfiles, wstring securityTokenKeySpec, bool enableConfirmation = true);
 		~VolumePasswordWizardPage ();
 
-		wstring GetSecurityTokenKeySpec () const { return
-			PasswordPanel->GetSecurityTokenKeySpec(); }
+		wstring GetSecurityTokenSchemeSpec () const { return
+			PasswordPanel->GetSecurityTokenSchemeSpec(); }
 		shared_ptr <KeyfileList> GetKeyfiles () const { return PasswordPanel->GetKeyfiles(); }
 		shared_ptr <VolumePassword> GetPassword () const { return PasswordPanel->GetPassword(); }
 		void EnableUsePim () { PasswordPanel->EnableUsePim (); }

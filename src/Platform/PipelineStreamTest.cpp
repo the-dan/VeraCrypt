@@ -62,7 +62,7 @@ void SingleByteSingleStreamTest(shared_ptr<TestResult> r) {
     MK(PipelineStream, s);
     s->AddStream(m);
 
-    Buffer *rb;
+    Buffer *rb = nullptr;
     size_t n = ReadFully(s, rb);
     r->Info("N" + to_string(n));
     if (n != 1) {
@@ -86,7 +86,7 @@ void SingleByteTwoStreamsTest(shared_ptr<TestResult> r) {
     s->AddStream(m2);
 
 
-    Buffer *rb;
+    Buffer *rb = nullptr;
     size_t n = ReadFully(s, rb);
     r->Info("N" + to_string(n));
     if (n != 2) {
@@ -110,7 +110,7 @@ void LongStreamAndSingleByteStreamTest(shared_ptr<TestResult> r) {
     s->AddStream(m1);
     s->AddStream(m2);
 
-    Buffer *rb;
+    Buffer *rb = nullptr;
     size_t n = ReadFully(s, rb);
     r->Info("N" + to_string(n));
     if (n != 11) {
@@ -131,7 +131,7 @@ void ReadWholeStreamAtOnceTest(shared_ptr<TestResult> r) {
     s->AddStream(m1);
     s->AddStream(m2);
 
-    Buffer *rb;
+    Buffer *rb = nullptr;
     size_t n = ReadFully(s, rb, 20);
     r->Info("N" + to_string(n));
     if (n != 15) {
@@ -152,7 +152,7 @@ void ReadStreamByteByByteTest(shared_ptr<TestResult> r) {
     s->AddStream(m1);
     s->AddStream(m2);
 
-    Buffer *rb;
+    Buffer *rb = nullptr;
     size_t n = ReadFully(s, rb, 1);
     r->Info("N" + to_string(n));
     if (n != 11) {
